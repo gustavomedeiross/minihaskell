@@ -1,0 +1,11 @@
+#!/bin/bash
+
+for i in `ls | grep ".ml[et]$"`
+do
+  ../../../src/joujou $i >& /dev/stdout;
+  echo $i : RETURNED $?;
+done
+
+echo "Cleaning up..."
+
+make clean -s
