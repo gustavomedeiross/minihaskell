@@ -405,8 +405,12 @@ and is_value_form = function
   | _ ->
     false
 
-and class_definition c env =
-  failwith "class_definition : Not implemented"
+and class_definition env c =
+  (* Superclasses must already be defined *)
+  ignore
+    (Misc.iter (fun k -> lookup_class c.class_position k env) c.superclasses);
+  let env = bind_class c.class_name c env in
+  ([BClassDefinition c], env)
 
-and instance_definitions is env =
+and instance_definitions env is =
   failwith "instance_definitions : Not implemented"
