@@ -24,12 +24,12 @@ and block env = function
     ([BDefinition d], env)
 
   | BClassDefinition c ->
-    (** Class definitions are ignored. Student! This is your job! *)
-    ([], env)
+      let elab_def, env = class_definition env c in
+      (elab_def, env)
 
   | BInstanceDefinitions is ->
-    (** Instance definitions are ignored. Student! This is your job! *)
-    ([], env)
+    let elab_def, env = instance_definitions env is in
+    (elab_def, env)
 
 
 and type_definitions env (TypeDefs (_, tdefs)) =
@@ -405,3 +405,8 @@ and is_value_form = function
   | _ ->
     false
 
+and class_definition c env =
+  failwith "class_definition : Not implemented"
+
+and instance_definitions is env =
+  failwith "instance_definitions : Not implemented"
