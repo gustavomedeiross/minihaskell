@@ -406,9 +406,18 @@ and is_value_form = function
     false
 
 and class_definition env c =
-  (* Superclasses must already be defined *)
-  ignore
-    (Misc.iter (fun k -> lookup_class c.class_position k env) c.superclasses);
+  (* Canonical constraint.
+   * Also checks that the superclasses are already defined. *)
+  let unrelated k1 k2 =
+    if (is_superclass c.class_position k1 k2 env ||
+        is_superclass c.class_position k2 k1 env)
+      then raise
+        (TheseTwoClassesMustNotBeInTheSameContext (c.class_position, k1, k2))
+  in
+  ignore (List.fold_left
+    (fun acc k -> ignore (List.map (unrelated k) acc);  k::acc)
+    []
+    c.superclasses);
   let env = bind_class c.class_name c env in
   ([BClassDefinition c], env)
 
