@@ -438,7 +438,8 @@ and class_definition env c =
  * contexts and class declarations, and to types of the form K (G a) in
  * instances are for simplicity. Generalizations are possible and discussed
  * later (7.4)"
- * - Canonical constraint *)
+ * - Canonical constraint
+ * - No overlap *)
 
 and instance_definitions env is =
   failwith "instance_definitions : Not implemented"
