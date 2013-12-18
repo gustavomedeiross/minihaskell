@@ -1,9 +1,9 @@
 #!/bin/bash
 
-for i in `ls | grep ".ml[et]$"`
+for i in `ls | grep ".mlt$\|.mle$"`
 do
-  ../../../src/joujou $i >& /dev/stdout;
-  echo $i : RETURNED $?;
+  ../../../src/joujou $i >& /dev/stdout
+  echo $i : RETURNED $?
 done
 
 echo "Cleaning up..."

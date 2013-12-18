@@ -1,0 +1,3 @@
+class Eq 'a { equal : 'a -> 'a -> int }
+
+instance ['a 'b] Eq (('a, 'b) list) { equal = fun a -> fun b -> 0 }
