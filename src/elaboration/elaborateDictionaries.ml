@@ -31,7 +31,6 @@ and block env = function
     let elab_def, env = instance_definitions env is in
     (elab_def, env)
 
-
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
   List.fold_left type_definition env tdefs
