@@ -7,3 +7,12 @@
 *.cmx
 *.cmxs
 *.cmxa
+*.mls
+*.mlr
+
+.gitignore
+
+lexer.ml
+parser.ml
+.depend
+joujou

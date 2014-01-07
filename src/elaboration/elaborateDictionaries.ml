@@ -24,12 +24,12 @@ and block env = function
     ([BDefinition d], env)
 
   | BClassDefinition c ->
-    (** Class definitions are ignored. Student! This is your job! *)
-    ([], env)
+      let elab_def, env = class_definition env c in
+      (elab_def, env)
 
   | BInstanceDefinitions is ->
-    (** Instance definitions are ignored. Student! This is your job! *)
-    ([], env)
+    let elab_def, env = instance_definitions env is in
+    (elab_def, env)
 
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
@@ -405,3 +405,41 @@ and is_value_form = function
   | _ ->
     false
 
+(* - Independence constraint (for all i,j not(Ki < Kj))
+ * - Previous definition of superclasses must be present
+ * - Overloaded method cannot be:
+   * repeated twice in the same class
+   * declared in two different classes
+   * Problem with shadowing by a non-method ???
+ * - The row must not contain free variables other than the class parameter
+ * - Unique class definition *)
+
+and class_definition env c =
+  let unrelated k1 k2 =
+    if is_superclass c.class_position k1 k2 env ||
+       is_superclass c.class_position k2 k1 env
+      then raise
+        (TheseTwoClassesMustNotBeInTheSameContext (c.class_position, k1, k2))
+  in
+  let independent l =
+    ignore (List.fold_left
+      (fun acc k -> ignore (List.map (unrelated k) acc);  k::acc) [] l)
+  in
+  (* Also checks that the superclasses are already defined. *)
+  independent c.superclasses;
+  (* Throws exception when a class with the same name already exists *)
+  let env = bind_class c.class_name c env in
+  ([BClassDefinition c], env)
+
+
+(* - Class must be defined
+ * - Instance methods must have matching types
+ * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
+ * contexts and class declarations, and to types of the form K (G a) in
+ * instances are for simplicity. Generalizations are possible and discussed
+ * later (7.4)"
+ * - Canonical constraint
+ * - No overlap *)
+
+and instance_definitions env is =
+  failwith "instance_definitions : Not implemented"
