@@ -24,13 +24,15 @@ and block env = function
     ([BDefinition d], env)
 
   | BClassDefinition c ->
-    (** Class definitions are ignored. Student! This is your job! *)
-    ([], env)
+    let env = bind_class c.class_name c env in   
+    ([BClassDefinition c], env)
+
 
   | BInstanceDefinitions is ->
     (** Instance definitions are ignored. Student! This is your job! *)
     ([], env)
 
+   
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
   List.fold_left type_definition env tdefs

@@ -46,13 +46,51 @@ let lookup_class pos k env =
     List.assoc k env.classes
   with Not_found -> raise (UnboundClass (pos, k))
 
+let deuz (a,b,c)=b 
+
+let preums (a,b,c)=a
+
+let rec is_double e l n = 
+  match l with
+  | [] -> ()  
+  | (a,b,c)::q ->  
+    if e=b then
+           (if n>=1 then raise(InvalidOverloading(a)) 
+                    else is_double e q (n+1))
+           else is_double e q n 
+
+let string_of_lname = function 
+  | LName s -> s
+
+let string_of_name = function
+  | Name s ->s
+
 let bind_class k c env =
   try
     let pos = c.class_position in
     ignore (lookup_class pos k env);
     raise (AlreadyDefinedClass (pos, k))
   with UnboundClass _ ->
+    List.iter (fun x-> is_double (deuz x) c.class_members 0) c.class_members;
+    List.iter (fun x-> if not(
+                         List.for_all 
+                         (fun y -> not(List.exists (fun a->deuz x= deuz a)
+                                                   y.class_members ) )
+                         (List.map snd env.classes))
+                       then raise(InvalidOverloading(preums x))
+              )
+               c.class_members; 
+    List.iter (fun x->
+                  if List.exists 
+                    (fun a -> 
+                     string_of_name (fst (snd a)) =string_of_lname (deuz x)
+                    )
+                    env.values  
+                  then raise(InvalidOverloading(preums x) ))
+              c.class_members ;                 
     { env with classes = (k, c) :: env.classes }
+
+
 
 let lookup_superclasses pos k env =
   (lookup_class pos k env).superclasses
