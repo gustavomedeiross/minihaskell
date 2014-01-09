@@ -46,20 +46,71 @@ let lookup_class pos k env =
     List.assoc k env.classes
   with Not_found -> raise (UnboundClass (pos, k))
 
+let lookup_superclasses pos k env =
+  (lookup_class pos k env).superclasses
+
+let rec is_superclass pos k1 k2 env =
+  let scl = lookup_superclasses pos k1 env in
+  List.exists (fun k -> k = k2 || is_superclass pos k k2 env) scl
+
+(* Class definition constraints
+ * Unchecked (?)
+ * - The row must not contain free variables other than the class parameter
+ * - Unique class definition *)
+
+(* Independence constraint (for all i,j: not(Ki < Kj))
+ * Also checks that the superclasses are already defined. *)
+let unrelated pos env k1 k2 =
+  if is_superclass pos k1 k2 env ||
+     is_superclass pos k2 k1 env
+  then raise (TheseTwoClassesMustNotBeInTheSameContext (pos, k1, k2))
+
+let assert_independent pos sc env =
+  ignore (List.fold_left
+    (fun acc k -> List.iter (unrelated pos env k) acc;  k::acc) [] sc)
+
+let rec assert_unique_members = function
+  | [] -> ()
+  | (pos, l, _) :: t ->
+    if List.exists (fun (_, m, _) -> l = m) t
+      then raise (InvalidOverloading pos)
+      else assert_unique_members t
+
+(* Not previously declared as an overloaded symbol *)
+let assert_not_overloaded c env =
+  List.iter
+    (fun (pos, x, _) ->
+      if not(
+           List.for_all
+             (fun c -> not (List.exists (fun (_, a, _) -> x = a)
+                                         c.class_members))
+             (List.map snd env.classes))
+        then raise (InvalidOverloading pos))
+    c.class_members
+
+let name_of_lname = function 
+  | LName s -> Name s
+
+(* Not previously declared as a value *)
+let assert_not_bound c env =
+  List.iter
+    (fun (pos, x, _) ->
+      let x = name_of_lname x in
+      if List.exists (fun a -> x = fst (snd a)) env.values
+        then raise (OverloadedSymbolCannotBeBound (pos, x)))
+    c.class_members
+
 let bind_class k c env =
   try
     let pos = c.class_position in
     ignore (lookup_class pos k env);
     raise (AlreadyDefinedClass (pos, k))
   with UnboundClass _ ->
+    assert_independent c.class_position c.superclasses env;
+    assert_unique_members c.class_members;
+    assert_not_overloaded c env;
+    assert_not_bound c env;
     { env with classes = (k, c) :: env.classes }
-
-let lookup_superclasses pos k env =
-  (lookup_class pos k env).superclasses
-
-let rec is_superclass pos k1 k2 env =
-  let sc1 = lookup_superclasses pos k1 env in
-  List.exists (fun k -> k = k2 || is_superclass pos k k2 env) sc1
 
 let bind_type_variable t env =
   bind_type t KStar (TypeDef (undefined_position, KStar, t, DAlgebraic [])) env

@@ -1,0 +1,37 @@
+#!/bin/bash
+
+JOUJOU="../src/joujou"
+
+if [ ! -x $JOUJOU  ]
+  then
+    echo "Joujou executable lacking" 1>&2
+    exit 1
+fi
+
+GOOD=`find -path '*/good/*.ml[et]' | sort`
+BAD=`find -path '*/bad/*.ml[et]' | sort`
+
+for f in $GOOD
+  do
+  OUTPUT=`$JOUJOU $f 2>&1`
+  RET=$?
+  if [ $RET != 0 ]
+    then
+      echo "$f: $RET"
+      echo $OUTPUT
+  fi
+done
+
+for f in $BAD
+  do
+  OUTPUT=`$JOUJOU $f 2>&1`
+  RET=$?
+  if [ $RET != 1 ]
+    then
+      echo "$f: $RET"
+      if [ -n "$OUTPUT" ]
+        then echo $OUTPUT
+      fi
+  fi
+done
+

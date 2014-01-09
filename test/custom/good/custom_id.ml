@@ -1,0 +1,1 @@
+let identity : type a. a -> a = fun x -> x
