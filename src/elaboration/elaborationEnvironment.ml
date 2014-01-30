@@ -13,6 +13,9 @@ type t = {
   let_bounds   : name list;
 }
 
+let name_of_lname = function 
+  | LName s -> Name s
+
 let empty = { values = []; types = []; classes = []; labels = [];
 name_methods = []; let_bounds = []}
 
@@ -31,6 +34,13 @@ and add_name (Name s) pos env =
   if List.mem (LName s) env.name_methods then
   raise(OverloadedSymbolCannotBeBound (pos,Name s))
   else  {env with let_bounds = (Name s) :: env.let_bounds}
+
+let add_methods env (pos, s, _)=
+  if List.mem (s) env.name_methods 
+   then raise(InvalidOverloading(pos))
+   else if List.mem (name_of_lname s) env.let_bounds 
+  	 then raise(OverloadedSymbolCannotBeBound(pos,name_of_lname s))
+	 else {env with name_methods = s :: env.name_methods}
 
 let bind_simple pos x ty env =
   bind_scheme  pos x [] ty env
@@ -77,14 +87,17 @@ let unrelated pos env k1 k2 =
 let assert_independent pos sc env =
   ignore (List.fold_left
     (fun acc k -> List.iter (unrelated pos env k) acc;  k::acc) [] sc)
+(* --- SOME OLD BULLSHIT*)
 
+
+(*
 let rec assert_unique_members = function
   | [] -> ()
   | (pos, l, _) :: t ->
     if List.exists (fun (_, m, _) -> l = m) t
       then raise (InvalidOverloading pos)
       else assert_unique_members t
-
+*)
 (* Not previously declared as an overloaded symbol *)
 (*let assert_not_overloaded c env =
   List.iter
@@ -96,7 +109,7 @@ let rec assert_unique_members = function
              (List.map snd env.classes))
         then raise (InvalidOverloading pos))
     c.class_members
-*)
+
 let assert_not_overloaded c env =
   List.iter 
   	(fun (pos,s,_) ->if List.mem s env.name_methods
@@ -104,8 +117,6 @@ let assert_not_overloaded c env =
 	) 
       c.class_members
 
-let name_of_lname = function 
-  | LName s -> Name s
 
 (* Not previously declared as a value *)
 (*let assert_not_bound c env =
@@ -124,7 +135,7 @@ let assert_not_bound c env =
 	 if List.mem x env.let_bounds then raise
 	 (OverloadedSymbolCannotBeBound (pos,x)))
 	c.class_members 
-
+*)
 
 let bind_class k c env =
   try
@@ -133,9 +144,7 @@ let bind_class k c env =
     raise (AlreadyDefinedClass (pos, k))
   with UnboundClass _ ->
     assert_independent c.class_position c.superclasses env;
-    assert_unique_members c.class_members;
-    assert_not_overloaded c env;
-    assert_not_bound c env;
+    let env = List.fold_left add_methods env c.class_members in 
     { env with classes = (k, c) :: env.classes }
 
 let bind_type_variable t env =
