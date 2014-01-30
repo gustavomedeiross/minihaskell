@@ -97,7 +97,7 @@ let check_free_variables name parameter = function
 	       else if not(TS.subset
 	       		   freeT
 			   parameter)
-		    then raise(TooFreeTypeVariableTypeclass(pos,name)
+		    then raise(TooFreeTypeVariableTypeclass(pos,name))
 		    else ()
 	       		   
  | [] -> ()
