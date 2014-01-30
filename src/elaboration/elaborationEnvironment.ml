@@ -72,9 +72,6 @@ let rec is_superclass pos k1 k2 env =
   let scl = lookup_superclasses pos k1 env in
   List.exists (fun k -> k = k2 || is_superclass pos k k2 env) scl
 
-(* Class definition constraints
- * - The row must not contain free variables other than the class parameter
- *)
 
 (* Independence constraint (for all i,j: not(Ki < Kj))
  * Also checks that the superclasses are already defined. *)
