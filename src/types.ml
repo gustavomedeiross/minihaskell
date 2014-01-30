@@ -1,6 +1,12 @@
 open Positions
 open Name
 
+module TS = Set.Make(
+  struct
+    type t = Name.tname
+    let compare = compare
+  end)
+
 type kind =
   | KStar
   | KArrow of kind * kind
@@ -113,3 +119,7 @@ let rec substitute (s : (tname * t) list) = function
 
   | TyApp (pos, t, tys) ->
     TyApp (pos, t, List.map (substitute s) tys)
+
+let rec free = function
+  | TyVar (_, v) -> TS.singleton v
+  | TyApp (_, _, l) -> List.fold_left TS.union TS.empty (List.map free l)

@@ -3,6 +3,8 @@
 open Positions
 open Name
 
+module TS : Set.S
+
 (** The types are first-order terms. *)
 type t =
   | TyVar        of position * tname
@@ -82,3 +84,5 @@ val equivalent : t -> t -> bool
 (** [substitute s ty] returns [ty] on which the substitution [s]
     has been applied. *)
 val substitute : (tname * t) list -> t -> t
+
+val free : t -> TS.t
