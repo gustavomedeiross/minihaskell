@@ -29,8 +29,10 @@ exception SameNameInTypeAbstractionAndScheme of position
 exception LabelAlreadyTaken of position * lname
 exception LabelDoesNotBelong of position * lname * tname * tname
 exception InvalidRecordInstantiation of position
+exception OverloadedSymbolCannotBeBound of Positions.position * name
+
 exception AmbiguousTypeclass of position * tname
 exception TooFreeTypeVariableTypeclass of position * tname
-exception OverloadedSymbolCannotBeBound of Positions.position * name
+exception NotAMethodOf of position * lname * tname
 
 exception NotImplemented of position * string

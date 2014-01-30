@@ -415,16 +415,17 @@ and is_value_form = function
  * - Canonical constraint
  * - No overlap *)
 
-and check_method pos env k met =
-  let e, ty = expression env met in
-  let xty = lookup_method pos k met env in
+and check_method pos env k (RecordBinding (l, e)) =
+  let e, ty = expression env e in
+  let xty = lookup_method pos k l in
   check_equal_types pos xty ty;
 
 
 and instance_definitions env l = match l with
-  | [] -> (BInstanceDefinitions [],env)
+  | [] -> ([],env)
   | t :: q -> List.iter 
   		(check_method t.instance_position env
-  		(lookup_class pos t.instance_class_name env))
-  		t.instance_members
+  		(lookup_class t.instance_position t.instance_class_name env))
+  		t.instance_members;
+      raise (NotImplemented (t.instance_position, "instance_definitions"))
 

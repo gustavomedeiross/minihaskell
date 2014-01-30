@@ -117,17 +117,22 @@ let handle_error f =
     | MultipleLabels (pos, LName l) ->
       fatal' pos (Printf.sprintf "  Multiple definitions of label `%s'." l)
 
-    | AmbiguousTypeclass(pos, TName l) ->
-      fatal' pos (Printf.sprintf " The parameter of the type class `%s' doesn't\
-      occur in the definition." l)
-    
-    | TooFreeTypeVariableTypeclass(pos, TName l) ->
-      fatal' pos (Printf.sprintf " There are too many free variables in\
-      the typeclass `%s'. You can only quantify on one variable." l)
     | OverloadedSymbolCannotBeBound (pos, Name x) ->
       fatal' pos (Printf.sprintf
                    "  Identifier `%s' cannot be both overloaded and let-bound."
                    x)
 
+    | AmbiguousTypeclass(pos, TName l) ->
+      fatal' pos (Printf.sprintf " The parameter of the type class `%s' doesn't\
+      occur in the definition." l)
+    
+    | TooFreeTypeVariableTypeclass(pos, TName l) ->
+      fatal' pos (Printf.sprintf " There are too many free variables in \
+      the typeclass `%s'. You can only quantify on one variable." l)
+
+    | NotAMethodOf (pos, LName l, TName k) ->
+      fatal' pos (Printf.sprintf " `%s' is not a method of class `%s'."
+l k)
+
     | NotImplemented (pos, str) ->
-      fatal' pos ("  Not implemented: "^str)
+      fatal' pos (Printf.sprintf "  Not implemented: `%s'." str)

@@ -96,13 +96,6 @@ exception SameNameInTypeAbstractionAndScheme of position
     uses a label already used by another record type declaration. *)
 exception LabelAlreadyTaken of position * lname
 
-(**salf-describing *)
-exception TooFreeTypeVariableTypeclass of position * tname
-
-(* Raised when the parameter of the typeclass is not used in the
-definition*)
-exception AmbiguousTypeclass of position * tname
-
 (** [LabelDoesNotBelong] is raised when a label is used with a
     record type that does not contain it. *)
 exception LabelDoesNotBelong of position * lname * tname * tname
@@ -114,5 +107,16 @@ exception InvalidRecordInstantiation of position
 (** [OverloadedSymbolCannotBeBound] is raised when an overloaded
     symbol is introduced by a let. *)
 exception OverloadedSymbolCannotBeBound of Positions.position * name
+
+(**salf-describing *)
+exception TooFreeTypeVariableTypeclass of position * tname
+
+(* Raised when the parameter of the typeclass is not used in the
+definition*)
+exception AmbiguousTypeclass of position * tname
+
+(** [NotAMethodOf] is raised when an instance declaration
+    implements a method that is not part of the class *)
+exception NotAMethodOf of position * lname * tname
 
 exception NotImplemented of position * string
