@@ -14,7 +14,7 @@
 *.swp
 *\~
 
-.gitignore
+src/parsing/pprint-*
 
 lexer.ml
 parser.ml
