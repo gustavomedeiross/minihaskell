@@ -96,6 +96,13 @@ exception SameNameInTypeAbstractionAndScheme of position
     uses a label already used by another record type declaration. *)
 exception LabelAlreadyTaken of position * lname
 
+(**salf-describing *)
+exception TooFreeTypeVariableTypeclass of position * tname
+
+(* Raised when the parameter of the typeclass is not used in the
+definition*)
+exception AmbiguousTypeclass of position * tname
+
 (** [LabelDoesNotBelong] is raised when a label is used with a
     record type that does not contain it. *)
 exception LabelDoesNotBelong of position * lname * tname * tname

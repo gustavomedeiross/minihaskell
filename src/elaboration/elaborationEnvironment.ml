@@ -73,9 +73,8 @@ let rec is_superclass pos k1 k2 env =
   List.exists (fun k -> k = k2 || is_superclass pos k k2 env) scl
 
 (* Class definition constraints
- * Unchecked (?)
  * - The row must not contain free variables other than the class parameter
- * - Unique class definition *)
+ *)
 
 (* Independence constraint (for all i,j: not(Ki < Kj))
  * Also checks that the superclasses are already defined. *)
@@ -87,6 +86,22 @@ let unrelated pos env k1 k2 =
 let assert_independent pos sc env =
   ignore (List.fold_left
     (fun acc k -> List.iter (unrelated pos env k) acc;  k::acc) [] sc)
+
+(*Parameter is the singleton of the free variable of the class*) 
+let check_free_variables name parameter = function
+  | (pos,_,t) :: q -> let freeT = free t in
+  		      if not(TS.subset
+  		             parameter
+		             freeT)
+	       then raise(AmbiguousTypeclass(pos,name))
+	       else if not(TS.subset
+	       		   freeT
+			   parameter)
+		    then raise(TooFreeTypeVariableTypeclass(pos,name)
+		    else ()
+	       		   
+ | [] -> ()
+    
 
 let bind_class k c env =
   try
