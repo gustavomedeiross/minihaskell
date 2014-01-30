@@ -100,7 +100,7 @@ let check_free_variables name parameter = function
 		    then raise(TooFreeTypeVariableTypeclass(pos,name))
 		    else ()
 	       		   
- | [] -> ()
+  | [] -> ()
     
 
 let bind_class k c env =
