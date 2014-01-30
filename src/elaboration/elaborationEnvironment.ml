@@ -9,9 +9,12 @@ type t = {
   types        : (tname * (Types.kind * type_definition)) list;
   classes      : (tname * class_definition) list;
   labels       : (lname * (tnames * Types.t * tname)) list;
+  name_methods : lname list;
+  let_bounds   : name list;
 }
 
-let empty = { values = []; types = []; classes = []; labels = [] }
+let empty = { values = []; types = []; classes = []; labels = [];
+name_methods = []; let_bounds = []}
 
 let values env = env.values
 
@@ -77,7 +80,7 @@ let rec assert_unique_members = function
       else assert_unique_members t
 
 (* Not previously declared as an overloaded symbol *)
-let assert_not_overloaded c env =
+(*let assert_not_overloaded c env =
   List.iter
     (fun (pos, x, _) ->
       if not(
@@ -87,18 +90,35 @@ let assert_not_overloaded c env =
              (List.map snd env.classes))
         then raise (InvalidOverloading pos))
     c.class_members
+*)
+let assert_not_overloaded c env =
+  List.iter 
+  	(fun (pos,s,_) ->if List.mem s env.name_methods
+		       then raise(InvalidOverloading pos)
+	) 
+      c.class_members
 
 let name_of_lname = function 
   | LName s -> Name s
 
 (* Not previously declared as a value *)
-let assert_not_bound c env =
+(*let assert_not_bound c env =
   List.iter
     (fun (pos, x, _) ->
       let x = name_of_lname x in
       if List.exists (fun a -> x = fst (snd a)) env.values
         then raise (OverloadedSymbolCannotBeBound (pos, x)))
     c.class_members
+*)
+
+let assert_not_bound c env =
+  List.iter
+	(fun (pos, x, _) ->
+	 let x = name_of_lname x in
+	 if List.mem x env.let_bounds then raise
+	 (OverloadedSymbolCannotBeBound (pos,x)))
+	c.class_members 
+
 
 let bind_class k c env =
   try
