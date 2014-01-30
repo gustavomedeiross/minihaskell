@@ -87,55 +87,6 @@ let unrelated pos env k1 k2 =
 let assert_independent pos sc env =
   ignore (List.fold_left
     (fun acc k -> List.iter (unrelated pos env k) acc;  k::acc) [] sc)
-(* --- SOME OLD BULLSHIT*)
-
-
-(*
-let rec assert_unique_members = function
-  | [] -> ()
-  | (pos, l, _) :: t ->
-    if List.exists (fun (_, m, _) -> l = m) t
-      then raise (InvalidOverloading pos)
-      else assert_unique_members t
-*)
-(* Not previously declared as an overloaded symbol *)
-(*let assert_not_overloaded c env =
-  List.iter
-    (fun (pos, x, _) ->
-      if not(
-           List.for_all
-             (fun c -> not (List.exists (fun (_, a, _) -> x = a)
-                                         c.class_members))
-             (List.map snd env.classes))
-        then raise (InvalidOverloading pos))
-    c.class_members
-
-let assert_not_overloaded c env =
-  List.iter 
-  	(fun (pos,s,_) ->if List.mem s env.name_methods
-		       then raise(InvalidOverloading pos)
-	) 
-      c.class_members
-
-
-(* Not previously declared as a value *)
-(*let assert_not_bound c env =
-  List.iter
-    (fun (pos, x, _) ->
-      let x = name_of_lname x in
-      if List.exists (fun a -> x = fst (snd a)) env.values
-        then raise (OverloadedSymbolCannotBeBound (pos, x)))
-    c.class_members
-*)
-
-let assert_not_bound c env =
-  List.iter
-	(fun (pos, x, _) ->
-	 let x = name_of_lname x in
-	 if List.mem x env.let_bounds then raise
-	 (OverloadedSymbolCannotBeBound (pos,x)))
-	c.class_members 
-*)
 
 let bind_class k c env =
   try
