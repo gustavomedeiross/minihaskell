@@ -57,9 +57,9 @@ and label_type ts rtcon env (pos, l, ty) =
   check_wf_type env' KStar ty;
   bind_label pos l ts ty rtcon env
 
-and algebraic_dataconstructor env (_, DName k, ts, kty) =
+and algebraic_dataconstructor env (pos, DName k, ts, kty) =
   check_wf_scheme env ts kty;
-  bind_scheme (Name k) ts kty env
+  bind_scheme pos (Name k) ts kty env
 
 and introduce_type_parameters env ts =
   List.fold_left (fun env t -> bind_type_variable t env) env ts
@@ -98,11 +98,11 @@ and env_of_bindings env cdefs = List.(
   (function
     | BindValue (_, vs)
     | BindRecValue (_, vs) ->
-      fold_left (fun env (ValueDef (_, ts, _, (x, ty), _)) ->
-        bind_scheme x ts ty env
+      fold_left (fun env (ValueDef (pos, ts, _, (x, ty), _)) ->
+        bind_scheme pos x ts ty env
       ) env vs
-    | ExternalValue (_, ts, (x, ty), _) ->
-      bind_scheme x ts ty env
+    | ExternalValue (pos, ts, (x, ty), _) ->
+      bind_scheme pos x ts ty env
   ) cdefs
 )
 
@@ -124,7 +124,7 @@ and expression env = function
 
   | ELambda (pos, ((x, aty) as b), e') ->
     check_wf_type env KStar aty;
-    let env = bind_simple x aty env in
+    let env = bind_simple pos x aty env in
     let (e, ty) = expression env e' in
     (ELambda (pos, b, e), ntyarrow pos [aty] ty)
 
@@ -262,7 +262,7 @@ and branch env sty (Branch (pos, p, e)) =
 
 and concat pos env1 env2 =
   List.fold_left
-    (fun env (_, (x, ty)) -> bind_simple x ty env)
+    (fun env (_, (x, ty)) -> bind_simple pos x ty env)
     env1 (values env2)
 
 and linear_bind pos env (ts, (x, ty)) =
@@ -271,7 +271,7 @@ and linear_bind pos env (ts, (x, ty)) =
     ignore (lookup pos x env);
     raise (NonLinearPattern pos)
   with UnboundIdentifier _ ->
-    bind_simple x ty env
+    bind_simple pos x ty env
 
 and join pos denv1 denv2 =
   List.fold_left (linear_bind pos) denv2 (values denv1)
@@ -287,8 +287,8 @@ and check_same_denv pos denv1 denv2 =
   ) (values denv1)
 
 and pattern env xty = function
-  | PVar (_, name) ->
-    bind_simple name xty ElaborationEnvironment.empty
+  | PVar (pos, name) ->
+    bind_simple pos name xty ElaborationEnvironment.empty
 
   | PWildcard _ ->
     ElaborationEnvironment.empty
@@ -342,7 +342,8 @@ and value_binding env = function
     (BindRecValue (pos, vs), env)
 
   | ExternalValue (pos, ts, ((x, ty) as b), os) ->
-    let env = bind_scheme x ts ty env in
+    let env = bind_scheme pos x ts ty env in
+    
     (ExternalValue (pos, ts, b, os), env)
 
 and eforall pos ts e =
@@ -373,7 +374,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     let b = (x, ty) in
     check_equal_types pos xty ty;
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
-     bind_scheme x ts ty env)
+     bind_scheme pos x ts ty env)
   end else begin
     if ts <> [] then
       raise (ValueRestriction pos)
@@ -382,11 +383,11 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e, ty = expression env e in
       let b = (x, ty) in
       check_equal_types pos xty ty;
-      (ValueDef (pos, [], [], b, e), bind_simple x ty env)
+      (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
-  bind_scheme x ts ty env
+  bind_scheme pos x ts ty env
 
 
 and is_value_form = function

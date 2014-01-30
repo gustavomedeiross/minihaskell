@@ -23,11 +23,17 @@ let lookup pos x env =
     List.find (fun (_, (x', _)) -> x = x') env.values
   with Not_found -> raise (UnboundIdentifier (pos, x))
 
-let bind_scheme x ts ty env =
-  { env with values = (ts, (x, ty)) :: env.values }
+let rec bind_scheme pos x ts ty env =
+  let env = add_name x pos env in 
+  { env with values = (ts, (x, ty)) :: env.values}
 
-let bind_simple x ty env =
-  bind_scheme x [] ty env
+and add_name (Name s) pos env =
+  if List.mem (LName s) env.name_methods then
+  raise(OverloadedSymbolCannotBeBound (pos,Name s))
+  else  {env with let_bounds = (Name s) :: env.let_bounds}
+
+let bind_simple pos x ty env =
+  bind_scheme  pos x [] ty env
 
 let bind_type t kind tdef env =
   { env with types = (t, (kind, tdef)) :: env.types }

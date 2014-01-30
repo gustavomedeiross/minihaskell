@@ -22,11 +22,11 @@ val lookup : position -> name -> t -> (tnames * binding)
 
 (** [bind_scheme n ts ty e] associates the scheme [ts. ty] to
     the identifier [n] in [e]. *)
-val bind_scheme : name -> tnames -> Types.t -> t -> t
+val bind_scheme : position -> name -> tnames -> Types.t -> t -> t
 
 (** [bind_simple n ty e] associates the type [ty] to
     the identifier [n] in [e]. *)
-val bind_simple : name -> Types.t -> t -> t
+val bind_simple : position -> name -> Types.t -> t -> t
 
 (** [lookup_type_kind pos t e] returns the kind of [t] in [e]. *)
 val lookup_type_kind : position -> tname -> t -> Types.kind
