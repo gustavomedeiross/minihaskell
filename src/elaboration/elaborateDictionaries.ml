@@ -415,6 +415,16 @@ and is_value_form = function
  * - Canonical constraint
  * - No overlap *)
 
-and instance_definitions env is =
-  raise (NotImplemented
-    ((List.hd is).instance_position, "instance_definitions"))
+and check_method pos env k met =
+  let e, ty = expression env met in
+  let xty = lookup_method pos k met env in
+  check_equal_types pos xty ty;
+
+
+and instance_definitions env l = match l with
+  | [] -> (BInstanceDefinitions [],env)
+  | t :: q -> List.iter 
+  		(check_method t.instance_position env
+  		(lookup_class pos t.instance_class_name env))
+  		t.instance_members
+
