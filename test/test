@@ -18,7 +18,7 @@ for f in $GOOD
   if [ $RET != 0 ]
     then
       echo "$f: $RET"
-      echo "$OUTPUT"
+#      echo "$OUTPUT"
   fi
 done
 
@@ -29,9 +29,9 @@ for f in $BAD
   if [ $RET != 1 ]
     then
       echo "$f: $RET"
-      if [ -n "$OUTPUT" ]
-        then echo "$OUTPUT"
-      fi
+#      if [ -n "$OUTPUT" ]
+#        then echo "$OUTPUT"
+#      fi
   fi
 done
 
