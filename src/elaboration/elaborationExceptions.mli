@@ -104,9 +104,9 @@ exception LabelDoesNotBelong of position * lname * tname * tname
     is applied to an incorrect number of types. *)
 exception InvalidRecordInstantiation of position
 
-(** [OverloadedSymbolCannotBeBound] is raised when an overloaded
-    symbol is introduced by a let. *)
-exception OverloadedSymbolCannotBeBound of Positions.position * name
+(** [VariableIsAMethodName] is raised when an identifier is both used
+    as a method name and a variable *)
+exception VariableIsAMethodName of position * name
 
 (**salf-describing *)
 exception TooFreeTypeVariableTypeclass of position * tname
@@ -118,5 +118,7 @@ exception AmbiguousTypeclass of position * tname
 (** [NotAMethodOf] is raised when an instance declaration
     implements a method that is not part of the class *)
 exception NotAMethodOf of position * lname * tname
+
+exception MultipleMethods of position * lname
 
 exception NotImplemented of position * string

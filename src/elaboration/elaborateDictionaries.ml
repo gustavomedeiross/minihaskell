@@ -20,6 +20,8 @@ and block env = function
     ([BTypeDefinitions ts], env)
 
   | BDefinition d ->
+    let names = names_vb [] d in
+    let env = List.fold_left add_name env names in
     let d, env = value_binding env d in
     ([BDefinition d], env)
 
@@ -338,12 +340,11 @@ and value_binding env = function
 
   | BindRecValue (pos, vs) ->
     let env = List.fold_left value_declaration env vs in
-    let (vs, _) = Misc.list_foldmap value_definition env vs in
+    let (vs, env) = Misc.list_foldmap value_definition env vs in
     (BindRecValue (pos, vs), env)
 
   | ExternalValue (pos, ts, ((x, ty) as b), os) ->
     let env = bind_scheme pos x ts ty env in
-    
     (ExternalValue (pos, ts, b, os), env)
 
 and eforall pos ts e =
@@ -429,3 +430,48 @@ and instance_definitions env l = match l with
   		t.instance_members;
       raise (NotImplemented (t.instance_position, "instance_definitions"))
 
+and names_vb acc = function
+  | BindValue (_, vs)
+  | BindRecValue (_, vs)                        ->
+    List.fold_left names_vdef acc vs
+
+  | ExternalValue (pos, _, (x, _), _) ->
+    (pos, x) :: acc
+
+and names_vdef acc (ValueDef (pos, _, _, (x, _), e)) =
+  names_e ((pos, x) :: acc) e
+
+and names_e acc = function
+  | EVar _
+  | EPrimitive _              -> acc
+  | ELambda (pos, (x, _), e)  -> names_e ((pos, x) :: acc) e
+  | EBinding (_, b, e)        ->
+    let acc = names_vb acc b in
+    names_e acc e
+  | EApp (_, a, b)            ->
+    let acc = names_e acc b in
+    names_e acc a
+  | ETypeConstraint (_, e, _)
+  | EForall (_, _, e)
+  | EExists (_, _, e)
+  | ERecordAccess (_, e, _)   -> names_e acc e
+  | EDCon (_, _, _, es)       -> List.fold_left names_e acc es
+  | EMatch (_, s, bs)         ->
+    let acc = names_e acc s in
+    let vn_branch acc (Branch (pos, p, e)) =
+      let acc = names_pattern acc p in
+      names_e acc e
+    in List.fold_left vn_branch acc bs
+  | ERecordCon (_, _, _, rbs) ->
+    let vn_recordbinding acc (RecordBinding (_, e)) = names_e acc e in
+    List.fold_left vn_recordbinding acc rbs
+
+and names_pattern acc = function
+  | PVar (pos, x)             -> (pos, x) :: acc
+  | PWildcard _
+  | PPrimitive _              -> acc
+  | PAlias (pos, x, p)        -> names_pattern ((pos, x) :: acc) p
+  | PTypeConstraint (_, p, _) -> names_pattern acc p
+  | PData (_, _, _, ps)
+  | PAnd (_, ps)
+  | POr (_, ps)               -> List.fold_left names_pattern acc ps

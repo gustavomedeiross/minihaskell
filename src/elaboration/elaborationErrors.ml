@@ -117,10 +117,9 @@ let handle_error f =
     | MultipleLabels (pos, LName l) ->
       fatal' pos (Printf.sprintf "  Multiple definitions of label `%s'." l)
 
-    | OverloadedSymbolCannotBeBound (pos, Name x) ->
-      fatal' pos (Printf.sprintf
-                   "  Identifier `%s' cannot be both overloaded and let-bound."
-                   x)
+    | VariableIsAMethodName (pos, Name x) ->
+      fatal' pos (Printf.sprintf "  Identifier `%s' is used both as \
+      a variable and a method name." x)
 
     | AmbiguousTypeclass(pos, TName l) ->
       fatal' pos (Printf.sprintf " The parameter of the type class `%s' doesn't\
@@ -131,8 +130,9 @@ let handle_error f =
       the typeclass `%s'. You can only quantify on one variable." l)
 
     | NotAMethodOf (pos, LName l, TName k) ->
-      fatal' pos (Printf.sprintf " `%s' is not a method of class `%s'."
-l k)
+      fatal' pos (Printf.sprintf " `%s' is not a method of class `%s'." l k)
 
+    | MultipleMethods (pos, LName l) ->
+      fatal' pos (Printf.sprintf " `%s' is declared twice as a method." l)
     | NotImplemented (pos, str) ->
       fatal' pos (Printf.sprintf "  Not implemented: `%s'." str)

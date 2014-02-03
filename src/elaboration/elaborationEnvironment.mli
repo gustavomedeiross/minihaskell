@@ -20,6 +20,8 @@ val values : t -> (tnames * binding) list
 (** [lookup pos x env] returns the binding of [x]. *)
 val lookup : position -> name -> t -> (tnames * binding)
 
+val add_name : t -> position * name -> t
+
 (** [bind_scheme n ts ty e] associates the scheme [ts. ty] to
     the identifier [n] in [e]. *)
 val bind_scheme : position -> name -> tnames -> Types.t -> t -> t

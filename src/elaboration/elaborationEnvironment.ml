@@ -9,15 +9,15 @@ type t = {
   types        : (tname * (Types.kind * type_definition)) list;
   classes      : (tname * class_definition) list;
   labels       : (lname * (tnames * Types.t * tname)) list;
-  name_methods : lname list;
-  let_bounds   : name list;
+  method_names : lname list;
+  names        : name list;
 }
 
 let name_of_lname = function 
   | LName s -> Name s
 
 let empty = { values = []; types = []; classes = []; labels = [];
-name_methods = []; let_bounds = []}
+method_names = []; names = []}
 
 let values env = env.values
 
@@ -26,21 +26,20 @@ let lookup pos x env =
     List.find (fun (_, (x', _)) -> x = x') env.values
   with Not_found -> raise (UnboundIdentifier (pos, x))
 
-let rec bind_scheme pos x ts ty env =
-  let env = add_name x pos env in 
+let bind_scheme pos x ts ty env =
   { env with values = (ts, (x, ty)) :: env.values}
 
-and add_name (Name s) pos env =
-  if List.mem (LName s) env.name_methods then
-  raise(OverloadedSymbolCannotBeBound (pos,Name s))
-  else  {env with let_bounds = (Name s) :: env.let_bounds}
+let add_name env (pos, Name s) =
+  if List.mem (LName s) env.method_names then
+    raise (VariableIsAMethodName (pos, Name s))
+  else { env with names = Name s :: env.names }
 
-let add_methods env (pos, s, _)=
-  if List.mem (s) env.name_methods 
-   then raise(InvalidOverloading(pos))
-   else if List.mem (name_of_lname s) env.let_bounds 
-  	 then raise(OverloadedSymbolCannotBeBound(pos,name_of_lname s))
-	 else {env with name_methods = s :: env.name_methods}
+let add_methods env (pos, LName s, _) =
+  if List.mem (LName s) env.method_names then
+    raise (MultipleMethods (pos, LName s))
+  else if List.mem (Name s) env.names then
+    raise (VariableIsAMethodName (pos, Name s))
+  else { env with method_names = (LName s) :: env.method_names }
 
 let bind_simple pos x ty env =
   bind_scheme  pos x [] ty env
