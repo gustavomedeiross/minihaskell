@@ -84,7 +84,7 @@ let assert_independent pos sc env =
     (fun acc k -> List.iter (unrelated pos env k) acc;  k::acc) [] sc)
 
 (*Parameter is the singleton of the free variable of the class*) 
-let check_free_variables name parameter = function
+let rec check_free_variables name parameter = function
   | (pos,_,t) :: q -> let freeT = free t in
   		      if not(TS.subset
   		             parameter
@@ -94,7 +94,7 @@ let check_free_variables name parameter = function
 	       		   freeT
 			   parameter)
 		    then raise(TooFreeTypeVariableTypeclass(pos,name))
-		    else ()
+		    else (check_free_variables name parameter q)
 	       		   
   | [] -> ()
     
