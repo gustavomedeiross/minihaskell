@@ -61,13 +61,13 @@ and label_type ts rtcon env (pos, l, ty) =
 
 and algebraic_dataconstructor env (pos, DName k, ts, kty) =
   check_wf_scheme env ts kty;
-  bind_scheme pos (Name k) ts kty env
+  bind_scheme pos (Name k) ts [] kty env
 
 and introduce_type_parameters env ts =
   List.fold_left (fun env t -> bind_type_variable t env) env ts
 
 and check_wf_scheme env ts ty =
-  check_wf_type (introduce_type_parameters env ts) KStar ty
+  check_wf_type (introduce_type_parameters env ts ) KStar ty
 
 and check_wf_type env xkind = function
   | TyVar (pos, t) ->
@@ -100,11 +100,11 @@ and env_of_bindings env cdefs = List.(
   (function
     | BindValue (_, vs)
     | BindRecValue (_, vs) ->
-      fold_left (fun env (ValueDef (pos, ts, _, (x, ty), _)) ->
-        bind_scheme pos x ts ty env
+      fold_left (fun env (ValueDef (pos, ts, pred, (x, ty), _)) ->
+        bind_scheme pos x ts pred ty env
       ) env vs
     | ExternalValue (pos, ts, (x, ty), _) ->
-      bind_scheme pos x ts ty env
+      bind_scheme pos x ts [] ty env
   ) cdefs
 )
 
@@ -114,7 +114,7 @@ and check_equal_types pos ty1 ty2 =
 
 and type_application pos env x tys =
   List.iter (check_wf_type env KStar) tys;
-  let (ts, (_, ty)) = lookup pos x env in
+  let (ts,_, (_, ty)) = lookup pos x env in
   try
     substitute (List.combine ts tys) ty
   with _ ->
@@ -264,10 +264,10 @@ and branch env sty (Branch (pos, p, e)) =
 
 and concat pos env1 env2 =
   List.fold_left
-    (fun env (_, (x, ty)) -> bind_simple pos x ty env)
+    (fun env (_, _, (x, ty)) -> bind_simple pos x ty env)
     env1 (values env2)
 
-and linear_bind pos env (ts, (x, ty)) =
+and linear_bind pos env (ts, _, (x, ty)) =
   assert (ts = []); (** Because patterns only bind monomorphic values. *)
   try
     ignore (lookup pos x env);
@@ -279,10 +279,10 @@ and join pos denv1 denv2 =
   List.fold_left (linear_bind pos) denv2 (values denv1)
 
 and check_same_denv pos denv1 denv2 =
-  List.iter (fun (ts, (x, ty)) ->
+  List.iter (fun (ts, _, (x, ty)) ->
     assert (ts = []); (** Because patterns only bind monomorphic values. *)
     try
-      let (_, (_, ty')) = lookup pos x denv2 in
+      let (_, _, (_, ty')) = lookup pos x denv2 in
       check_equal_types pos ty ty'
     with _ ->
       raise (PatternsMustBindSameVariables pos)
@@ -296,7 +296,7 @@ and pattern env xty = function
     ElaborationEnvironment.empty
 
   | PAlias (pos, name, p) ->
-    linear_bind pos (pattern env xty p) ([], (name, xty))
+    linear_bind pos (pattern env xty p) ([], [],  (name, xty))
 
   | PTypeConstraint (pos, p, pty) ->
     check_equal_types pos pty xty;
@@ -344,7 +344,6 @@ and value_binding env = function
     (BindRecValue (pos, vs), env)
 
   | ExternalValue (pos, ts, ((x, ty) as b), os) ->
-    let env = bind_scheme pos x ts ty env in
     (ExternalValue (pos, ts, b, os), env)
 
 and eforall pos ts e =
@@ -368,14 +367,20 @@ and eforall pos ts e =
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   let env = introduce_type_parameters env ts in
   check_wf_scheme env ts xty;
-
+  List.iter (fun (ClassPredicate(c,v))-> 
+  		if not(List.mem v ts) then raise(InvalidOverloading pos)) 
+  ps;
   if is_value_form e then begin
     let e = eforall pos ts e in
     let e, ty = expression env e in
     let b = (x, ty) in
+    List.iter 
+    (fun (ClassPredicate(c,v)) -> if not(TS.mem v (free ty))
+    			then raise(InvalidOverloading pos);) 
+    ps; 
     check_equal_types pos xty ty;
-    (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
-     bind_scheme pos x ts ty env)
+    (ValueDef (pos, ts, ps, b, EForall (pos, ts, e)),
+     bind_scheme pos x ts ps ty env)
   end else begin
     if ts <> [] then
       raise (ValueRestriction pos)
@@ -383,12 +388,13 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e = eforall pos [] e in
       let e, ty = expression env e in
       let b = (x, ty) in
+      if ps<>[] then raise(InvalidOverloading pos);
       check_equal_types pos xty ty;
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
-  bind_scheme pos x ts ty env
+  bind_scheme pos x ts ps ty env
 
 
 and is_value_form = function
@@ -428,7 +434,13 @@ and instance_definitions env l = match l with
   		(check_method t.instance_position env
   		(lookup_class t.instance_position t.instance_class_name env))
   		t.instance_members;
-      raise (NotImplemented (t.instance_position, "instance_definitions"))
+
+
+		instance_definitions env q
+
+  (*    raise (NotImplemented (t.instance_position,
+  "instance_definitions"))*)
+
 
 and names_vb acc = function
   | BindValue (_, vs)

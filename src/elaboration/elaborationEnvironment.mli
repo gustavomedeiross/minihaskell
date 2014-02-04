@@ -15,20 +15,20 @@ val initial : t
 
 (** [values env] projects [env] as an environment of bindings
     that associate type scheme to value identifiers. *)
-val values : t -> (tnames * binding) list
+val values : t -> (tnames * Types.class_predicates * binding) list
 
 (** [lookup pos x env] returns the binding of [x]. *)
-val lookup : position -> name -> t -> (tnames * binding)
+val lookup : position -> name -> t -> (tnames * Types.class_predicates * binding)
 
 val add_name : t -> position * name -> t
 
 (** [bind_scheme n ts ty e] associates the scheme [ts. ty] to
     the identifier [n] in [e]. *)
-val bind_scheme : position -> name -> tnames -> Types.t -> t -> t
+val bind_scheme : position -> name -> tnames -> Types.class_predicates ->  Types.t ->  t -> t
 
 (** [bind_simple n ty e] associates the type [ty] to
     the identifier [n] in [e]. *)
-val bind_simple : position -> name -> Types.t -> t -> t
+val bind_simple : position -> name -> Types.t  -> t -> t
 
 (** [lookup_type_kind pos t e] returns the kind of [t] in [e]. *)
 val lookup_type_kind : position -> tname -> t -> Types.kind
