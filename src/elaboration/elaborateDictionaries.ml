@@ -433,7 +433,7 @@ and instance_definitions env l = match l with
   		(check_method t.instance_position env
   		(lookup_class t.instance_position t.instance_class_name env))
   		t.instance_members;
-			
+		let env = bind_instance t env in	
 	        instance_definitions env q
 
 and names_vb acc = function

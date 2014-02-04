@@ -22,6 +22,8 @@ val lookup : position -> name -> t -> (tnames * Types.class_predicates * binding
 
 val add_name : t -> position * name -> t
 
+val bind_instance : instance_definition -> t -> t
+
 (** [bind_scheme n ts ty e] associates the scheme [ts. ty] to
     the identifier [n] in [e]. *)
 val bind_scheme : position -> name -> tnames -> Types.class_predicates ->  Types.t ->  t -> t

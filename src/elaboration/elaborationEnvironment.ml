@@ -10,6 +10,7 @@ type t = {
   classes      : (tname * class_definition) list;
   labels       : (lname * (tnames * Types.t * tname)) list;
   types_constraints : (tname * (tname list)) list;
+  instances    : (tname*(instance_definition list)) list;
   method_names : lname list;
   names        : name list;
 }
@@ -18,7 +19,8 @@ let name_of_lname = function
   | LName s -> Name s
 
 let empty = { values = []; types = []; classes = []; labels = [];
-method_names = []; names = []; types_constraints = []}
+method_names = []; names = []; types_constraints = [];
+instances = []}
 
 let values env = env.values
 
@@ -26,6 +28,16 @@ let lookup pos x env =
   try
     List.find (fun (_, _,(x', _)) -> x = x') env.values
   with Not_found -> raise (UnboundIdentifier (pos, x))
+
+let bind_instance t env =
+  try let listinstance =List.assoc t.instance_index env.instances in
+    if List.exists 
+    	(fun x->x.instance_class_name= t.instance_class_name ) 
+    	listinstance
+      then raise(OverlappingInstances(t.instance_position, t.instance_class_name))
+      else let instances = List.remove_assoc t.instance_class_name env.instances in
+  	{env with instances = (t.instance_class_name, t::listinstance)::instances} 
+  with Not_found -> {env with instances = (t.instance_class_name, [t])::env.instances}
 
 let bind_scheme pos x ts pred ty env =
 { env with values = (ts, pred , (x, ty)) :: env.values}
