@@ -44,9 +44,9 @@ let ( @@ ) ctx1 ctx2 = fun c -> ctx1 (ctx2 c)
 
 let fold env f =
   List.fold_left (fun (env, ctx) x ->
-    let (env, ctx') = f env x in
-    (env, ctx @@ ctx')
-  ) (env, ctx0)
+      let (env, ctx') = f env x in
+      (env, ctx @@ ctx')
+    ) (env, ctx0)
 
 (** A fragment denotes the typing information acquired in a match branch.
     [gamma] is the typing environment coming from the binding of pattern
@@ -54,11 +54,11 @@ let fold env f =
     pattern. [tconstraint] is the constraint coming from the instantiation
     of the data constructor scheme. *)
 type fragment =
-    {
-      gamma       : (crterm * position) StringMap.t;
-      vars        : variable list;
-      tconstraint : tconstraint;
-    }
+  {
+    gamma       : (crterm * position) StringMap.t;
+    vars        : variable list;
+    tconstraint : tconstraint;
+  }
 
 (** The [empty_fragment] is used when nothing has been bound. *)
 let empty_fragment =
@@ -74,8 +74,8 @@ let rec join_fragment pos f1 f2 =
   {
     gamma =
       (try
-        StringMap.strict_union f1.gamma f2.gamma
-      with StringMap.Strict x -> raise (NonLinearPattern (pos, Name x)));
+         StringMap.strict_union f1.gamma f2.gamma
+       with StringMap.Strict x -> raise (NonLinearPattern (pos, Name x)));
     vars        = f1.vars @ f2.vars;
     tconstraint = f1.tconstraint ^ f2.tconstraint;
   }
@@ -88,71 +88,71 @@ and infer_pat_fragment tenv p t =
 
     (** Wildcard pattern does not generate any fragment. *)
     | PWildcard pos ->
-        empty_fragment
+      empty_fragment
 
     (** We refer to the algebra to know the type of a primitive. *)
     | PPrimitive (pos, p) ->
-        { empty_fragment with
-            tconstraint = (t =?= type_of_primitive (as_fun tenv) p) pos
-        }
+      { empty_fragment with
+        tconstraint = (t =?= type_of_primitive (as_fun tenv) p) pos
+      }
 
     (** Matching against a variable generates a fresh flexible variable,
         binds it to the [name] and forces the variable to be equal to [t]. *)
     | PVar (pos, Name name) ->
-        let v = variable Flexible () in
-          {
-            gamma       = StringMap.singleton name (TVariable v, pos);
-            tconstraint = (TVariable v =?= t) pos;
-            vars        = [ v ]
-          }
+      let v = variable Flexible () in
+      {
+        gamma       = StringMap.singleton name (TVariable v, pos);
+        tconstraint = (TVariable v =?= t) pos;
+        vars        = [ v ]
+      }
 
     (** A disjunction forces the bounded variables of the subpatterns to
         be equal. For that purpose, we extract the types of the subpatterns'
         environments and we make them equal. *)
     | POr (pos, ps) ->
-        let fps = List.map (infpat t) ps in
-          (try
-            let rgamma = (List.hd fps).gamma in
-            let cs =
-              List.fold_left (fun env_eqc fragment ->
-                        StringMap.mapi
-                          (fun k (t', _) ->
-                             let (t, c) = StringMap.find k env_eqc in
-                               (t, (t =?= t') pos ^ c))
-                          fragment.gamma)
-                (StringMap.mapi (fun k (t, _) -> (t, CTrue pos)) rgamma)
-              fps
-            in
-            let c = StringMap.fold (fun k (_, c) acu -> c ^ acu) cs (CTrue pos)
-            in
-              {
-                gamma       = rgamma;
-                tconstraint = c ^ conj (List.map (fun f -> f.tconstraint) fps);
-                vars        = List.flatten (List.map (fun f -> f.vars) fps)
-              }
-          with Not_found ->
-            raise (InvalidDisjunctionPattern pos))
+      let fps = List.map (infpat t) ps in
+      (try
+         let rgamma = (List.hd fps).gamma in
+         let cs =
+           List.fold_left (fun env_eqc fragment ->
+               StringMap.mapi
+                 (fun k (t', _) ->
+                    let (t, c) = StringMap.find k env_eqc in
+                    (t, (t =?= t') pos ^ c))
+                 fragment.gamma)
+             (StringMap.mapi (fun k (t, _) -> (t, CTrue pos)) rgamma)
+             fps
+         in
+         let c = StringMap.fold (fun k (_, c) acu -> c ^ acu) cs (CTrue pos)
+         in
+         {
+           gamma       = rgamma;
+           tconstraint = c ^ conj (List.map (fun f -> f.tconstraint) fps);
+           vars        = List.flatten (List.map (fun f -> f.vars) fps)
+         }
+       with Not_found ->
+         raise (InvalidDisjunctionPattern pos))
 
     (** A conjunction pattern does join its subpatterns' fragments. *)
     | PAnd (pos, ps) ->
-        join pos (List.map (infpat t) ps)
+      join pos (List.map (infpat t) ps)
 
     (** [PAlias (x, p)] is equivalent to [PAnd (PVar x, p)]. *)
     | PAlias (pos, Name name, p) ->
-        let fragment = infpat t p in
-          { fragment with
-              gamma       = StringMap.strict_add name (t, pos) fragment.gamma;
-              tconstraint = (SName name <? t) pos ^ fragment.tconstraint
-          }
+      let fragment = infpat t p in
+      { fragment with
+        gamma       = StringMap.strict_add name (t, pos) fragment.gamma;
+        tconstraint = (SName name <? t) pos ^ fragment.tconstraint
+      }
 
     (** A type constraint is taken into account by the insertion of a type
         equality between [t] and the annotation. *)
     | PTypeConstraint (pos, p, typ) ->
-        let fragment = infpat t p
-        and ityp = InternalizeTypes.intern pos tenv typ in
-          { fragment with
-              tconstraint = (ityp =?= t) pos ^ fragment.tconstraint
-          }
+      let fragment = infpat t p
+      and ityp = InternalizeTypes.intern pos tenv typ in
+      { fragment with
+        tconstraint = (ityp =?= t) pos ^ fragment.tconstraint
+      }
 
     (** Matching against a data constructor generates the fragment that:
         - forces [t] to be the type of the constructed value ;
@@ -172,16 +172,16 @@ and infer_pat_fragment tenv p t =
           vars        = alphas @ fragment.vars;
         }
   in
-    infpat t p
+  infpat t p
 
 (** Constraint contexts. *)
 type context =
-    (crterm, variable) type_constraint -> (crterm, variable) type_constraint
+  (crterm, variable) type_constraint -> (crterm, variable) type_constraint
 
 let header_of_binding pos tenv (Name x, ty) t =
   (match ty with
-     | None -> CTrue pos
-     | Some ty -> (intern pos tenv ty =?= t) pos),
+   | None -> CTrue pos
+   | Some ty -> (intern pos tenv ty =?= t) pos),
   StringMap.add x (t, pos) StringMap.empty
 
 let fresh_record_name =
@@ -202,11 +202,11 @@ let intern_data_constructor pos (TName adt_name) env_info dcon_info =
       raise (InvalidDataConstructorDefinition (pos, DName dname))
   in
   let v = variable ~structure:ityp Flexible () in
-    ((add_data_constructor tenv (DName dname)
-        (InternalizeTypes.arity typ, rqs, ityp)),
-     (DName dname, v) :: acu,
-     (rqs @ lrqs),
-     StringMap.add dname (ityp, pos) let_env)
+  ((add_data_constructor tenv (DName dname)
+      (InternalizeTypes.arity typ, rqs, ityp)),
+   (DName dname, v) :: acu,
+   (rqs @ lrqs),
+   StringMap.add dname (ityp, pos) let_env)
 
 let infer_typedef tenv (TypeDefs (pos, tds)) =
   let bind_new_tycon pos name tenv kind =
@@ -223,46 +223,46 @@ let infer_typedef tenv (TypeDefs (pos, tds)) =
 
   List.fold_left
     (fun (tenv, c) -> function
-      | TypeDef (pos', kind, name, DRecordType (ts, rts)) ->
-        let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
-        let rqs, rtenv = fresh_unnamed_rigid_vars pos tenv ts in
-        let tenv' = add_type_variables rtenv tenv in
-        let tyvs = List.map (fun v -> TyVar (pos', v)) ts in
-        let rty =
-          InternalizeTypes.intern pos' tenv' (TyApp (pos', name, tyvs))
-        in
-        let intern_label_type (pos, l, ty) =
-          (l, InternalizeTypes.intern pos' tenv' ty)
-        in
-        ids_def := Product (rqs, rty, List.map intern_label_type rts);
-        (tenv, c)
+       | TypeDef (pos', kind, name, DRecordType (ts, rts)) ->
+         let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
+         let rqs, rtenv = fresh_unnamed_rigid_vars pos tenv ts in
+         let tenv' = add_type_variables rtenv tenv in
+         let tyvs = List.map (fun v -> TyVar (pos', v)) ts in
+         let rty =
+           InternalizeTypes.intern pos' tenv' (TyApp (pos', name, tyvs))
+         in
+         let intern_label_type (pos, l, ty) =
+           (l, InternalizeTypes.intern pos' tenv' ty)
+         in
+         ids_def := Product (rqs, rty, List.map intern_label_type rts);
+         (tenv, c)
 
-      | TypeDef (pos', kind, name, DAlgebraic ds) ->
-        let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
-        let (tenv, ids, rqs, let_env) =
-          List.fold_left
-            (intern_data_constructor pos name)
-            (tenv, [], [], StringMap.empty)
-            ds
-        in
-        ids_def := Sum ids;
-        let c = fun c' ->
-          c (CLet ([Scheme (pos', rqs, [], [],
-                            CTrue pos',
-                            let_env)],
-                   c'))
-        in
-        (tenv, c)
+       | TypeDef (pos', kind, name, DAlgebraic ds) ->
+         let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
+         let (tenv, ids, rqs, let_env) =
+           List.fold_left
+             (intern_data_constructor pos name)
+             (tenv, [], [], StringMap.empty)
+             ds
+         in
+         ids_def := Sum ids;
+         let c = fun c' ->
+           c (CLet ([Scheme (pos', rqs, [], [],
+                             CTrue pos',
+                             let_env)],
+                    c'))
+         in
+         (tenv, c)
 
-      | ExternalType (pos, ts, name, _) ->
-        let kind = kind_of_arity (List.length ts) in
-        let ikind = KindInferencer.intern_kind (as_kind_env tenv) kind in
-        let ivar = variable ~name Constant () in
-        let tenv = add_type_constructor tenv name (ikind, ivar, ref Abstract) in
-        (tenv,
-         fun c ->
-           CLet ([Scheme (pos, [ivar], [], [], c, StringMap.empty)], CTrue pos)
-        )
+       | ExternalType (pos, ts, name, _) ->
+         let kind = kind_of_arity (List.length ts) in
+         let ikind = KindInferencer.intern_kind (as_kind_env tenv) kind in
+         let ivar = variable ~name Constant () in
+         let tenv = add_type_constructor tenv name (ikind, ivar, ref Abstract) in
+         (tenv,
+          fun c ->
+            CLet ([Scheme (pos, [ivar], [], [], c, StringMap.empty)], CTrue pos)
+         )
 
     )
     (tenv, fun c -> c)
@@ -286,114 +286,114 @@ let rec infer_vdef pos tenv (ValueDef (pos, qs, cs, b, e)) =
     constraints if it binds values. *)
 and infer_binding tenv b =
   match b with
-    | ExternalValue (pos, ts, b, _) ->
-      let x = variable Flexible () in
-      let tx = TVariable x in
-      let rqs, rtenv = fresh_rigid_vars pos tenv ts in
-      let tenv' = add_type_variables rtenv tenv in
-      let c, h = header_of_binding pos tenv' b tx in
-      let scheme = Scheme (pos, rqs, [x], [], c, h) in
-      tenv, (fun c -> CLet ([scheme], c))
+  | ExternalValue (pos, ts, b, _) ->
+    let x = variable Flexible () in
+    let tx = TVariable x in
+    let rqs, rtenv = fresh_rigid_vars pos tenv ts in
+    let tenv' = add_type_variables rtenv tenv in
+    let c, h = header_of_binding pos tenv' b tx in
+    let scheme = Scheme (pos, rqs, [x], [], c, h) in
+    tenv, (fun c -> CLet ([scheme], c))
 
-    | BindValue (pos, vdefs) ->
-      let schemes = List.map (infer_vdef pos tenv) vdefs in
-      tenv, (fun c -> CLet (schemes, c))
+  | BindValue (pos, vdefs) ->
+    let schemes = List.map (infer_vdef pos tenv) vdefs in
+    tenv, (fun c -> CLet (schemes, c))
 
-    | BindRecValue (pos, vdefs) ->
+  | BindRecValue (pos, vdefs) ->
 
-        (* The constraint context generated for
-           [let rec forall X1 . x1 : T1 = e1
-           and forall X2 . x2 = e2] is
+    (* The constraint context generated for
+       [let rec forall X1 . x1 : T1 = e1
+       and forall X2 . x2 = e2] is
 
-           let forall X1 (x1 : T1) in
-           let forall [X2] Z2 [
-           let x2 : Z2 in [ e2 : Z2 ]
-           ] ( x2 : Z2) in (
-           forall X1.[ e1 : T1 ] ^
-           [...]
-           )
+       let forall X1 (x1 : T1) in
+       let forall [X2] Z2 [
+       let x2 : Z2 in [ e2 : Z2 ]
+       ] ( x2 : Z2) in (
+       forall X1.[ e1 : T1 ] ^
+       [...]
+       )
 
-           In other words, we first assume that x1 has type scheme
-           forall X1.T1.
-           Then, we typecheck the recursive definition x2 = e2, making sure
-           that the type variable X2 remains rigid, and generalize its type.
-           This yields a type scheme for x2, which is then used to check
-           that e1 actually has type scheme forall X1.T1.
+       In other words, we first assume that x1 has type scheme
+       forall X1.T1.
+       Then, we typecheck the recursive definition x2 = e2, making sure
+       that the type variable X2 remains rigid, and generalize its type.
+       This yields a type scheme for x2, which is then used to check
+       that e1 actually has type scheme forall X1.T1.
 
-           In the above example, there are only one explicitly typed and one
-           implicitly typed value definitions.
+       In the above example, there are only one explicitly typed and one
+       implicitly typed value definitions.
 
-           In the general case, there are multiple explicitly and implicitly
-           typed definitions, but the principle remains the same. We generate
-           a context of the form
+       In the general case, there are multiple explicitly and implicitly
+       typed definitions, but the principle remains the same. We generate
+       a context of the form
 
-           let schemes1 in
+       let schemes1 in
 
-           let forall [rqs2] fqs2 [
-           let h2 in c2
-           ] h2 in (
-           c1 ^
-           [...]
-           )
+       let forall [rqs2] fqs2 [
+       let h2 in c2
+       ] h2 in (
+       c1 ^
+       [...]
+       )
 
-        *)
+    *)
 
-      let schemes1, rqs2, fqs2, cs2, h2, c2, c1 =
-        List.fold_left
-          (fun
-            (schemes1, rqs2, fqs2, cs2, h2, c2, c1)
-            (ValueDef (pos, qs, cs, b, e)) ->
+    let schemes1, rqs2, fqs2, cs2, h2, c2, c1 =
+      List.fold_left
+        (fun
+          (schemes1, rqs2, fqs2, cs2, h2, c2, c1)
+          (ValueDef (pos, qs, cs, b, e)) ->
 
-              (* Allocate variables for the quantifiers in the list
-                 [qs], augment the type environment accordingly. *)
+          (* Allocate variables for the quantifiers in the list
+             [qs], augment the type environment accordingly. *)
 
-              let rvs, rtenv = fresh_rigid_vars pos tenv qs in
-              let tenv' = add_type_variables rtenv tenv in
+          let rvs, rtenv = fresh_rigid_vars pos tenv qs in
+          let tenv' = add_type_variables rtenv tenv in
 
-              let (xs, gs, xcs) = intern_class_predicates pos tenv' cs in
+          let (xs, gs, xcs) = intern_class_predicates pos tenv' cs in
 
-              (* Check whether this is an explicitly or implicitly
-                 typed definition. *)
+          (* Check whether this is an explicitly or implicitly
+             typed definition. *)
 
-              match InternalizeTypes.explicit_or_implicit pos b e with
-                | InternalizeTypes.Implicit (Name name, e) ->
+          match InternalizeTypes.explicit_or_implicit pos b e with
+          | InternalizeTypes.Implicit (Name name, e) ->
 
-                  let v = variable Flexible () in
-                  let t = TVariable v in
+            let v = variable Flexible () in
+            let t = TVariable v in
 
-                  schemes1,
-                  rvs @ rqs2,
-                  v :: fqs2 @ xs,
-                  gs @ cs2,
-                  StringMap.add name (t, pos) h2,
-                  conj xcs ^ infer_expr tenv' e t ^ c2,
-                  c1
+            schemes1,
+            rvs @ rqs2,
+            v :: fqs2 @ xs,
+            gs @ cs2,
+            StringMap.add name (t, pos) h2,
+            conj xcs ^ infer_expr tenv' e t ^ c2,
+            c1
 
-                | InternalizeTypes.Explicit (Name name, typ, e) ->
+          | InternalizeTypes.Explicit (Name name, typ, e) ->
 
-                  InternalizeTypes.intern_scheme pos tenv name qs cs typ
-                  :: schemes1,
-                  rqs2,
-                  fqs2,
-                  cs2,
-                  h2,
-                  c2,
-                  fl rvs ~h:gs (ex xs (
-                    conj xcs
-                    ^ infer_expr tenv' e (InternalizeTypes.intern pos tenv' typ)
-                  ))
-                  ^ c1
+            InternalizeTypes.intern_scheme pos tenv name qs cs typ
+            :: schemes1,
+            rqs2,
+            fqs2,
+            cs2,
+            h2,
+            c2,
+            fl rvs ~h:gs (ex xs (
+                conj xcs
+                ^ infer_expr tenv' e (InternalizeTypes.intern pos tenv' typ)
+              ))
+            ^ c1
 
-                | _ -> assert false
+          | _ -> assert false
 
-          ) ([], [], [], [], StringMap.empty, CTrue pos, CTrue pos) vdefs in
+        ) ([], [], [], [], StringMap.empty, CTrue pos, CTrue pos) vdefs in
 
-      tenv,
-      fun c -> CLet (schemes1,
-                     CLet ([ Scheme (pos, rqs2, fqs2, cs2,
-                                     CLet ([ monoscheme h2 ], c2), h2) ],
-                           c1 ^ c)
-      )
+    tenv,
+    fun c -> CLet (schemes1,
+                   CLet ([ Scheme (pos, rqs2, fqs2, cs2,
+                                   CLet ([ monoscheme h2 ], c2), h2) ],
+                         c1 ^ c)
+                  )
 
 (** [infer_expr tenv d e t] generates a constraint that guarantees that [e]
     has type [t]. It implements the constraint generation rules for
@@ -402,138 +402,138 @@ and infer_binding tenv b =
 and infer_expr tenv e (t : crterm) =
   match e with
 
-    (** The [exists a. e] construction introduces [a] in the typing
-        scope so as to be usable in annotations found in [e]. *)
-    | EExists (pos, vs, e) ->
-      let (fqs, denv) = fresh_flexible_vars pos tenv vs in
-      let tenv = add_type_variables denv tenv in
-      ex fqs (infer_expr tenv e t)
+  (** The [exists a. e] construction introduces [a] in the typing
+      scope so as to be usable in annotations found in [e]. *)
+  | EExists (pos, vs, e) ->
+    let (fqs, denv) = fresh_flexible_vars pos tenv vs in
+    let tenv = add_type_variables denv tenv in
+    ex fqs (infer_expr tenv e t)
 
-    (** [forall a. e] generates the constraint:
-        let forall b [ (( e : b )) ].(_z : b) in _z < t
-        which means the [e] must have a type at least as general as
-        [t] assuming [a] is generic. *)
-    | EForall (pos, vs, e) ->
-      let (rqs, denv) = fresh_rigid_vars pos tenv vs in
-      let tenv = add_type_variables denv tenv in
-      let beta = variable Flexible () in
-      let gt = TVariable beta in
-      CLet ([Scheme (pos, rqs, [beta], [],
-                     infer_expr tenv e gt,
-                     StringMap.singleton "_z" (gt, pos)) ],
-            (SName "_z" <? t) pos)
+  (** [forall a. e] generates the constraint:
+      let forall b [ (( e : b )) ].(_z : b) in _z < t
+      which means the [e] must have a type at least as general as
+      [t] assuming [a] is generic. *)
+  | EForall (pos, vs, e) ->
+    let (rqs, denv) = fresh_rigid_vars pos tenv vs in
+    let tenv = add_type_variables denv tenv in
+    let beta = variable Flexible () in
+    let gt = TVariable beta in
+    CLet ([Scheme (pos, rqs, [beta], [],
+                   infer_expr tenv e gt,
+                   StringMap.singleton "_z" (gt, pos)) ],
+          (SName "_z" <? t) pos)
 
-    (** The type of a variable must be at least as general as [t]. *)
-    | EVar (pos, Name name, _) ->
-      (SName name <? t) pos
+  (** The type of a variable must be at least as general as [t]. *)
+  | EVar (pos, Name name, _) ->
+    (SName name <? t) pos
 
-    (** To type a lambda abstraction, [t] must be an arrow type.
-        Furthermore, type variables introduce by the lambda pattern
-        cannot be generalized locally. *)
-    | ELambda (pos, b, e) ->
-      exists (fun x1 ->
+  (** To type a lambda abstraction, [t] must be an arrow type.
+      Furthermore, type variables introduce by the lambda pattern
+      cannot be generalized locally. *)
+  | ELambda (pos, b, e) ->
+    exists (fun x1 ->
         exists (fun x2 ->
-          let (c, h) = header_of_binding pos tenv b x1 in
-          c
-          ^ CLet ([ monoscheme h ], infer_expr tenv e x2)
-          ^ (t =?= arrow tenv x1 x2) pos
-        )
+            let (c, h) = header_of_binding pos tenv b x1 in
+            c
+            ^ CLet ([ monoscheme h ], infer_expr tenv e x2)
+            ^ (t =?= arrow tenv x1 x2) pos
+          )
       )
 
-    (** Application requires the left hand side to be an arrow and
-        the right hand side to be compatible with the domain of this
-        arrow. *)
-    | EApp (pos, e1, e2) ->
-      exists (fun x ->
+  (** Application requires the left hand side to be an arrow and
+      the right hand side to be compatible with the domain of this
+      arrow. *)
+  | EApp (pos, e1, e2) ->
+    exists (fun x ->
         infer_expr tenv e1 (arrow tenv x t) ^ infer_expr tenv e2 x
       )
 
-    (** A binding [b] defines a constraint context into which the
-        constraint of [e] must be injected. *)
-    | EBinding (_, b, e) ->
-      snd (infer_binding tenv b) (infer_expr tenv e t)
+  (** A binding [b] defines a constraint context into which the
+      constraint of [e] must be injected. *)
+  | EBinding (_, b, e) ->
+    snd (infer_binding tenv b) (infer_expr tenv e t)
 
-    (** A type constraint inserts a type equality into the generated
-        constraint. *)
-    | ETypeConstraint (pos, e, typ) ->
-      let ityp = intern pos tenv typ in
-      (t =?= ityp) pos ^ infer_expr tenv e ityp
+  (** A type constraint inserts a type equality into the generated
+      constraint. *)
+  | ETypeConstraint (pos, e, typ) ->
+    let ityp = intern pos tenv typ in
+    (t =?= ityp) pos ^ infer_expr tenv e ityp
 
-    (** The constraint of a [match] makes equal the type of the scrutinee
-        and the type of every branch pattern. The body of each branch must
-        be equal to [t]. *)
-    | EMatch (pos, e, branches) ->
-      exists (fun x ->
+  (** The constraint of a [match] makes equal the type of the scrutinee
+      and the type of every branch pattern. The body of each branch must
+      be equal to [t]. *)
+  | EMatch (pos, e, branches) ->
+    exists (fun x ->
         infer_expr tenv e x ^
-          conj
+        conj
           (List.map
              (fun (Branch (pos, p, e)) ->
-               let fragment = infer_pat_fragment tenv p x in
-               CLet ([ Scheme (pos, [], fragment.vars, [],
-                               fragment.tconstraint,
-                               fragment.gamma) ],
-                     infer_expr tenv e t))
+                let fragment = infer_pat_fragment tenv p x in
+                CLet ([ Scheme (pos, [], fragment.vars, [],
+                                fragment.tconstraint,
+                                fragment.gamma) ],
+                      infer_expr tenv e t))
              branches))
 
-    (** A data constructor application is similar to usual application
-        except that it must be fully applied. *)
-    | EDCon (pos, (DName d as k), _, es) ->
-      let arity, _, _ = lookup_datacon tenv k in
-      let les = List.length es in
-      if les <> arity then
-        raise (PartialDataConstructorApplication (pos, arity, les))
-      else
-        exists_list es
-          (fun xs ->
-            let (kt, c) =
-              List.fold_left (fun (kt, c) (e, x) ->
-                arrow tenv x kt, c ^ infer_expr tenv e x)
-                (t, CTrue pos)
-                (List.rev xs)
-            in
-            c ^ (SName d <? kt) pos)
-
-    (** We refers to the algebra to get the primitive's type. *)
-    | EPrimitive (pos, c) ->
-      (t =?= type_of_primitive (as_fun tenv) c) pos
-
-    | ERecordCon (pos, Name k, _, []) ->
-      let h = StringMap.add k (t, pos) StringMap.empty in
-      CLet ([ monoscheme h ], (SName k <? t) pos)
-      ^ infer_expr tenv (EPrimitive (pos, PUnit)) t
-
-    (** The record definition by extension. *)
-    | ERecordCon (pos, Name k, i, bindings) ->
-      let ci =
-        match i with
-          | None -> CTrue pos
-          | Some ty -> (intern pos tenv ty =?= t) pos
-      in
-      let h = StringMap.add k (t, pos) StringMap.empty in
-      CLet ([ monoscheme h ], (SName k <? t) pos)
-      ^ exists_list bindings
+  (** A data constructor application is similar to usual application
+      except that it must be fully applied. *)
+  | EDCon (pos, (DName d as k), _, es) ->
+    let arity, _, _ = lookup_datacon tenv k in
+    let les = List.length es in
+    if les <> arity then
+      raise (PartialDataConstructorApplication (pos, arity, les))
+    else
+      exists_list es
         (fun xs ->
-          List.(
-            let ls = map extract_label_from_binding bindings in
-            let (vs, (rty, ltys)) = fresh_product_of_label pos tenv (hd ls) in
+           let (kt, c) =
+             List.fold_left (fun (kt, c) (e, x) ->
+                 arrow tenv x kt, c ^ infer_expr tenv e x)
+               (t, CTrue pos)
+               (List.rev xs)
+           in
+           c ^ (SName d <? kt) pos)
+
+  (** We refers to the algebra to get the primitive's type. *)
+  | EPrimitive (pos, c) ->
+    (t =?= type_of_primitive (as_fun tenv) c) pos
+
+  | ERecordCon (pos, Name k, _, []) ->
+    let h = StringMap.add k (t, pos) StringMap.empty in
+    CLet ([ monoscheme h ], (SName k <? t) pos)
+    ^ infer_expr tenv (EPrimitive (pos, PUnit)) t
+
+  (** The record definition by extension. *)
+  | ERecordCon (pos, Name k, i, bindings) ->
+    let ci =
+      match i with
+      | None -> CTrue pos
+      | Some ty -> (intern pos tenv ty =?= t) pos
+    in
+    let h = StringMap.add k (t, pos) StringMap.empty in
+    CLet ([ monoscheme h ], (SName k <? t) pos)
+    ^ exists_list bindings
+      (fun xs ->
+         List.(
+           let ls = map extract_label_from_binding bindings in
+           let (vs, (rty, ltys)) = fresh_product_of_label pos tenv (hd ls) in
+           ex vs (
+             ci ^ (t =?= rty) pos
+             ^ CConjunction (map (infer_label pos tenv ltys) xs)
+           )
+         )
+      )
+
+  (** Accessing the label [label] of [e1] requires [e1]'s type to
+      be a record in which [label] is assign a [pre x] type. *)
+  | ERecordAccess (pos, e1, label) ->
+    exists (fun x ->
+        exists (fun y ->
+            let (vs, (rty, ltys)) = fresh_product_of_label pos tenv label in
             ex vs (
-              ci ^ (t =?= rty) pos
-              ^ CConjunction (map (infer_label pos tenv ltys) xs)
+              infer_expr tenv e1 rty
+              ^ (t =?= List.assoc label ltys) pos
             )
           )
-        )
-
-    (** Accessing the label [label] of [e1] requires [e1]'s type to
-        be a record in which [label] is assign a [pre x] type. *)
-    | ERecordAccess (pos, e1, label) ->
-      exists (fun x ->
-        exists (fun y ->
-          let (vs, (rty, ltys)) = fresh_product_of_label pos tenv label in
-          ex vs (
-            infer_expr tenv e1 rty
-            ^ (t =?= List.assoc label ltys) pos
-          )
-        )
       )
 
 and extract_label_from_binding (RecordBinding (name, _)) =
@@ -585,8 +585,8 @@ let init_env () =
     let (env, acu, lrqs, let_env) as r =
       List.fold_left
         (fun acu (d, rqs, ty) ->
-          intern_data_constructor undefined_position adt_name acu
-            (undefined_position, d, rqs, ty)
+           intern_data_constructor undefined_position adt_name acu
+             (undefined_position, d, rqs, ty)
         ) acu ds
     in
     (acu, r)
@@ -597,15 +597,15 @@ let init_env () =
   let (init_env, acu, lrqs, let_env) =
     List.fold_left
       (fun (env, dvs, lrqs, let_env) (n, (kind, v, ds)) ->
-        let r = ref Abstract in
-        let env = add_type_constructor env n
-          (KindInferencer.intern_kind (as_kind_env env) kind,
-           variable ~name:n Constant (),
-           r)
-        in
-        let (dvs, acu) = init_ds n (env, dvs, lrqs, let_env) ds in
-        r := Sum dvs;
-        acu
+         let r = ref Abstract in
+         let env = add_type_constructor env n
+             (KindInferencer.intern_kind (as_kind_env env) kind,
+              variable ~name:n Constant (),
+              r)
+         in
+         let (dvs, acu) = init_ds n (env, dvs, lrqs, let_env) ds in
+         r := Sum dvs;
+         acu
       )
       (empty_environment, [], [], StringMap.empty)
       (List.rev builtins)
@@ -615,14 +615,14 @@ let init_env () =
   in
   (* The initial environment is implemented as a constraint context. *)
   ((fun c ->
-       CLet ([ Scheme (undefined_position, vs, [], [],
-                       CLet ([ Scheme (undefined_position, lrqs, [], [],
-                                       CTrue undefined_position,
-                                       let_env) ],
-                             c),
-                       StringMap.empty) ],
-             CTrue undefined_position)),
-  vs, init_env)
+      CLet ([ Scheme (undefined_position, vs, [], [],
+                      CLet ([ Scheme (undefined_position, lrqs, [], [],
+                                      CTrue undefined_position,
+                                      let_env) ],
+                            c),
+                      StringMap.empty) ],
+            CTrue undefined_position)),
+   vs, init_env)
 
 let generate_constraint b =
   let (ctx, vs, env) = init_env () in

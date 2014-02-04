@@ -21,34 +21,34 @@
 (**************************************************************************)
 
 (** This module provides a solver for equations involving set constants,
-   variables, and disjoint sums (i.e. unions) thereof. *)
+    variables, and disjoint sums (i.e. unions) thereof. *)
 
 module type SetType =
 sig
   type t
-    (** The type of sets. *)
+  (** The type of sets. *)
 
   val empty: t
-    (** [empty] is the empty set. *)
+  (** [empty] is the empty set. *)
 
   val union: t -> t -> t
-    (** [union] returns the union of two sets, which may safely be assumed
-        disjoint. *)
+  (** [union] returns the union of two sets, which may safely be assumed
+      disjoint. *)
 
   val inter: t -> t -> t
-    (** [inter] returns the intersection of two sets. *)
+  (** [inter] returns the intersection of two sets. *)
 
   val diff: t -> t -> t
-    (** [diff] returns the difference of two sets. *)
+  (** [diff] returns the difference of two sets. *)
 
   val is_empty: t -> bool
-    (** [is_empty] tells whether a set is empty. *)
+  (** [is_empty] tells whether a set is empty. *)
 
   val equal: t -> t -> bool
-    (** [equal] tells whether two sets are equal. *)
+  (** [equal] tells whether two sets are equal. *)
 
   val print: t -> string
-       (** [print s] provides a textual representation of the set [s]. *)
+  (** [print s] provides a textual representation of the set [s]. *)
 
 end
 

@@ -18,15 +18,13 @@ val initial : t
 val values : t -> (tnames * Types.class_predicates * binding) list
 
 (** [lookup pos x env] returns the binding of [x]. *)
-val lookup : position -> name -> t -> (tnames * Types.class_predicates * binding)
-
-val add_name : t -> position * name -> t
-
-val bind_instance : instance_definition -> t -> t
+val lookup : position -> name -> t
+  -> (tnames * Types.class_predicates * binding)
 
 (** [bind_scheme n ts ty e] associates the scheme [ts. ty] to
     the identifier [n] in [e]. *)
-val bind_scheme : position -> name -> tnames -> Types.class_predicates ->  Types.t ->  t -> t
+val bind_scheme : position -> name -> tnames -> Types.class_predicates
+  -> Types.t -> t -> t
 
 (** [bind_simple n ty e] associates the type [ty] to
     the identifier [n] in [e]. *)
@@ -66,5 +64,9 @@ val bind_label : position -> lname -> tnames -> Types.t -> tname -> t -> t
 val lookup_label : position -> lname -> t -> tnames * Types.t * tname
 
 val lookup_method : position -> class_definition -> lname -> Types.t
+
+val add_name : t -> position * name -> t
+
+val bind_instance : instance_definition -> t -> t
 
 val constraints : tname -> t -> tnames

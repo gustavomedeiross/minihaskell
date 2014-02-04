@@ -43,12 +43,12 @@ open Env
     type constructor analysis. *)
 
 (** The following information is stored for each type constructor:
-   - its kind ;
-   - its associated term (a type variable actually) ;
-   - if it is an algebraic datatype, the list of its datatype
-   constructors.
-   - if it is a record datatype, the list of its labels and their
-   associated types.
+    - its kind ;
+    - its associated term (a type variable actually) ;
+    - if it is an algebraic datatype, the list of its datatype
+    constructors.
+    - if it is a record datatype, the list of its labels and their
+    associated types.
 *)
 
 type type_info = KindInferencer.t * variable * datatype_info ref
@@ -68,17 +68,17 @@ let as_type_variable (_, v, _) =
   v
 
 (** The following information is stored for each datatype constructor:
-   - its type variables ;
-   - its arity ;
-   - its type. *)
+    - its type variables ;
+    - its arity ;
+    - its type. *)
 type data_constructor = int * variable list * crterm
 
 (** [environment] denotes typing information associated to identifiers. *)
 type environment =
-    {
-      type_info        : (tname, type_info) Env.t;
-      data_constructor : (dname, data_constructor) Env.t;
-    }
+  {
+    type_info        : (tname, type_info) Env.t;
+    data_constructor : (dname, data_constructor) Env.t;
+  }
 
 let empty_environment =
   {
@@ -94,7 +94,7 @@ let add_type_variable env t (k, v) =
 
 let add_type_variables var_env env =
   { env with type_info =
-      List.fold_left (fun env (x, k) -> Env.add env x k) env.type_info var_env }
+               List.fold_left (fun env (x, k) -> Env.add env x k) env.type_info var_env }
 
 let add_type_constructor env t x =
   { env with type_info = Env.add env.type_info t x }
@@ -130,7 +130,7 @@ let as_kind_env env =
   let read id =
     try
       match Env.lookup (!env).type_info id with
-        | (k, _, _) -> k
+      | (k, _, _) -> k
     with Not_found ->
       raise (UnboundTypeConstructor (undefined_position, id))
   in
@@ -152,8 +152,8 @@ let typcon_variable env t =
 
 let as_fun tenv name =
   match find_typcon tenv name with
-    | None -> lookup_type_variable tenv name
-    | Some (_, v, _) -> TVariable v
+  | None -> lookup_type_variable tenv name
+  | Some (_, v, _) -> TVariable v
 
 let as_env env varlist =
   List.fold_left
@@ -169,8 +169,8 @@ let is_typcon env t =
     a name already used by a type constructor. *)
 let filter_tycon_name tenv =
   List.filter (notf (function v -> match variable_name v with
-                         None -> false
-                       | Some name -> is_typcon tenv name))
+        None -> false
+      | Some name -> is_typcon tenv name))
 
 let add_type_and_kind_variables denv tenv =
   add_type_variables
@@ -182,12 +182,12 @@ let add_type_and_kind_variables denv tenv =
 let tycon_name_conflict pos env (fqs, denv) =
   try
     let (n, _) = List.find (fun (x, _) -> is_typcon env x) denv in
-      raise (InvalidTypeVariableIdentifier (pos, n))
+    raise (InvalidTypeVariableIdentifier (pos, n))
   with Not_found ->
     (fqs,
      List.map (function
-       | (n, TVariable v) -> (n, v)
-       | _ -> assert false)
+         | (n, TVariable v) -> (n, v)
+         | _ -> assert false)
        denv
     )
 
@@ -201,11 +201,11 @@ let lookup_datacon ?pos env k =
 
 let rigid_args rt =
   List.fold_left (fun acu ->
-            function
-                TVariable v ->
-                  if (UnionFind.find v).kind = Rigid then v :: acu
-                  else acu
-              | _ -> acu) []
+      function
+        TVariable v ->
+        if (UnionFind.find v).kind = Rigid then v :: acu
+        else acu
+      | _ -> acu) []
     (tycon_args rt)
 
 let fresh_types xs ctx =
@@ -223,29 +223,29 @@ let fresh_datacon_scheme pos tenv k =
 let is_regular_datacon_scheme tenv kvars kt =
   let rt = result_type (as_fun tenv) kt in
   let rigid_args = rigid_args rt in
-    (* Check that all the tycon arguments are distinct rigid variables. *)
-    List.for_all (fun v -> List.memq v kvars) rigid_args
-    && List.length rigid_args == List.length kvars
+  (* Check that all the tycon arguments are distinct rigid variables. *)
+  List.for_all (fun v -> List.memq v kvars) rigid_args
+  && List.length rigid_args == List.length kvars
 
 (** [find_algebraic_datatypes env k] looks for all the data
     constructor that are related to the data constructor [k]. *)
 let rec find_algebraic_datatypes env k =
   let ts = Env.filter env.type_info
-    (fun (_, _, r) -> match !r with
-      | Sum l -> List.mem k l
-      | _ -> false)
+      (fun (_, _, r) -> match !r with
+         | Sum l -> List.mem k l
+         | _ -> false)
   in
-    match ts with
-      | [ (_,_, r) ] -> !r
-      | _ -> assert false
+  match ts with
+  | [ (_,_, r) ] -> !r
+  | _ -> assert false
 
 (** [fresh_vars kind pos env vars] allocates fresh variables from a
     list of names [vars], checking name clashes with type constructors. *)
 let fresh_vars kind pos env vars =
   let vs = variable_list_from_names (fun v -> (kind, Some v)) vars in
   let (fqs, denv) = tycon_name_conflict pos env vs in
-    (fqs,
-     (List.map (fun (n, v) -> (n, (fresh_kind (), v, ref Abstract))) denv))
+  (fqs,
+   (List.map (fun (n, v) -> (n, (fresh_kind (), v, ref Abstract))) denv))
 
 (** [fresh_flexible_vars] is a specialized allocator for flexible
     variables. *)
@@ -259,10 +259,10 @@ let fresh_rigid_vars =
 let fresh_unnamed_rigid_vars pos env vars =
   let rqs, denv = variable_list Rigid vars in
   let denv =
-     List.map (function
-       | (n, TVariable v) -> (n, (fresh_kind (), v, ref Abstract))
-       | _ -> assert false)
-       denv
+    List.map (function
+        | (n, TVariable v) -> (n, (fresh_kind (), v, ref Abstract))
+        | _ -> assert false)
+      denv
   in
   (rqs, denv)
 
@@ -270,14 +270,14 @@ let fresh_product_of_label pos env l =
   try
     let (vs, rty, ltys) =
       Env.lookup_image env.type_info (fun (_, _, r) ->
-        match !r with
+          match !r with
           | Product (vs, rty, ltys) ->
             if List.mem_assoc l ltys then Some (vs, rty, ltys) else None
           | _ -> None
-      )
+        )
     in
     fresh_types vs (fun f ->
-      (f rty, List.map (fun (l, ty) -> (l, f ty)) ltys)
-    )
+        (f rty, List.map (fun (l, ty) -> (l, f ty)) ltys)
+      )
   with Not_found ->
     raise (UnboundLabel (pos, l))

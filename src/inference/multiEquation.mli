@@ -107,9 +107,9 @@ val variable_list: variable_kind -> 'a list
   -> variable list * ('a * (crterm)) list
 
 (** [variable_list_from_strings f xs] allocates a fresh variable for every
-  string in the list [xs], and returns both a list of these variables
-  and an association list that maps elements to variables, viewed as types.
-  The kind is determined using the provided function [f]. *)
+    string in the list [xs], and returns both a list of these variables
+    and an association list that maps elements to variables, viewed as types.
+    The kind is determined using the provided function [f]. *)
 val variable_list_from_names:
   (tname -> variable_kind * tname option) -> tname list
   -> variable list * (tname * crterm) list

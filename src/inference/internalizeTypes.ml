@@ -39,7 +39,7 @@ open IAST
 let rec extract_type = function
 
   | ETypeConstraint (_, e, typ) ->
-      typ, e
+    typ, e
 
   | ELambda (pos, (p, Some typ1), e2) ->
     let typ2, e2 = extract_type e2 in
@@ -47,7 +47,7 @@ let rec extract_type = function
      ELambda (pos, (p, None), e2))
 
   | _ ->
-      raise Not_found
+    raise Not_found
 
 type recursive_value_definition_kind =
   | Implicit of name * expression
@@ -59,28 +59,28 @@ type recursive_value_definition_kind =
     left-hand side is a variable. *)
 let rec explicit_or_implicit pos b e =
   match b with
-    | (name, Some typ) ->
-      explicit_or_implicit pos (name, None) (ETypeConstraint (pos, e, typ))
+  | (name, Some typ) ->
+    explicit_or_implicit pos (name, None) (ETypeConstraint (pos, e, typ))
 
-    | (name, None) -> (
-        try
-          let typ, e = extract_type e in
-          Explicit (name, typ, e)
-        with Not_found ->
-          Implicit (name, e)
-      )
+  | (name, None) -> (
+      try
+        let typ, e = extract_type e in
+        Explicit (name, typ, e)
+      with Not_found ->
+        Implicit (name, e)
+    )
 
 (** {2 From user's syntax to internal term representation} *)
 
 let variables_of_typ =
   let rec vtyp accu = function
     | TyVar (_, TName x) ->
-        StringSet.add x accu
+      StringSet.add x accu
 
     | TyApp (_, _, ts) ->
-        List.fold_left vtyp accu ts
+      List.fold_left vtyp accu ts
   in
-    vtyp StringSet.empty
+  vtyp StringSet.empty
 
 let arrow tenv =
   arrow (typcon_variable tenv)
@@ -88,10 +88,10 @@ let arrow tenv =
 let rec type_of_args t =
   let rec chop acu = function
     | TyApp (_, TName "->", [ t1; t2 ]) ->
-        chop (t1 :: acu) t2
+      chop (t1 :: acu) t2
 
     | t ->
-        acu
+      acu
   in List.rev (chop [] t)
 
 let arity t =
@@ -102,24 +102,24 @@ let tycon tenv t =
 
 let rec intern' pos tenv ty =
   match ty with
-    | TyVar (pos, name) ->
-      as_fun tenv name
+  | TyVar (pos, name) ->
+    as_fun tenv name
 
-    | TyApp (pos, t, typs) ->
-      let iargs = List.map (intern' pos tenv) typs in
-      app (as_fun tenv t) iargs
+  | TyApp (pos, t, typs) ->
+    let iargs = List.map (intern' pos tenv) typs in
+    app (as_fun tenv t) iargs
 
 (** [intern tenv typ] converts the type expression [typ] to a type.
     The environment [tenv] maps type identifiers to types. *)
 let rec intern pos tenv ty =
   let kind_env = as_kind_env tenv in
   let _ = KindInferencer.check pos kind_env ty star in
-    intern' pos tenv ty
+  intern' pos tenv ty
 
 let intern_let_env pos tenv rs fs =
   let fqs, rtenv = fresh_flexible_vars pos tenv fs in
   let rqs, rtenv' = fresh_rigid_vars pos tenv rs in
-    rqs, fqs, add_type_variables (rtenv @ rtenv') tenv
+  rqs, fqs, add_type_variables (rtenv @ rtenv') tenv
 
 let intern_class_predicate pos tenv (ClassPredicate (k, a)) =
   let x = variable Flexible () in

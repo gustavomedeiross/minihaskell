@@ -97,4 +97,4 @@ val builtin_env:
   (tname
    * (bool * associativity * int * Types.kind
       * (dname * tname list * Types.t) list))
-  array
+    array

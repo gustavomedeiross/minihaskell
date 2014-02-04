@@ -51,12 +51,12 @@ end
 (** The typing syntax for implicitly typed ML. *)
 module ImplicitTyping : TypingSyntax
   with type binding = name * t option
-  and type instantiation = t option
+   and type instantiation = t option
 
 (** The typing syntax for explicitly typed ML. *)
 module ExplicitTyping : TypingSyntax
   with type binding = name * t
-  and type instantiation = t list
+   and type instantiation = t list
 
 (** [ntyarrow pos [ity0; ... ityN] oty] returns the type of the shape
     [ity0 -> ... ityN -> oty]. *)

@@ -23,10 +23,10 @@
 open Lexing
 
 type position =
-    {
-      start_p : Lexing.position;
-      end_p   : Lexing.position
-    }
+  {
+    start_p : Lexing.position;
+    end_p   : Lexing.position
+  }
 
 let undefined_position =
   {
@@ -51,16 +51,16 @@ let characters p1 p2 =
     (column p1, column p1 + 1)
 
 let join x1 x2 =
-{
-  start_p = if x1 = undefined_position then x2.start_p else x1.start_p;
-  end_p   = if x2 = undefined_position then x1.end_p else x2.end_p
-}
+  {
+    start_p = if x1 = undefined_position then x2.start_p else x1.start_p;
+    end_p   = if x2 = undefined_position then x1.end_p else x2.end_p
+  }
 
 let lex_join x1 x2 =
-{
-  start_p = x1;
-  end_p   = x2
-}
+  {
+    start_p = x1;
+    end_p   = x2
+  }
 
 let string_of_characters (c1, c2) =
   (string_of_int c1)^"-"^(string_of_int c2)

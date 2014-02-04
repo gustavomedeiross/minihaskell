@@ -27,7 +27,7 @@ type 'a t
 val make: 'a -> 'a t
 
 (** [get a i] returns the element contained at offset [i] in the array [a].
-   Slots are numbered 0 and up. **)
+    Slots are numbered 0 and up. **)
 val get: 'a t -> int -> 'a
 
 (** [set a i x] sets the element contained at offset [i] in the array

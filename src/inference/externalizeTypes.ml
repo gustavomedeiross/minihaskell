@@ -47,24 +47,24 @@ let rec name_from_int i =
 
 (** [gi] is the last consumed number. *)
 let gi =
-   ref (-1)
+  ref (-1)
 
 (** [ghistory] is a mapping from variables to variable names. *)
 let ghistory =
   ref []
 
 (** [reset()] clears the global namespace, which is implemented
-   by [gi] and [ghistory]. *)
+    by [gi] and [ghistory]. *)
 let reset () =
   gi := -1;
   ghistory := []
 
 let ty_app t1 t2 =
   match t1 with
-    | TyApp (pos, t, xs) ->
-      TyApp (pos, t, xs @ [t2])
-    | TyVar (pos, t) ->
-      TyApp (pos, t, [t2])
+  | TyApp (pos, t, xs) ->
+    TyApp (pos, t, xs @ [t2])
+  | TyVar (pos, t) ->
+    TyApp (pos, t, [t2])
 
 let string_of_label = function Name.LName s -> s
 
@@ -103,42 +103,42 @@ let export is_type_scheme =
       try
         Misc.assocp (UnionFind.equivalent v) !h
       with Not_found -> (
-        incr c;
-        let result = prefix ^ name_from_int !c in
-        desc.name <- Some (TName result);
-        h := (v, result) :: !h;
-        result
-      )
+          incr c;
+          let result = prefix ^ name_from_int !c in
+          desc.name <- Some (TName result);
+          h := (v, result) :: !h;
+          result
+        )
     in
     (match desc.name with
-      | Some (TName name) ->
-        if desc.kind <> Constant then
-          try
-            Misc.assocp (UnionFind.equivalent v) !history
-          with Not_found -> (
-            history := (v, name) :: !history;
-            name
-          )
-        else name
-      | _ -> autoname ())
+     | Some (TName name) ->
+       if desc.kind <> Constant then
+         try
+           Misc.assocp (UnionFind.equivalent v) !history
+         with Not_found -> (
+             history := (v, name) :: !history;
+             name
+           )
+       else name
+     | _ -> autoname ())
   in
 
   (* Term traversal. *)
   let var_or_sym v =
     let (TName s) as name =
       match variable_name v with
-        | Some (TName s) ->
-          let desc = UnionFind.find v in
-          if is_type_scheme && IntRank.compare desc.rank IntRank.none = 0 then
-            try
-              TName (Misc.assocp (UnionFind.equivalent v) !history)
-            with Not_found -> (
+      | Some (TName s) ->
+        let desc = UnionFind.find v in
+        if is_type_scheme && IntRank.compare desc.rank IntRank.none = 0 then
+          try
+            TName (Misc.assocp (UnionFind.equivalent v) !history)
+          with Not_found -> (
               history := (v, s) :: !history;
               TName s
             )
-          else
-            TName s
-        | None -> TName (var_name v)
+        else
+          TName s
+      | None -> TName (var_name v)
     in
     if s.[0] = '\'' then
       TyVar (undefined_position, name)
@@ -185,26 +185,26 @@ let export is_type_scheme =
     if is_type_scheme then
       List.fold_left
         (fun quantifiers v ->
-          let desc = UnionFind.find v in
-          match desc.structure with
-            | Some _ ->
-              quantifiers
-            | _ ->
-              try
-                ignore (List.find (UnionFind.equivalent v) !visited);
-                quantifiers
-              with Not_found ->
-                let name =
-                  match var_or_sym v with
-                    | TyVar (_, name) -> name
-                    | _ -> assert false
-                in
-                if IntRank.compare desc.rank IntRank.none = 0 then (
-                  visited := v :: !visited;
-                  name :: quantifiers
-                )
-                else
-                  quantifiers
+           let desc = UnionFind.find v in
+           match desc.structure with
+           | Some _ ->
+             quantifiers
+           | _ ->
+             try
+               ignore (List.find (UnionFind.equivalent v) !visited);
+               quantifiers
+             with Not_found ->
+               let name =
+                 match var_or_sym v with
+                 | TyVar (_, name) -> name
+                 | _ -> assert false
+               in
+               if IntRank.compare desc.rank IntRank.none = 0 then (
+                 visited := v :: !visited;
+                 name :: quantifiers
+               )
+               else
+                 quantifiers
         )
         []
         tvs
@@ -225,30 +225,30 @@ let type_of_variable pos v =
 
 let export_class_predicate pos (k, ty) =
   match snd (export false [] ty) with
-    | TyVar (_, v) -> ClassPredicate (k, v)
-    | _ -> raise (InferenceExceptions.InvalidClassPredicateInContext (pos, k))
+  | TyVar (_, v) -> ClassPredicate (k, v)
+  | _ -> raise (InferenceExceptions.InvalidClassPredicateInContext (pos, k))
 
 let canonicalize_class_predicates ts cps =
   let cps =
     List.filter (fun (ClassPredicate (_, t)) ->
-      List.mem t ts
-    ) cps
+        List.mem t ts
+      ) cps
   in
   let cps = List.sort (fun (ClassPredicate (k1, _)) (ClassPredicate (k2, _)) ->
-    Pervasives.compare k1 k2
-  ) cps
+      Pervasives.compare k1 k2
+    ) cps
   in
   let rec aux last = function
     | [] -> []
     | x :: xs ->
       match last, x with
-        | Some (ClassPredicate (k, v1)), (ClassPredicate (k', v2)) ->
-          if k = k' && v1 = v2 then
-            aux last xs
-          else
-            (ClassPredicate (k', v2)) :: aux (Some x) xs
-        | None, x ->
-          x :: aux (Some x) xs
+      | Some (ClassPredicate (k, v1)), (ClassPredicate (k', v2)) ->
+        if k = k' && v1 = v2 then
+          aux last xs
+        else
+          (ClassPredicate (k', v2)) :: aux (Some x) xs
+      | None, x ->
+        x :: aux (Some x) xs
   in
   let remove_redundancy cs =
     let subsum (ClassPredicate (k1, v1)) (ClassPredicate (k2, v2)) =

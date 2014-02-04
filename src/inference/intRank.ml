@@ -35,7 +35,7 @@
     whose rank is irrelevant. *)
 type t = int
 
-  (** [compare] is the usual total ordering on integers. *)
+(** [compare] is the usual total ordering on integers. *)
 let compare = (-)
 
 (** [none] is the special value used to identify the universal

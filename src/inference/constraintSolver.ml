@@ -52,24 +52,24 @@ type environment =
 let environment_as_list e =
   let rec conv acu = function
     | EEmpty ->
-        acu
+      acu
 
     | EEnvFrame (env, name, c, v) ->
-        conv ((name, (c, v))::acu) env
+      conv ((name, (c, v))::acu) env
   in
-    conv [] e
+  conv [] e
 
 (** [lookup name env] looks for a definition of [name] within
     the environment [env]. *)
 let rec lookup pos name = function
   | EEnvFrame (env, name', c, scheme) ->
-      if name = name' then
-        (c, scheme)
-      else
-        lookup pos name env
+    if name = name' then
+      (c, scheme)
+    else
+      lookup pos name env
 
   | EEmpty ->
-      raise (UnboundIdentifier (pos, Name name))
+    raise (UnboundIdentifier (pos, Name name))
 
 type occurrence = string * position
 
@@ -113,17 +113,17 @@ let generalize old_pool young_pool =
     Mark.fresh() in
 
   List.iter (fun v ->
-    let desc = UnionFind.find v in
-    desc.mark <- young;
-    let rank = desc.rank in
-    try
-      sorted.(rank) <- v :: sorted.(rank)
-    with Invalid_argument _ ->
-      (* The invariant is broken. *)
-      failwith (Printf.sprintf "Out of bound when generalizing %s/%s"
-                   (string_of_int rank)
-                   (string_of_int (Array.length sorted)))
-  ) (inhabitants young_pool);
+      let desc = UnionFind.find v in
+      desc.mark <- young;
+      let rank = desc.rank in
+      try
+        sorted.(rank) <- v :: sorted.(rank)
+      with Invalid_argument _ ->
+        (* The invariant is broken. *)
+        failwith (Printf.sprintf "Out of bound when generalizing %s/%s"
+                    (string_of_int rank)
+                    (string_of_int (Array.length sorted)))
+    ) (inhabitants young_pool);
 
   (* Next, we update the ranks of the young variables. One goal is to ensure
      that if [v1] is dominated by [v2], then the rank of [v1] is less than or
@@ -166,11 +166,11 @@ let generalize old_pool young_pool =
       if Mark.same desc.mark young then begin
         desc.mark <- visited;
         desc.rank <- match desc.structure with
-        | Some term ->
+          | Some term ->
             fold (fun son accu ->
-                      max (traverse son) accu
-                 ) term IntRank.outermost
-        | _ ->
+                max (traverse son) accu
+              ) term IntRank.outermost
+          | _ ->
             k
       end
 
@@ -192,11 +192,11 @@ let generalize old_pool young_pool =
       desc.rank
 
     in
-      try
-        Misc.iter traverse sorted.(k)
-      with Invalid_argument _ ->
-        (* The invariant is broken. *)
-        failwith "Out of bound in traverse"
+    try
+      Misc.iter traverse sorted.(k)
+    with Invalid_argument _ ->
+      (* The invariant is broken. *)
+      failwith "Out of bound in traverse"
 
   done;
 
@@ -221,24 +221,24 @@ let generalize old_pool young_pool =
   for k = 0 to young_number - 1 do
     try
       List.iter (fun v ->
-        if not (UnionFind.redundant v) then
-          register old_pool v
-      ) sorted.(k)
+          if not (UnionFind.redundant v) then
+            register old_pool v
+        ) sorted.(k)
     with Invalid_argument _ ->
       (* The invariant is broken. *)
       failwith "Out of bound in young refresh."
   done;
 
   List.iter (fun v ->
-    if not (UnionFind.redundant v) then
-      let desc = UnionFind.find v in
-      if desc.rank < young_number then
-        register old_pool v
-      else (
-        desc.rank <- IntRank.none;
-        if desc.kind = Flexible then desc.kind <- Rigid
-      )
-  ) sorted.(young_number)
+      if not (UnionFind.redundant v) then
+        let desc = UnionFind.find v in
+        if desc.rank < young_number then
+          register old_pool v
+        else (
+          desc.rank <- IntRank.none;
+          if desc.kind = Flexible then desc.kind <- Rigid
+        )
+    ) sorted.(young_number)
 
 
 (** [distinct_variables vl] checks that the variables in the list [vl]
@@ -250,15 +250,15 @@ let distinct_variables pos vl =
   let m = Mark.fresh() in
   try
     List.iter (fun v ->
-      let desc = UnionFind.find v in
-      match desc.structure with
+        let desc = UnionFind.find v in
+        match desc.structure with
         | Some _ ->
           raise (CannotGeneralize (pos, v))
         | _ ->
           if Mark.same desc.mark m then
             raise (DuplicatedMark m);
           desc.mark <- m
-    ) vl
+      ) vl
   with DuplicatedMark m ->
     let vl' =
       List.filter
@@ -275,9 +275,9 @@ let generic_variable v =
 
 let generic_variables pos vl =
   List.iter (fun v ->
-    if not (generic_variable v) then
-      raise (CannotGeneralize (pos, v))
-  ) vl
+      if not (generic_variable v) then
+        raise (CannotGeneralize (pos, v))
+    ) vl
 
 (* [solve] *)
 
@@ -295,54 +295,54 @@ let solve env pool c =
   and solve_constraint env pool given_c c =
     match c with
 
-      | CTrue p ->
-        rtrue
+    | CTrue p ->
+      rtrue
 
-      | CDump p ->
-        rtrue
+    | CDump p ->
+      rtrue
 
-      | CPredicate (pos, k, ty) ->
-        (* Student! This is your job! *)
-        rtrue
+    | CPredicate (pos, k, ty) ->
+      (* Student! This is your job! *)
+      rtrue
 
-      | CEquation (pos, term1, term2) ->
-        let t1, t2 = twice (chop pool) term1 term2 in
-        unify_terms pos pool t1 t2;
-        rtrue
+    | CEquation (pos, term1, term2) ->
+      let t1, t2 = twice (chop pool) term1 term2 in
+      unify_terms pos pool t1 t2;
+      rtrue
 
-      | CConjunction cl ->
-        rconj (List.map (solve env pool given_c) cl)
+    | CConjunction cl ->
+      rconj (List.map (solve env pool given_c) cl)
 
-      | CLet ([ Scheme (_, [], fqs, [], c, _) ], CTrue _) ->
-        (* This encodes an existential constraint. In this restricted
-           case, there is no need to stop and generalize. The code
-           below is only an optimization of the general case. *)
-        List.iter (introduce pool) fqs;
-        solve env pool given_c c
+    | CLet ([ Scheme (_, [], fqs, [], c, _) ], CTrue _) ->
+      (* This encodes an existential constraint. In this restricted
+         case, there is no need to stop and generalize. The code
+         below is only an optimization of the general case. *)
+      List.iter (introduce pool) fqs;
+      solve env pool given_c c
 
-      | CLet (schemes, c2) ->
-        let rs, env' =
-          List.fold_left (fun (rs, env') scheme ->
+    | CLet (schemes, c2) ->
+      let rs, env' =
+        List.fold_left (fun (rs, env') scheme ->
             let (r, env'') = solve_scheme env pool given_c scheme in
             (r :: rs, concat env' env'')
           ) ([], env) schemes
-        in
-        rconj (solve env' pool given_c c2 :: rs)
+      in
+      rconj (solve env' pool given_c c2 :: rs)
 
-      | CInstance (pos, SName name, term) ->
-        let (c, t) = lookup pos name env in
-        let ctys = List.map (fun (k, ty) -> ty) c in
-        begin match instance pool (t :: ctys) with
-          | [] -> assert false
-          | instance :: itys ->
-                    let t' = chop pool term in
-            answer := new_instantiation !answer (name, pos) t';
-            unify_terms pos pool instance t';
-            rtrue
-        end
+    | CInstance (pos, SName name, term) ->
+      let (c, t) = lookup pos name env in
+      let ctys = List.map (fun (k, ty) -> ty) c in
+      begin match instance pool (t :: ctys) with
+        | [] -> assert false
+        | instance :: itys ->
+          let t' = chop pool term in
+          answer := new_instantiation !answer (name, pos) t';
+          unify_terms pos pool instance t';
+          rtrue
+      end
 
-      | CDisjunction cs ->
-        assert false
+    | CDisjunction cs ->
+      assert false
 
   and solve_scheme env pool given_c = function
 
@@ -370,17 +370,17 @@ let solve env pool c =
       generic_variables pos rqs;
       let generalized_variables =
         List.filter (fun v ->
-          let desc = UnionFind.find v in
-          IntRank.compare desc.rank IntRank.none = 0)
+            let desc = UnionFind.find v in
+            IntRank.compare desc.rank IntRank.none = 0)
           (inhabitants pool')
       in
       (rtrue, (generalized_variables, solved_c1, header))
 
   and concat env (vs, c, header) =
     StringMap.fold (fun name v env ->
-      answer := new_binding !answer name (vs, c, v);
-      EEnvFrame (env, name, c, v)
-    ) header env
+        answer := new_binding !answer name (vs, c, v);
+        EEnvFrame (env, name, c, v)
+      ) header env
 
   and unify_terms pos pool t1 t2 =
     try

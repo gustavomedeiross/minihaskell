@@ -26,10 +26,10 @@
     return a result of type [unit]. Use with caution. *)
 let rec iter f = function
   | [] ->
-      ()
+    ()
   | a :: l ->
-      let _ = f a in
-      iter f l
+    let _ = f a in
+    iter f l
 
 (** If [l] is a list of pairs of a key and a datum, and if [p] is a
     predicate on keys, then [assocp p l] returns the datum associated
@@ -37,9 +37,9 @@ let rec iter f = function
     [Not_found] if no such key exists. *)
 let rec assocp p = function
   | [] ->
-      raise Not_found
+    raise Not_found
   | (key, data) :: l ->
-      if p key then data else assocp p l
+    if p key then data else assocp p l
 
 (** Sets of strings. *)
 module StringSet = Set.Make(String)
@@ -82,18 +82,18 @@ let print_separated_list separator print_elem xs =
 
   let rec loop x = function
     | [] ->
-        print_elem x
+      print_elem x
     | y :: xs ->
-        print_elem x ^
-        separator ^
-        loop y xs
+      print_elem x ^
+      separator ^
+      loop y xs
   in
 
   match xs with
   | [] ->
-      ""
+    ""
   | x :: xs ->
-      loop x xs
+    loop x xs
 
 
 let make_indexes default  =
@@ -102,11 +102,11 @@ let make_indexes default  =
   let table =
     Hashtbl.create 1023
   and
-  (** An infinite array maps all known integer values to identifiers. It
-      provides the other direction of the global mapping. *)
-  array =
+    (** An infinite array maps all known integer values to identifiers. It
+        provides the other direction of the global mapping. *)
+    array =
     InfiniteArray.make default (* Dummy data. *)
-    (** A global counter contains the next available integer label. *)
+  (** A global counter contains the next available integer label. *)
   and counter =
     ref 0
   in
@@ -137,7 +137,7 @@ let make_indexes default  =
   and find s =
     Hashtbl.find table s
   in
-    (import, export, find)
+  (import, export, find)
 
 (* FIXME: sort what is still necessary or not. *)
 
@@ -203,25 +203,25 @@ let unSome = function
 let unSomef f = fun x -> unSome (f x)
 
 let split3 l = List.fold_left (fun (l1,l2,l3) (a, b, c) -> a::l1, b::l2, c::l3)
-               ([], [], []) l
+    ([], [], []) l
 
 let split4 l = List.fold_left
-                 (fun (l1,l2,l3,l4) (a, b, c, d) -> a::l1, b::l2, c::l3, d::l4)
-               ([], [], [], []) l
+    (fun (l1,l2,l3,l4) (a, b, c, d) -> a::l1, b::l2, c::l3, d::l4)
+    ([], [], [], []) l
 
 let split5 l =
   List.fold_left
     (fun (l1,l2,l3,l4,l5) (a, b, c, d, e) -> a::l1, b::l2, c::l3, d::l4, e::l5)
-               ([], [], [], [], []) l
+    ([], [], [], [], []) l
 
 let rec transpose l =
   match l with
-    | [] -> []
-    | [] :: _ -> []
-    | [ a ] :: _ -> [ List.map List.hd l ]
-    | _ -> let hs, ts =
-        List.split (List.map (function l -> List.hd l, List.tl l) l)
-      in hs :: transpose ts
+  | [] -> []
+  | [] :: _ -> []
+  | [ a ] :: _ -> [ List.map List.hd l ]
+  | _ -> let hs, ts =
+    List.split (List.map (function l -> List.hd l, List.tl l) l)
+    in hs :: transpose ts
 
 let list_unionq l1 =
   List.fold_left (fun acu x -> if not (List.memq x acu) then x::acu else acu)
@@ -243,7 +243,7 @@ let array_associ x a =
     else
       raise Not_found
   in
-    chop 0
+  chop 0
 
 let array_assoc x a =
   snd a.(array_associ x a)
@@ -278,15 +278,15 @@ let isNonef f = fun x -> f x = None
 (* FIXME: not tail rec. *)
 let rec gcombine l r =
   match l, r with
-    | [], r -> [], [], r
-    | a :: q, [] -> [], l, []
-    | a :: p, b :: q -> let g, rl, rr = gcombine p q in
-        (a, b) :: g, rl, rr
+  | [], r -> [], [], r
+  | a :: q, [] -> [], l, []
+  | a :: p, b :: q -> let g, rl, rr = gcombine p q in
+    (a, b) :: g, rl, rr
 
 (* FIXME: optimize. *)
 let list_map_array f l =
   let t = Array.of_list l in
-   Array.map f t
+  Array.map f t
 
 let list_iteri f l =
   ignore (List.fold_left (fun acu x -> f acu x; acu+1) 0 l)
@@ -303,12 +303,12 @@ let one_of e1 e2 =
   let r_e1 = try (Some (e1 ()), None) with ex -> (None, Some ex)
   and r_e2 = try (Some (e2 ()), None) with ex -> (None, Some ex)
   in
-    match r_e1, r_e2 with
-      | (None, Some ex1), (None, Some ex2) -> raise (Failure [ ex1; ex2 ])
-      | (Some v1, None), (Some v2, None)   -> raise NonDisjointCase
-      | (Some v1, None), (None, Some ex)   -> Left  (v1, ex)
-      | (None, Some ex), (Some v2, None)   -> Right (v2, ex)
-      | _                                  -> assert false
+  match r_e1, r_e2 with
+  | (None, Some ex1), (None, Some ex2) -> raise (Failure [ ex1; ex2 ])
+  | (Some v1, None), (Some v2, None)   -> raise NonDisjointCase
+  | (Some v1, None), (None, Some ex)   -> Left  (v1, ex)
+  | (None, Some ex), (Some v2, None)   -> Right (v2, ex)
+  | _                                  -> assert false
 
 let reraise e exn1 exn2 =
   try e () with ex when ex = exn1 -> raise exn2 | ex -> raise ex
@@ -320,31 +320,31 @@ let ( ^^ ) = ( ^ )
 
 let opt_apply f x =
   match f with
-    | Some f -> Some (f x)
-    | None -> None
+  | Some f -> Some (f x)
+  | None -> None
 
 let list_foralli f =
   let rec test i = function
       [] -> true
     | a :: q -> if f i a then test (i+1) q else false
   in
-    test 0
+  test 0
 
 let list_existsi f =
   let rec test i = function
       [] -> false
     | a :: q -> if f i a then true else test (i+1) q
   in
-    test 0
+  test 0
 
 let list_mapi2 f =
   let rec loop i l1 l2 =
     match (l1, l2) with
-        [], [] -> []
-      | r :: rs, q :: qs -> f i r q :: (loop (i+1) rs qs)
-      | _ -> failwith "Invalid arguments for mapi2"
+      [], [] -> []
+    | r :: rs, q :: qs -> f i r q :: (loop (i+1) rs qs)
+    | _ -> failwith "Invalid arguments for mapi2"
   in
-    loop 0
+  loop 0
 
 let are_distinct l =
   let rec fold acu = function
@@ -356,10 +356,10 @@ let all_equal l =
   let rec fold acu = function
       [] -> true, acu
     | x :: q -> (match acu with
-                     None -> fold (Some x) q
-                   | Some y -> if x = y then fold acu q else (false, None))
+          None -> fold (Some x) q
+        | Some y -> if x = y then fold acu q else (false, None))
   in
-    fold None l
+  fold None l
 
 let list_foldmap f init l =
   let rec aux (ys, accu) = function

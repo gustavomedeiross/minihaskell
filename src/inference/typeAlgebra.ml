@@ -46,8 +46,8 @@ let builtin_env =
     TName "int" , (false, NonAssoc, 2, KStar, []);
     TName "char", (false, NonAssoc, 2, KStar, []);
     TName "unit", (false, NonAssoc, 3, KStar,
-             [ (DName "_Unit", [],
-                TyApp (undefined_position, TName "unit", []))])
+                   [ (DName "_Unit", [],
+                      TyApp (undefined_position, TName "unit", []))])
   |]
 
 let get_infix (i, _, _,_,_) =
@@ -105,7 +105,7 @@ let mkunit tenv =
 
 let arrow tenv t u =
   let v = symbol tenv (TName "->") in
-    TTerm (App (TTerm (App (v, t)), u))
+  TTerm (App (TTerm (App (v, t)), u))
 
 let n_arrows tenv ts u =
   List.fold_left (fun acu x -> arrow tenv acu x) u ts
@@ -116,10 +116,10 @@ let result_type tenv t =
     if n = 0 then t
     else
       match t with
-        | TTerm (App (TTerm (App (v, t)), u)) when v = a -> chop (n-1) u
-        | u -> assert (n <= 0); u
+      | TTerm (App (TTerm (App (v, t)), u)) when v = a -> chop (n-1) u
+      | u -> assert (n <= 0); u
   in
-    chop (-1) t
+  chop (-1) t
 
 let arg_types tenv t =
   let a = symbol tenv (TName "->") in
@@ -127,14 +127,14 @@ let arg_types tenv t =
     | TTerm (App (TTerm (App (v, t)), u)) when v = a -> chop (t :: acu) u
     | x -> acu
   in
-    List.rev (chop [] t)
+  List.rev (chop [] t)
 
 let tycon_args t =
   let rec chop acu = function
     | TTerm (App (t, u)) -> chop (u :: acu) t
     | _ -> acu
   in
-    chop [] t
+  chop [] t
 
 let rec tycon_name = function
   | TTerm (App (u, _)) -> tycon_name u

@@ -47,7 +47,7 @@ exception UnboundIdentifier of position * name
 exception InvalidTypeVariableIdentifier of position * tname
 
 (** [UnboundDataConstructor] is raised when a constructor identifier is
-  used although it has not been defined. *)
+    used although it has not been defined. *)
 exception UnboundDataConstructor of position * dname
 
 (** [InvalidDataConstructorDefinition] is raised when the declared

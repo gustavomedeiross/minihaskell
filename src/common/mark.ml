@@ -26,7 +26,7 @@
     comparing pointers. *)
 
 type t =
-    unit ref
+  unit ref
 
 let fresh =
   ref

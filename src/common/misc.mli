@@ -60,7 +60,7 @@ val debug: bool ref
 val print_separated_list: string -> ('a -> string) -> 'a list -> string
 
 (** Returns a pair of function [import] and [export] to assign
-  a unique integer to a given value. *)
+    a unique integer to a given value. *)
 val make_indexes : 'a -> ('a -> int) * (int -> 'a) * ('a -> int)
 
 (** Returns the last element of a list. Linear complexity. *)
@@ -136,7 +136,7 @@ val proj5_5 : ('a * 'b * 'c * 'd * 'e) -> 'e
 val split3 : ('a * 'b * 'c) list -> 'a list * 'b list * 'c list
 val split4 : ('a * 'b * 'c * 'd) list -> 'a list * 'b list * 'c list * 'd list
 val split5 :
-('a * 'b * 'c * 'd * 'e) list -> 'a list * 'b list * 'c list * 'd list * 'e list
+  ('a * 'b * 'c * 'd * 'e) list -> 'a list * 'b list * 'c list * 'd list * 'e list
 
 val transpose : ('a list) list -> ('a list) list
 

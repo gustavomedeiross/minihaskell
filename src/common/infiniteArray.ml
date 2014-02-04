@@ -24,9 +24,9 @@
     transparently upon demand. *)
 
 type 'a t = {
-    default: 'a;
-    mutable table: 'a array
-  }
+  default: 'a;
+  mutable table: 'a array
+}
 
 let default_size =
   16 (* must be non-zero *)

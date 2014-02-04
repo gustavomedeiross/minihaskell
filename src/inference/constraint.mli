@@ -42,7 +42,7 @@ type ('crterm, 'variable) type_constraint =
   | CEquation of position * 'crterm * 'crterm
   | CConjunction of ('crterm, 'variable) type_constraint list
   | CLet of ('crterm, 'variable) scheme list
-      * ('crterm, 'variable) type_constraint
+            * ('crterm, 'variable) type_constraint
   | CInstance of position * sname * 'crterm
   | CDisjunction of ('crterm, 'variable) type_constraint list
 
@@ -56,14 +56,14 @@ type ('crterm, 'variable) type_constraint =
     scheme. A header is a mapping of names to types. *)
 and ('crterm, 'variable) scheme =
   | Scheme of position
-    * 'variable list                            (* Rigid variables. *)
-    * 'variable list                            (* Flexible variables. *)
-    * ('crterm, 'variable) canonical_constraint (* "Given" constraint.  *)
-    * ('crterm, 'variable) type_constraint      (* Inferred constraint. *)
-    * ('crterm * position) StringMap.t
+              * 'variable list                            (* Rigid variables. *)
+              * 'variable list                            (* Flexible variables. *)
+              * ('crterm, 'variable) canonical_constraint (* "Given" constraint.  *)
+              * ('crterm, 'variable) type_constraint      (* Inferred constraint. *)
+              * ('crterm * position) StringMap.t
 
 and ('crterm, 'variable) canonical_constraint =
-    (tname * 'variable) list
+  (tname * 'variable) list
 
 (** The variables that appear in contraints are the same as the multi-equation
     ones. *)
@@ -93,13 +93,13 @@ val cposition : ('a, 'b) type_constraint -> Positions.position
 val (=?=): crterm -> crterm -> position -> tconstraint
 
 (** [ex qs c] returns the constraint [exists qs.c]. We encode existential
-   constraints in terms of [let] constraints, since the latter are more
-   general. *)
+    constraints in terms of [let] constraints, since the latter are more
+    general. *)
 val ex : ?pos:position -> variable list -> tconstraint -> tconstraint
 
 (** [fl qs c] returns the constraint [forall qs.c]. We encode universal
-   constraints in terms of [let] constraints, since the latter are more
-   general. *)
+    constraints in terms of [let] constraints, since the latter are more
+    general. *)
 val fl: ?pos:position -> variable list -> tconstraint -> tconstraint
 
 (** [x <? t] is a conjunction constraint. *)

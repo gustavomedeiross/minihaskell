@@ -11,8 +11,8 @@ let string_of_type ty      = ASTio.(XAST.(to_string pprint_ml_type ty))
 
 
 let rec program p = handle_error List.(fun () ->
-  flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p))
-)
+    flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p))
+  )
 
 and block env = function
   | BTypeDefinitions ts ->
@@ -32,7 +32,7 @@ and block env = function
   | BInstanceDefinitions is ->
     let elab_def, env = instance_definitions env is in
     (elab_def, env)
-   
+
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
   List.fold_left type_definition env tdefs
@@ -89,24 +89,24 @@ and check_type_constructor_application pos env k tys =
 
 and check_equivalent_kind pos k1 k2 =
   match k1, k2 with
-    | KStar, KStar -> ()
-    | KArrow (k1, k2), KArrow (k1', k2') ->
-      check_equivalent_kind pos k1 k1';
-      check_equivalent_kind pos k2 k2'
-    | _ ->
-      raise (IncompatibleKinds (pos, k1, k2))
+  | KStar, KStar -> ()
+  | KArrow (k1, k2), KArrow (k1', k2') ->
+    check_equivalent_kind pos k1 k1';
+    check_equivalent_kind pos k2 k2'
+  | _ ->
+    raise (IncompatibleKinds (pos, k1, k2))
 
 and env_of_bindings env cdefs = List.(
-  (function
-    | BindValue (_, vs)
-    | BindRecValue (_, vs) ->
-      fold_left (fun env (ValueDef (pos, ts, pred, (x, ty), _)) ->
-        bind_scheme pos x ts pred ty env
-      ) env vs
-    | ExternalValue (pos, ts, (x, ty), _) ->
-      bind_scheme pos x ts [] ty env
-  ) cdefs
-)
+    (function
+      | BindValue (_, vs)
+      | BindRecValue (_, vs) ->
+        fold_left (fun env (ValueDef (pos, ts, pred, (x, ty), _)) ->
+            bind_scheme pos x ts pred ty env
+          ) env vs
+      | ExternalValue (pos, ts, (x, ty), _) ->
+        bind_scheme pos x ts [] ty env
+    ) cdefs
+  )
 
 and check_equal_types pos ty1 ty2 =
   if not (equivalent ty1 ty2) then
@@ -168,10 +168,10 @@ and expression env = function
     else
       let es =
         List.map2 (fun e xty ->
-          let (e, ty) = expression env e in
-          check_equal_types pos ty xty;
-          e
-        ) es itys
+            let (e, ty) = expression env e in
+            check_equal_types pos ty xty;
+            e
+          ) es itys
       in
       (EDCon (pos, DName x, tys, es), oty)
 
@@ -189,20 +189,20 @@ and expression env = function
     let (ts, lty, rtcon) = lookup_label pos l env in
     let ty =
       match ty with
-        | TyApp (_, r, args) ->
-          if rtcon <> r then
-            raise (LabelDoesNotBelong (pos, l, r, rtcon))
-          else
-            begin try
+      | TyApp (_, r, args) ->
+        if rtcon <> r then
+          raise (LabelDoesNotBelong (pos, l, r, rtcon))
+        else
+          begin try
               let s = List.combine ts args in
               Types.substitute s lty
             with _ ->
               (** Because we only well-kinded types and only store
                   well-kinded types in the environment. *)
               assert false
-            end
-        | _ ->
-          raise (RecordExpected (pos, ty))
+          end
+      | _ ->
+        raise (RecordExpected (pos, ty))
     in
     (ERecordAccess (pos, e, l), ty)
 
@@ -222,16 +222,16 @@ and expression env = function
         let (ts, lty, rtcon) = lookup_label pos l env in
         let (s, rty) =
           match rty with
-            | None ->
-              let rty = TyApp (pos, rtcon, i) in
-              let s =
-                try
-                  List.combine ts i
-                with _ -> raise (InvalidRecordInstantiation pos)
-              in
-              (s, rty)
-            | Some (s, rty) ->
-              (s, rty)
+          | None ->
+            let rty = TyApp (pos, rtcon, i) in
+            let s =
+              try
+                List.combine ts i
+              with _ -> raise (InvalidRecordInstantiation pos)
+            in
+            (s, rty)
+          | Some (s, rty) ->
+            (s, rty)
         in
         check_equal_types pos ty (Types.substitute s lty);
         check (RecordBinding (l, e) :: others) (Some (s, rty)) ls
@@ -280,13 +280,13 @@ and join pos denv1 denv2 =
 
 and check_same_denv pos denv1 denv2 =
   List.iter (fun (ts, _, (x, ty)) ->
-    assert (ts = []); (** Because patterns only bind monomorphic values. *)
-    try
-      let (_, _, (_, ty')) = lookup pos x denv2 in
-      check_equal_types pos ty ty'
-    with _ ->
-      raise (PatternsMustBindSameVariables pos)
-  ) (values denv1)
+      assert (ts = []); (** Because patterns only bind monomorphic values. *)
+      try
+        let (_, _, (_, ty')) = lookup pos x denv2 in
+        check_equal_types pos ty ty'
+      with _ ->
+        raise (PatternsMustBindSameVariables pos)
+    ) (values denv1)
 
 and pattern env xty = function
   | PVar (pos, name) ->
@@ -348,36 +348,36 @@ and value_binding env = function
 
 and eforall pos ts e =
   match ts, e with
-    | ts, EForall (pos, [], ((EForall _) as e)) ->
-      eforall pos ts e
-    | [], EForall (pos, [], e) ->
-      e
-    | [], EForall (pos, _, _) ->
-      raise (InvalidNumberOfTypeAbstraction pos)
-    | [], e ->
-      e
-    | x :: xs, EForall (pos, t :: ts, e) ->
-      if x <> t then
-        raise (SameNameInTypeAbstractionAndScheme pos);
-      eforall pos xs (EForall (pos, ts, e))
-    | _, _ ->
-      raise (InvalidNumberOfTypeAbstraction pos)
+  | ts, EForall (pos, [], ((EForall _) as e)) ->
+    eforall pos ts e
+  | [], EForall (pos, [], e) ->
+    e
+  | [], EForall (pos, _, _) ->
+    raise (InvalidNumberOfTypeAbstraction pos)
+  | [], e ->
+    e
+  | x :: xs, EForall (pos, t :: ts, e) ->
+    if x <> t then
+      raise (SameNameInTypeAbstractionAndScheme pos);
+    eforall pos xs (EForall (pos, ts, e))
+  | _, _ ->
+    raise (InvalidNumberOfTypeAbstraction pos)
 
 
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   let env = introduce_type_parameters env ts in
   check_wf_scheme env ts xty;
   List.iter (fun (ClassPredicate(c,v))-> 
-  		if not(List.mem v ts) then raise(InvalidOverloading pos)) 
-  ps;
+      if not(List.mem v ts) then raise(InvalidOverloading pos)) 
+    ps;
   if is_value_form e then begin
     let e = eforall pos ts e in
     let e, ty = expression env e in
     let b = (x, ty) in
     List.iter 
-    (fun (ClassPredicate(c,v)) -> if not(TS.mem v (free ty))
-    			then raise(InvalidOverloading pos);) 
-    ps; 
+      (fun (ClassPredicate(c,v)) -> if not(TS.mem v (free ty))
+        then raise(InvalidOverloading pos);) 
+      ps; 
     check_equal_types pos xty ty;
     (ValueDef (pos, ts, ps, b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
@@ -430,17 +430,17 @@ and check_method pos env s k  (RecordBinding (l, e)) =
 and instance_definitions env l = match l with
   | [] -> ([],env)
   | t :: q -> let env' = List.fold_left (fun x y-> bind_type_variable y x)
-  			env t.instance_parameters in
-  		List.iter 
-  		(check_method t.instance_position 
-			env'
-			(TyApp(undefined_position,t.instance_index,List.map
-			(fun x-> TyVar(undefined_position,x)) t.instance_parameters))
-  		(lookup_class t.instance_position t.instance_class_name
-		env'))
-  		t.instance_members;
-		let env = bind_instance t env in	
-	        instance_definitions env q
+      env t.instance_parameters in
+    List.iter 
+      (check_method t.instance_position 
+         env'
+         (TyApp(undefined_position,t.instance_index,List.map
+                  (fun x-> TyVar(undefined_position,x)) t.instance_parameters))
+         (lookup_class t.instance_position t.instance_class_name
+            env'))
+      t.instance_members;
+    let env = bind_instance t env in	
+    instance_definitions env q
 
 and names_vb acc = function
   | BindValue (_, vs)

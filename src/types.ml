@@ -34,8 +34,8 @@ let destruct_tyarrow = function
 
 let rec destruct_ntyarrow ty =
   match destruct_tyarrow ty with
-    | None -> ([], ty)
-    | Some (i, o) -> let (is, o) = destruct_ntyarrow o in (i :: is, o)
+  | None -> ([], ty)
+  | Some (i, o) -> let (is, o) = destruct_ntyarrow o in (i :: is, o)
 
 type instantiation_kind =
   | TypeApplication of t list
@@ -106,12 +106,12 @@ let rec kind_of_arity = function
 
 let rec equivalent ty1 ty2 =
   match ty1, ty2 with
-    | TyVar (_, t), TyVar (_, t') ->
-      t = t'
-    | TyApp (_, t, tys), TyApp (_, t', tys') ->
-      t = t' && List.for_all2 equivalent tys tys'
-    | _, _ ->
-      false
+  | TyVar (_, t), TyVar (_, t') ->
+    t = t'
+  | TyApp (_, t, tys), TyApp (_, t', tys') ->
+    t = t' && List.for_all2 equivalent tys tys'
+  | _, _ ->
+    false
 
 let rec substitute (s : (tname * t) list) = function
   | TyVar (p, v) ->

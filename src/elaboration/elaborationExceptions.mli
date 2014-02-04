@@ -112,7 +112,7 @@ exception VariableIsAMethodName of position * name
 exception TooFreeTypeVariableTypeclass of position * tname
 
 (* Raised when the parameter of the typeclass is not used in the
-definition*)
+   definition*)
 exception AmbiguousTypeclass of position * tname
 
 (** [NotAMethodOf] is raised when an instance declaration

@@ -52,13 +52,13 @@ let program p =
 
   and class_definition s ct =
     List.fold_left (fun ms (pos, LName x, _) ->
-      ignore (fresh_name pos ~exclusive:true (Name x));
-      (Name x, Name x) :: ms
-    ) s ct.class_members
+        ignore (fresh_name pos ~exclusive:true (Name x));
+        (Name x, Name x) :: ms
+      ) s ct.class_members
 
   and instance_definition s ti = List.(
-    { ti with instance_members = map (record_binding s) ti.instance_members }
-  )
+      { ti with instance_members = map (record_binding s) ti.instance_members }
+    )
 
   and expression s = function
     | EVar (pos, n, i) ->
@@ -108,16 +108,16 @@ let program p =
       (BindValue (pos, vs), s)
 
     | BindRecValue (pos, vs) -> List.(
-      let bs = map (fun (ValueDef (_, _, _, b, _)) -> b) vs in
-      let (bs, s) = Misc.list_foldmap (binding pos) s bs in
-      let vs =
-        map2
-          (fun (ValueDef (p, ts, cs, _, e)) b ->
-            ValueDef (p, ts, cs, b, expression s e))
-          vs bs
-      in
-      (BindRecValue (pos, vs), s)
-    )
+        let bs = map (fun (ValueDef (_, _, _, b, _)) -> b) vs in
+        let (bs, s) = Misc.list_foldmap (binding pos) s bs in
+        let vs =
+          map2
+            (fun (ValueDef (p, ts, cs, _, e)) b ->
+               ValueDef (p, ts, cs, b, expression s e))
+            vs bs
+        in
+        (BindRecValue (pos, vs), s)
+      )
 
     | ExternalValue (pos, ts, b, os) ->
       let (b, s) = binding pos s b in

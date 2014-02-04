@@ -19,16 +19,16 @@ let save_as ext ?(check = ignore) f = fun x ((Filename origin) as ofilename) ->
   y
 
 let parse : (unit, IAST.program) pass
-= save_as ".mls" (fun () (Filename f) ->
-  let iast = ASTio.IAST.parse_program f in
-  (iast, ASTio.IAST.pprint_program iast)
-)
+  = save_as ".mls" (fun () (Filename f) ->
+      let iast = ASTio.IAST.parse_program f in
+      (iast, ASTio.IAST.pprint_program iast)
+    )
 
 let parse_explicitly_typed : (unit, XAST.program) pass
-= save_as ".mlse" (fun () (Filename f) ->
-  let xast = ASTio.XAST.parse_program f in
-  (xast, ASTio.XAST.pprint_program xast)
-)
+  = save_as ".mlse" (fun () (Filename f) ->
+      let xast = ASTio.XAST.parse_program f in
+      (xast, ASTio.XAST.pprint_program xast)
+    )
 
 let is_explicitly_typed_syntax f =
   try
@@ -37,24 +37,24 @@ let is_explicitly_typed_syntax f =
     Errors.fatal [] (f ^ ": Syntax error in generated code.")
 
 let elaborate_type_annotations : (IAST.program, XAST.program) pass
-= save_as ".mle" ~check:is_explicitly_typed_syntax (fun iast _ ->
-  let xast = InferTypes.program iast in
-  (xast, ASTio.XAST.pprint_program xast)
-)
+  = save_as ".mle" ~check:is_explicitly_typed_syntax (fun iast _ ->
+      let xast = InferTypes.program iast in
+      (xast, ASTio.XAST.pprint_program xast)
+    )
 
 let elaborate_dictionaries : (XAST.program, XAST.program) pass
-= save_as ".mlr" ~check:is_explicitly_typed_syntax (fun xast _ ->
-  let rast = ElaborateDictionaries.program xast in
-  (rast, ASTio.XAST.pprint_program rast)
-)
+  = save_as ".mlr" ~check:is_explicitly_typed_syntax (fun xast _ ->
+      let rast = ElaborateDictionaries.program xast in
+      (rast, ASTio.XAST.pprint_program rast)
+    )
 
 let compile : (XAST.program, unit) pass
-= save_as ".ml" (fun xast _ ->
-  ((), ASTio.XAST.pprint_program_in_ocaml xast)
-)
+  = save_as ".ml" (fun xast _ ->
+      ((), ASTio.XAST.pprint_program_in_ocaml xast)
+    )
 
 let process : unit = Options.(
-  match filename with
+    match filename with
     | EMH f ->
       (parse_explicitly_typed $> elaborate_dictionaries $> compile)
         () (Filename f)
@@ -62,4 +62,4 @@ let process : unit = Options.(
     | MH f ->
       (parse $> elaborate_type_annotations $> elaborate_dictionaries $> compile)
         () (Filename f)
-)
+  )
