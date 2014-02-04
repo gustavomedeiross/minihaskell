@@ -64,3 +64,5 @@ val bind_label : position -> lname -> tnames -> Types.t -> tname -> t -> t
 val lookup_label : position -> lname -> t -> tnames * Types.t * tname
 
 val lookup_method : position -> class_definition -> lname -> Types.t
+
+val constraints : tname -> t -> tnames

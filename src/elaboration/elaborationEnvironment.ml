@@ -145,3 +145,8 @@ let lookup_method pos k x =
     let (_,_,t) = List.find (fun (_,y,_) -> x = y) k.class_members in
     t
   with Not_found -> raise (NotAMethodOf (pos, x, k.class_name))
+
+let constraints ty env =
+  try
+    List.assoc ty env.types_constraints
+  with Not_found -> []
