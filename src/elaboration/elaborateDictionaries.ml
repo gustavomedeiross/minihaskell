@@ -419,8 +419,7 @@ and is_value_form = function
  * instances are for simplicity. Generalizations are possible and discussed
  * later (7.4)"
  * - Canonical constraint
- * - No overlap *)
-
+*)
 and check_method pos env s k  (RecordBinding (l, e)) = 
   let e, ty = expression env e in
   let xty = lookup_method pos k l in
