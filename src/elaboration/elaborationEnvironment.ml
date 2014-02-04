@@ -9,6 +9,7 @@ type t = {
   types        : (tname * (Types.kind * type_definition)) list;
   classes      : (tname * class_definition) list;
   labels       : (lname * (tnames * Types.t * tname)) list;
+  types_constraints : (tname * (tname list)) list;
   method_names : lname list;
   names        : name list;
 }
@@ -17,7 +18,7 @@ let name_of_lname = function
   | LName s -> Name s
 
 let empty = { values = []; types = []; classes = []; labels = [];
-method_names = []; names = []}
+method_names = []; names = []; types_constraints = []}
 
 let values env = env.values
 

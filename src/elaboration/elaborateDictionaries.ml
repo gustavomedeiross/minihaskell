@@ -413,8 +413,7 @@ and is_value_form = function
   | _ ->
     false
 
-(* - Class must be defined
- * - Instance methods must have matching types
+(*
  * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
  * contexts and class declarations, and to types of the form K (G a) in
  * instances are for simplicity. Generalizations are possible and discussed
@@ -434,13 +433,8 @@ and instance_definitions env l = match l with
   		(check_method t.instance_position env
   		(lookup_class t.instance_position t.instance_class_name env))
   		t.instance_members;
-
-
-		instance_definitions env q
-
-  (*    raise (NotImplemented (t.instance_position,
-  "instance_definitions"))*)
-
+			
+	        instance_definitions env q
 
 and names_vb acc = function
   | BindValue (_, vs)
