@@ -4,6 +4,7 @@ open Positions
 open Name
 
 module TS : Set.S
+  with type elt = Name.tname
 
 (** The types are first-order terms. *)
 type t =
