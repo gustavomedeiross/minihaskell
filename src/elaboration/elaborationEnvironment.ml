@@ -35,9 +35,9 @@ let bind_instance t env =
     	(fun x->x.instance_class_name= t.instance_class_name ) 
     	listinstance
       then raise(OverlappingInstances(t.instance_position, t.instance_class_name))
-      else let instances = List.remove_assoc t.instance_class_name env.instances in
-  	{env with instances = (t.instance_class_name, t::listinstance)::instances} 
-  with Not_found -> {env with instances = (t.instance_class_name, [t])::env.instances}
+      else let instances = List.remove_assoc t.instance_index env.instances in
+  	{env with instances = (t.instance_index, t::listinstance)::instances} 
+  with Not_found -> {env with instances = (t.instance_index, [t])::env.instances}
 
 let bind_scheme pos x ts pred ty env =
 { env with values = (ts, pred , (x, ty)) :: env.values}

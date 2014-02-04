@@ -421,17 +421,24 @@ and is_value_form = function
  * - Canonical constraint
  * - No overlap *)
 
-and check_method pos env k (RecordBinding (l, e)) =
+and check_method pos env s k  (RecordBinding (l, e)) = 
   let e, ty = expression env e in
   let xty = lookup_method pos k l in
+  let xty = substitute [(k.class_parameter, s)] xty in 
   check_equal_types pos xty ty;
 
 
 and instance_definitions env l = match l with
   | [] -> ([],env)
-  | t :: q -> List.iter 
-  		(check_method t.instance_position env
-  		(lookup_class t.instance_position t.instance_class_name env))
+  | t :: q -> let env' = List.fold_left (fun x y-> bind_type_variable y x)
+  			env t.instance_parameters in
+  		List.iter 
+  		(check_method t.instance_position 
+			env'
+			(TyApp(undefined_position,t.instance_index,List.map
+			(fun x-> TyVar(undefined_position,x)) t.instance_parameters))
+  		(lookup_class t.instance_position t.instance_class_name
+		env'))
   		t.instance_members;
 		let env = bind_instance t env in	
 	        instance_definitions env q
