@@ -10,7 +10,8 @@ let handle_error f =
     f ()
   with
   | CannotElaborateDictionary (pos, ty) ->
-    fatal' pos (Printf.sprintf "  Cannot elaborate a dictionary of type %s."
+    fatal' pos (Printf.sprintf
+                  "  Cannot elaborate a dictionary of type %s."
                   (string_of_type ty))
 
   | UnboundIdentifier (pos, Name x) ->
@@ -122,12 +123,13 @@ let handle_error f =
                                 a variable and a method name." x)
 
   | AmbiguousTypeclass(pos, TName l) ->
-    fatal' pos (Printf.sprintf " The parameter of the type class `%s' doesn't\
+    fatal' pos (Printf.sprintf " The parameter of the type class `%s' doesn't \
                                 occur in the definition." l)
 
   | TooFreeTypeVariableTypeclass(pos, TName l) ->
     fatal' pos (Printf.sprintf " There are too many free variables in \
-                                the typeclass `%s'. You can only quantify on one variable." l)
+                                the typeclass `%s'. \
+                                You can only quantify on one variable." l)
 
   | NotAMethodOf (pos, LName l, TName k) ->
     fatal' pos (Printf.sprintf " `%s' is not a method of class `%s'." l k)

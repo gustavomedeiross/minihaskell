@@ -30,8 +30,8 @@ and block env = function
     ([BClassDefinition c], env)
 
   | BInstanceDefinitions is ->
-    let elab_def, env = instance_definitions env is in
-    (elab_def, env)
+    let env = instance_definitions env is in
+    ([BInstanceDefinitions is], env)
 
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
@@ -367,17 +367,15 @@ and eforall pos ts e =
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   let env = introduce_type_parameters env ts in
   check_wf_scheme env ts xty;
-  List.iter (fun (ClassPredicate(c,v))-> 
-      if not(List.mem v ts) then raise(InvalidOverloading pos)) 
+  List.iter
+    (fun (ClassPredicate (c, v)) -> 
+       if not (List.mem v ts && TS.mem v (free ty)) then
+         raise (InvalidOverloading pos)) 
     ps;
   if is_value_form e then begin
     let e = eforall pos ts e in
     let e, ty = expression env e in
     let b = (x, ty) in
-    List.iter 
-      (fun (ClassPredicate(c,v)) -> if not(TS.mem v (free ty))
-        then raise(InvalidOverloading pos);) 
-      ps; 
     check_equal_types pos xty ty;
     (ValueDef (pos, ts, ps, b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
@@ -388,7 +386,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e = eforall pos [] e in
       let e, ty = expression env e in
       let b = (x, ty) in
-      if ps<>[] then raise(InvalidOverloading pos);
+      if ps <> [] then raise (InvalidOverloading pos);
       check_equal_types pos xty ty;
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
@@ -400,17 +398,21 @@ and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
 and is_value_form = function
   | EVar _
   | ELambda _
-  | EPrimitive _ ->
+  | EPrimitive _              ->
     true
-  | EDCon (_, _, _, es) ->
+
+  | EDCon (_, _, _, es)       ->
     List.for_all is_value_form es
+
   | ERecordCon (_, _, _, rbs) ->
     List.for_all (fun (RecordBinding (_, e)) -> is_value_form e) rbs
+
   | EExists (_, _, t)
   | ETypeConstraint (_, t, _)
-  | EForall (_, _, t) ->
+  | EForall (_, _, t)         ->
     is_value_form t
-  | _ ->
+
+  | _                         ->
     false
 
 (*
@@ -420,31 +422,36 @@ and is_value_form = function
  * later (7.4)"
  * - Canonical constraint
 *)
-and check_method pos env s k  (RecordBinding (l, e)) = 
+and check_method pos env s k (RecordBinding (l, e)) = 
   let e, ty = expression env e in
   let xty = lookup_method pos k l in
-  let xty = substitute [(k.class_parameter, s)] xty in 
+  let xty = substitute [k.class_parameter, s] xty in 
   check_equal_types pos xty ty;
 
-
 and instance_definitions env l = match l with
-  | [] -> ([],env)
-  | t :: q -> let env' = List.fold_left (fun x y-> bind_type_variable y x)
-      env t.instance_parameters in
+  | [] -> env
+  | t :: q ->
+    let env' =
+      List.fold_left
+        (fun x y -> bind_type_variable y x)
+        env
+        t.instance_parameters in
     List.iter 
-      (check_method t.instance_position 
-         env'
-         (TyApp(undefined_position,t.instance_index,List.map
-                  (fun x-> TyVar(undefined_position,x)) t.instance_parameters))
-         (lookup_class t.instance_position t.instance_class_name
-            env'))
+      (check_method t.instance_position env'
+         (cons_type t.instance_index t.instance_parameters)
+         (lookup_class t.instance_position t.instance_class_name env'))
       t.instance_members;
     let env = bind_instance t env in	
     instance_definitions env q
 
+and cons_type hd vars =
+  TyApp (undefined_position,
+         t.instance_index,
+         List.map (fun x -> TyVar (undefined_position,x)) t.instance_parameters)
+
 and names_vb acc = function
   | BindValue (_, vs)
-  | BindRecValue (_, vs)                        ->
+  | BindRecValue (_, vs)              ->
     List.fold_left names_vdef acc vs
 
   | ExternalValue (pos, _, (x, _), _) ->

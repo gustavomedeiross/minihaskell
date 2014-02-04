@@ -26,11 +26,11 @@ let values env = env.values
 
 let lookup pos x env =
   try
-    List.find (fun (_, _,(x', _)) -> x = x') env.values
+    List.find (fun (_, _, (x', _)) -> x = x') env.values
   with Not_found -> raise (UnboundIdentifier (pos, x))
 
 let bind_scheme pos x ts pred ty env =
-  { env with values = (ts, pred , (x, ty)) :: env.values}
+  { env with values = (ts, pred, (x, ty)) :: env.values}
 
 let bind_simple pos x ty env =
   bind_scheme pos x [] [] ty env
@@ -62,33 +62,26 @@ let rec is_superclass pos k1 k2 env =
   let scl = lookup_superclasses pos k1 env in
   List.exists (fun k -> k = k2 || is_superclass pos k k2 env) scl
 
-
 (* Independence constraint (for all i,j: not(Ki < Kj))
  * Also checks that the superclasses are already defined. *)
 let unrelated pos env k1 k2 =
   if is_superclass pos k1 k2 env ||
-     is_superclass pos k2 k1 env
-  then raise (TheseTwoClassesMustNotBeInTheSameContext (pos, k1, k2))
+     is_superclass pos k2 k1 env then 
+    raise (TheseTwoClassesMustNotBeInTheSameContext (pos, k1, k2))
 
 let assert_independent pos sc env =
   ignore (List.fold_left
-            (fun acc k -> List.iter (unrelated pos env k) acc;  k::acc) [] sc)
+            (fun acc k -> List.iter (unrelated pos env k) acc; k :: acc) [] sc)
 
 (*Parameter is the singleton of the free variable of the class*) 
 let rec check_free_variables name parameter = function
   | (pos,_,t) :: q -> let freeT = free t in
-    if not(TS.subset
-             parameter
-             freeT)
-    then raise(AmbiguousTypeclass(pos,name))
-    else if not(TS.subset
-                  freeT
-                  parameter)
-    then raise(TooFreeTypeVariableTypeclass(pos,name))
+    if not (TS.subset parameter freeT) then
+      raise (AmbiguousTypeclass (pos, name))
+    else if not (TS.subset freeT parameter) then
+      raise (TooFreeTypeVariableTypeclass (pos, name))
     else (check_free_variables name parameter q)
-
   | [] -> ()
-
 
 let bind_class k c env =
   try
@@ -118,18 +111,18 @@ let bind_label pos l ts ty rtcon env =
 
 let initial =
   let primitive_type t k = TypeDef (undefined_position, k, t, DAlgebraic []) in
-  List.fold_left (fun env (t, k) ->
-      bind_type t k (primitive_type t k) env
-    ) empty [
-    (TName "->", KArrow (KStar, KArrow (KStar, KStar)));
-    (TName "int", KStar);
-    (TName "char", KStar);
-    (TName "unit", KStar)
-  ]
+  List.fold_left
+    (fun env (t, k) ->
+       bind_type t k (primitive_type t k) env)
+    empty 
+    [(TName "->", KArrow (KStar, KArrow (KStar, KStar)));
+     (TName "int", KStar);
+     (TName "char", KStar);
+     (TName "unit", KStar)]
 
 let lookup_method pos k x =
   try
-    let (_,_,t) = List.find (fun (_,y,_) -> x = y) k.class_members in
+    let (_, _, t) = List.find (fun (_, y, _) -> x = y) k.class_members in
     t
   with Not_found -> raise (NotAMethodOf (pos, x, k.class_name))
 
@@ -144,20 +137,24 @@ let add_methods c env (pos, LName s, ty) =
   else if List.mem (Name s) env.names then
     raise (VariableIsAMethodName (pos, Name s))
   else { env with method_names = (LName s) :: env.method_names;
-                  values =
-                    ([c.class_parameter],
-                     [ClassPredicate(c.class_name,c.class_parameter)],
-                     (Name s,ty))::env.values}
+                  values = ([c.class_parameter],
+                            [ClassPredicate (c.class_name,c.class_parameter)],
+                            (Name s,ty))
+                           :: env.values}
 
 let bind_instance t env =
-  try let listinstance =List.assoc t.instance_index env.instances in
-    if List.exists 
-        (fun x->x.instance_class_name= t.instance_class_name ) 
-        listinstance
-    then raise(OverlappingInstances(t.instance_position, t.instance_class_name))
+  try
+    let listinstance = List.assoc t.instance_index env.instances in
+    if List.exists
+        (fun x -> x.instance_class_name = t.instance_class_name ) 
+        listinstance then
+      raise (OverlappingInstances (t.instance_position,
+                                   t.instance_class_name))
     else let instances = List.remove_assoc t.instance_index env.instances in
-      {env with instances = (t.instance_index, t::listinstance)::instances} 
-  with Not_found -> {env with instances = (t.instance_index, [t])::env.instances}
+      { env with instances = (t.instance_index, t :: listinstance) 
+                             :: instances }
+  with Not_found -> { env with instances = (t.instance_index, [t])
+                                           :: env.instances}
 
 let constraints ty env =
   try
