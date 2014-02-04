@@ -34,12 +34,16 @@ let add_name env (pos, Name s) =
     raise (VariableIsAMethodName (pos, Name s))
   else { env with names = Name s :: env.names }
 
-let add_methods env (pos, LName s, _) =
+let add_methods c env (pos, LName s, ty) =
   if List.mem (LName s) env.method_names then
     raise (MultipleMethods (pos, LName s))
   else if List.mem (Name s) env.names then
     raise (VariableIsAMethodName (pos, Name s))
-  else { env with method_names = (LName s) :: env.method_names }
+  else { env with method_names = (LName s) :: env.method_names;
+  		 values =
+		 ([c.class_parameter],
+		 [ClassPredicate(c.class_name,c.class_parameter)],
+		 (Name s,ty))::env.values}
 
 let bind_simple pos x ty env =
   bind_scheme pos x [] [] ty env
@@ -106,10 +110,8 @@ let bind_class k c env =
     raise (AlreadyDefinedClass (pos, k))
   with UnboundClass _ ->
     assert_independent c.class_position c.superclasses env;
-    let env = List.fold_left add_methods env c.class_members in 
-    { env with classes = (k, c) :: env.classes;
-    	       values = env.values
-    } 
+    let env = List.fold_left (add_methods c) env c.class_members in 
+    { env with classes = (k, c) :: env.classes} 
 
 let bind_type_variable t env =
   bind_type t KStar (TypeDef (undefined_position, KStar, t, DAlgebraic [])) env
