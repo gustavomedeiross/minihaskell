@@ -67,7 +67,7 @@ and introduce_type_parameters env ts =
   List.fold_left (fun env t -> bind_type_variable t env) env ts
 
 and check_wf_scheme env ts ty =
-  check_wf_type (introduce_type_parameters env ts ) KStar ty
+  check_wf_type (introduce_type_parameters env ts) KStar ty
 
 and check_wf_type env xkind = function
   | TyVar (pos, t) ->
@@ -84,8 +84,7 @@ and check_type_constructor_application pos env k tys =
   | ty :: tys, KArrow (k, ks) ->
     check_wf_type env k ty;
     check_type_constructor_application pos env ks tys
-  | _ ->
-    raise (IllKindedType pos)
+  | _ -> raise (IllKindedType pos)
 
 and check_equivalent_kind pos k1 k2 =
   match k1, k2 with
@@ -93,8 +92,7 @@ and check_equivalent_kind pos k1 k2 =
   | KArrow (k1, k2), KArrow (k1', k2') ->
     check_equivalent_kind pos k1 k1';
     check_equivalent_kind pos k2 k2'
-  | _ ->
-    raise (IncompatibleKinds (pos, k1, k2))
+  | _ -> raise (IncompatibleKinds (pos, k1, k2))
 
 and env_of_bindings env cdefs = List.(
     (function
@@ -114,11 +112,10 @@ and check_equal_types pos ty1 ty2 =
 
 and type_application pos env x tys =
   List.iter (check_wf_type env KStar) tys;
-  let (ts,_, (_, ty)) = lookup pos x env in
+  let (ts, _, (_, ty)) = lookup pos x env in
   try
     substitute (List.combine ts tys) ty
-  with _ ->
-    raise (InvalidTypeApplication pos)
+  with _ -> raise (InvalidTypeApplication pos)
 
 and expression env = function
   | EVar (pos, ((Name s) as x), tys) ->
@@ -344,6 +341,7 @@ and value_binding env = function
     (BindRecValue (pos, vs), env)
 
   | ExternalValue (pos, ts, ((x, ty) as b), os) ->
+    let env = bind_scheme pos x ts [] ty env in
     (ExternalValue (pos, ts, b, os), env)
 
 and eforall pos ts e =
@@ -366,7 +364,7 @@ and eforall pos ts e =
 
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   let env = introduce_type_parameters env ts in
-  check_wf_scheme env ts xty;
+  check_wf_type env KStar xty;
   List.iter
     (fun (ClassPredicate (c, v)) -> 
        if not (List.mem v ts && TS.mem v (free xty)) then

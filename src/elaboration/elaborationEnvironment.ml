@@ -5,7 +5,7 @@ open Types
 open ElaborationExceptions
 
 type t = {
-  values       : (tnames * class_predicates  * binding) list;
+  values       : (tnames * class_predicates * binding) list;
   types        : (tname * (Types.kind * type_definition)) list;
   classes      : (tname * class_definition) list;
   labels       : (lname * (tnames * Types.t * tname)) list;
@@ -36,7 +36,7 @@ let add_methods c env (pos, LName s, ty) =
     raise (VariableIsAMethodName (pos, Name s))
   else { env with method_names = (LName s) :: env.method_names;
                   values = ([c.class_parameter],
-                            [ClassPredicate (c.class_name,c.class_parameter)],
+                            [ClassPredicate (c.class_name, c.class_parameter)],
                             (Name s,ty))
                            :: env.values}
 let lookup pos x env =
@@ -45,7 +45,7 @@ let lookup pos x env =
   with Not_found -> raise (UnboundIdentifier (pos, x))
 
 let bind_scheme pos x ts pred ty env =
-  { env with values = (ts, pred, (x, ty)) :: env.values}
+  { env with values = (ts, pred, (x, ty)) :: env.values }
 
 let bind_simple pos x ty env =
   bind_scheme pos x [] [] ty env
