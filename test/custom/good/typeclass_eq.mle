@@ -1,0 +1,7 @@
+type ('a, 'b) list = Nil | Cons of 'a * 'b * ('a, 'b) list
+
+class Eq 'a { equal : 'a -> 'a -> int }
+
+instance ['a 'b] Eq (('a, 'b) list) {
+  equal = fun (a : ('a, 'b) list) -> fun (b : ('a, 'b) list) -> 0
+}
