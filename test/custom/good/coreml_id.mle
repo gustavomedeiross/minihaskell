@@ -1,1 +1,1 @@
-let identity : type a. a -> a = fun x -> x
+let ['a] (identity : 'a -> 'a) = ['a] fun (x : 'a) -> x []
