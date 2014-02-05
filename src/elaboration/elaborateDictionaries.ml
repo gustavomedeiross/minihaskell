@@ -369,7 +369,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   check_wf_scheme env ts xty;
   List.iter
     (fun (ClassPredicate (c, v)) -> 
-       if not (List.mem v ts && TS.mem v (free ty)) then
+       if not (List.mem v ts && TS.mem v (free xty)) then
          raise (InvalidOverloading pos)) 
     ps;
   if is_value_form e then begin
@@ -446,8 +446,8 @@ and instance_definitions env l = match l with
 
 and cons_type hd vars =
   TyApp (undefined_position,
-         t.instance_index,
-         List.map (fun x -> TyVar (undefined_position,x)) t.instance_parameters)
+         hd,
+         List.map (fun x -> TyVar (undefined_position, x)) vars)
 
 and names_vb acc = function
   | BindValue (_, vs)
