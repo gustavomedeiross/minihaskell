@@ -88,15 +88,13 @@ let assert_independent pos sc env =
   ignore (List.fold_left
             (fun acc k -> List.iter (unrelated pos env k) acc; k :: acc) [] sc)
 
-(*Parameter is the singleton of the free variable of the class*) 
-let rec check_free_variables name parameter = function
-  | (pos,_,t) :: q -> let freeT = free t in
-    if not (TS.subset parameter freeT) then
-      raise (AmbiguousTypeclass (pos, name))
-    else if not (TS.subset freeT parameter) then
-      raise (TooFreeTypeVariableTypeclass (pos, name))
-    else (check_free_variables name parameter q)
-  | [] -> ()
+(* Parameter is the singleton of the free variable of the class *)
+let rec check_free_variables name (TName s as parameter) (pos, _, t) =
+  let freeT = free t in
+  if not (TS.mem parameter freeT) then
+    raise (AmbiguousTypeclass (pos, name))
+  else if not (TS.is_empty (TS.remove parameter freeT)) then
+    raise (TooFreeTypeVariableTypeclass (pos, name))
 
 let bind_class k c env =
   try
@@ -105,8 +103,11 @@ let bind_class k c env =
     raise (AlreadyDefinedClass (pos, k))
   with UnboundClass _ ->
     assert_independent c.class_position c.superclasses env;
-    let env = List.fold_left (add_methods c) env c.class_members in 
-    { env with classes = (k, c) :: env.classes} 
+    List.iter
+      (check_free_variables c.class_name c.class_parameter)
+      c.class_members;
+    let env = List.fold_left (add_methods c) env c.class_members in
+    { env with classes = (k, c) :: env.classes }
 
 let bind_type_variable t env =
   bind_type t KStar (TypeDef (undefined_position, KStar, t, DAlgebraic [])) env

@@ -127,14 +127,14 @@ let handle_error f =
                                 occur in the definition." l)
 
   | TooFreeTypeVariableTypeclass(pos, TName l) ->
-    fatal' pos (Printf.sprintf " There are too many free variables in \
-                                the typeclass `%s'. \
-                                You can only quantify on one variable." l)
+    fatal' pos (Printf.sprintf "  Only the class parameter should appear free \
+                                in typeclass `%s'." l)
 
   | NotAMethodOf (pos, LName l, TName k) ->
     fatal' pos (Printf.sprintf " `%s' is not a method of class `%s'." l k)
 
   | MultipleMethods (pos, LName l) ->
     fatal' pos (Printf.sprintf " `%s' is declared twice as a method." l)
+
   | NotImplemented (pos, str) ->
     fatal' pos (Printf.sprintf "  Not implemented: `%s'." str)
