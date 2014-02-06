@@ -65,7 +65,7 @@ and algebraic_dataconstructor env (pos, DName k, ts, kty) =
 
 and introduce_type_parameters env ts ps pos =
   List.iter
-  (fun (ClassPredicate(a,b)) -> if not(List.mem a ts) then raise(InvalidOverloading(pos)))
+  (fun (ClassPredicate(a,b)) -> if not(List.mem b ts) then raise(InvalidOverloading(pos)))
   ps; 
   let env = List.fold_left (fun env t -> bind_type_variable t env) env ts in
   let env = if_canonical_then_return ps env pos in     

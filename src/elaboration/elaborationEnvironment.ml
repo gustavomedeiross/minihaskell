@@ -159,7 +159,7 @@ let bind_instance t env =
 let if_canonical_then_return cstr env pos =
   let rec regroup acc = function
   | []     -> acc
-  | ClassPredicate(tn,cn) :: q -> 
+  | ClassPredicate(cn,tn) :: q -> 
             try let old_class = List.assoc tn acc in
                 let new_class = cn :: old_class in
                 let acc       = List.remove_assoc tn acc in
