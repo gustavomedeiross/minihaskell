@@ -70,7 +70,7 @@ and introduce_type_parameters env ts ps pos =
   ps; 
   let env = List.fold_left (fun env t -> bind_type_variable t env) env ts in
   let env = add_predicates ps env pos in     
-  let env = add_no_constraint_free_tv ts env ps in
+  let env = add_unconstrained_tv ts env ps in
   env
 
 and check_wf_scheme env ts ty pos =

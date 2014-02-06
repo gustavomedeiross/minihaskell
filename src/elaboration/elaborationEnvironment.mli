@@ -71,7 +71,8 @@ val bind_instance : t -> instance_definition -> t
 
 val add_predicates : Types.class_predicates -> t -> position -> t
 
-val add_no_constraint_free_tv : tnames -> t -> Types.class_predicates -> t 
+val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t 
+
 (** [is_instance_of pos t k e] raises an exception if t is not an
     instance of k in e *)
 val is_instance_of : position -> Types.t -> tname -> t -> unit

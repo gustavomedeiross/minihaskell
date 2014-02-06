@@ -171,8 +171,11 @@ let add_predicates cstr env pos =
                        not(List.exists
                        (fun y-> is_superclass pos y name env)
                        (List.filter (fun x-> x = name) cs)))
+                         (* TODO! this = [name, name, name, ...] *)
     true 
     cs
+    (* TODO! List.fold_left (fun acc ... -> acc && ...) true = List.for_all,
+     * unless you want to accumulate something else *)
   in
   let constr = regroup [] cstr in
   let is_canonical = List.fold_left (fun a (_, b) -> a && check_canonical b)
@@ -181,13 +184,14 @@ let add_predicates cstr env pos =
   if is_canonical then {env with v_constraints = constr @ env.v_constraints} else 
     raise(NotCanonicalConstraint(pos))
 
-let add_no_constraint_free_tv ts env ps =
+let add_unconstrained_tv ts env ps =
   List.fold_left 
   (fun x l -> if not(List.exists 
                      (fun (ClassPredicate(k,v)) -> v = l )
                      ps)    
               then {x with v_constraints = (l,[])::x.v_constraints} 
               else x)
+  (* TODO? if not(blabla) then A else B === if blabla then B else A *)
   env 
   ts
 
@@ -213,5 +217,4 @@ let rec is_instance_of pos t k env = match t with
            is_instance_of pos (List.assoc v assoc) k env)
         i.instance_typing_context;
     with Not_found -> raise (NotAnInstance pos)
-      
-    
+
