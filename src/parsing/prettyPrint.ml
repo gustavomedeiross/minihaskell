@@ -193,7 +193,7 @@ module Make (GAST : AST.GenericS) = struct
       separate_map (!^ ";" ^^ break 1) record_binding rbs
 
     and record_binding (RecordBinding (LName l, e)) =
-      group (!^ l ^/^ !^ "="  ^/^ expression e)
+      group (!^ l ^/^ !^ "="  ^/^ expression' `RecordField e)
 
     and branches bs =
       group (separate_map (break 1 ^^ group (!^ "|" ^^ break 1)) branch bs)
@@ -283,12 +283,12 @@ module Make (GAST : AST.GenericS) = struct
       | [] -> empty
       | cs ->
         does_not_exist_in_ocaml (fun () ->
-            brackets (
-              break 1
-              ^^ separate_map (comma ^^ break 1) class_predicate cs
-              ^^ break 1
-            ) ^^ break 1
-          )
+          brackets (
+            break 1
+            ^^ separate_map (comma ^^ break 1) class_predicate cs
+            ^^ break 1
+          ) ^^ break 1
+        )
 
     and class_predicate (ClassPredicate (k, t)) =
       group (tname k ^/^ tname t)
@@ -297,16 +297,17 @@ module Make (GAST : AST.GenericS) = struct
       | [] -> empty
       | ts ->
         does_not_exist_in_ocaml (fun () ->
-            brackets (separate_map (break 1) tname ts) ^^ break 1
-          )
+          brackets (separate_map (break 1) tname ts) ^^ break 1
+        )
 
     and expression' ctx e =
       parens_if (match ctx, e with
-          | `LApp, (ELambda _ | EDCon _ | EMatch _)
-          | `RApp, (ELambda _ | EApp _ | EDCon _ | EMatch _) -> true
-          | `InBranchBody, EMatch _ -> true
-          | _, _ -> false
-        ) (expression e)
+        | `RecordField, (ELambda _ | EBinding _ | EMatch _)
+        | `LApp, (ELambda _ | EDCon _ | EMatch _)
+        | `RApp, (ELambda _ | EApp _ | EDCon _ | EMatch _) -> true
+        | `InBranchBody, EMatch _ -> true
+        | _, _ -> false
+      ) (expression e)
 
     and binding b =
       match destruct_binding b with
