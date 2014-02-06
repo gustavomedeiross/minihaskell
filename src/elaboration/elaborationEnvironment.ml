@@ -25,8 +25,8 @@ let empty = { values = []; types = []; classes = []; labels = [];
 let values env = env.values
 
 let add_name env (pos, Name s) =
-  if List.mem (LName s) env.method_names then
-    raise (VariableIsAMethodName (pos, Name s))
+  if List.mem (LName s) env.method_names
+  then raise (VariableIsAMethodName (pos, Name s))
   else { env with names = Name s :: env.names }
 
 let add_methods c env (pos, LName s, ty) =
@@ -34,11 +34,13 @@ let add_methods c env (pos, LName s, ty) =
     raise (MultipleMethods (pos, LName s))
   else if List.mem (Name s) env.names then
     raise (VariableIsAMethodName (pos, Name s))
-  else { env with method_names = (LName s) :: env.method_names;
-                  values = ([c.class_parameter],
-                            [ClassPredicate (c.class_name, c.class_parameter)],
-                            (Name s,ty))
-                           :: env.values}
+  else
+    { env with method_names = (LName s) :: env.method_names;
+               values = ([c.class_parameter],
+                         [ClassPredicate (c.class_name, c.class_parameter)],
+                         (Name s,ty))
+                        :: env.values}
+
 let lookup pos x env =
   try
     List.find (fun (_, _, (x', _)) -> x = x') env.values
@@ -65,10 +67,12 @@ let lookup_type_kind pos t env =
 let lookup_type_definition pos t env =
   snd (lookup_type pos t env)
 
+
 let lookup_class pos k env =
   try
     List.assoc k env.classes
   with Not_found -> raise (UnboundClass (pos, k))
+
 
 let lookup_superclasses pos k env =
   (lookup_class pos k env).superclasses
@@ -77,12 +81,12 @@ let rec is_superclass pos k1 k2 env =
   let scl = lookup_superclasses pos k1 env in
   List.exists (fun k -> k = k2 || is_superclass pos k k2 env) scl
 
-(* Independence constraint (for all i,j: not(Ki < Kj))
+(* Independence constraint (for all i,j: not (Ki < Kj))
  * Also checks that the superclasses are already defined. *)
 let unrelated pos env k1 k2 =
   if is_superclass pos k1 k2 env ||
-     is_superclass pos k2 k1 env then 
-    raise (TheseTwoClassesMustNotBeInTheSameContext (pos, k1, k2))
+     is_superclass pos k2 k1 env
+  then raise (TheseTwoClassesMustNotBeInTheSameContext (pos, k1, k2))
 
 let assert_independent pos sc env =
   ignore (List.fold_left
@@ -109,14 +113,14 @@ let bind_class k c env =
     let env = List.fold_left (add_methods c) env c.class_members in
     { env with classes = (k, c) :: env.classes }
 
+
 let bind_type_variable t env =
   bind_type t KStar (TypeDef (undefined_position, KStar, t, DAlgebraic [])) env
 
 let lookup_label pos l env =
   try
     List.assoc l env.labels
-  with Not_found ->
-    raise (UnboundLabel (pos, l))
+  with Not_found -> raise (UnboundLabel (pos, l))
 
 let bind_label pos l ts ty rtcon env =
   try
@@ -128,13 +132,13 @@ let bind_label pos l ts ty rtcon env =
 let initial =
   let primitive_type t k = TypeDef (undefined_position, k, t, DAlgebraic []) in
   List.fold_left
-    (fun env (t, k) ->
-       bind_type t k (primitive_type t k) env)
+    (fun env (t, k) -> bind_type t k (primitive_type t k) env)
     empty 
     [(TName "->", KArrow (KStar, KArrow (KStar, KStar)));
      (TName "int", KStar);
      (TName "char", KStar);
      (TName "unit", KStar)]
+
 
 let lookup_method pos k x =
   try
@@ -146,48 +150,46 @@ let bind_instance env t =
   try
     let listinstance = List.assoc t.instance_index env.instances in
     if List.exists
-        (fun x -> x.instance_class_name = t.instance_class_name ) 
-        listinstance then
-      raise (OverlappingInstances (t.instance_position,
-                                   t.instance_class_name))
+        (fun x -> x.instance_class_name = t.instance_class_name )
+        listinstance
+    then raise (OverlappingInstances (t.instance_position,
+                                      t.instance_class_name))
     else let instances = List.remove_assoc t.instance_index env.instances in
-      { env with instances = (t.instance_index, t :: listinstance) 
+      { env with instances = (t.instance_index, t :: listinstance)
                              :: instances }
   with Not_found -> { env with instances = (t.instance_index, [t])
                                            :: env.instances}
 
 let add_predicates cstr env pos =
   let rec regroup acc = function
-  | []     -> acc
-  | ClassPredicate(cn,tn) :: q -> 
-            try let old_class = List.assoc tn acc in
-                let new_class = cn :: old_class in
-                let acc       = List.remove_assoc tn acc in
-                regroup ((tn, new_class) :: acc) q
-            with Not_found -> regroup ((tn, [cn]) :: acc) q in
-  let check_canonical (cs : (tname list)) =
-    List.for_all 
-    (fun name -> not(List.exists
-                 (fun y-> y = name || is_superclass pos y name env)
-                 (List.filter (fun x -> not(x == name)) cs)))
-                   (* TODO! this = [name, name, name, ...] *)
-    cs
-  in
+    | [] -> acc
+    | ClassPredicate (cn,tn) :: q ->
+      try
+        let old_class = List.assoc tn acc in
+        let new_class = cn :: old_class in
+        let acc       = List.remove_assoc tn acc in
+        regroup ((tn, new_class) :: acc) q
+      with Not_found -> regroup ((tn, [cn]) :: acc) q in
+  let is_canonical (cs : tname list) =
+    List.for_all
+      (fun name ->
+         not (List.exists (fun y-> y = name || is_superclass pos y name env)
+                (List.filter (fun x -> not (x == name)) cs)))
+      cs in
   let constr = regroup [] cstr in
-  let is_canonical = List.for_all (fun (_, b) -> check_canonical b)
-                     constr in
-  if is_canonical then {env with v_constraints = constr @ env.v_constraints} else 
-    raise(NotCanonicalConstraint(pos))
+  let all_canonical = List.for_all (fun (_, b) -> is_canonical b) constr in
+  if all_canonical
+  then { env with v_constraints = constr @ env.v_constraints }
+  else raise (NotCanonicalConstraint pos)
 
 let add_unconstrained_tv ts env ps =
-  List.fold_left 
-  (fun x l -> if List.exists 
-                 (fun (ClassPredicate(k,v)) -> v = l )
-                 ps    
-              then x
-              else {x with v_constraints = (l,[])::x.v_constraints}) 
-  env 
-  ts
+  List.fold_left
+    (fun x l ->
+       if List.exists (fun (ClassPredicate(k,v)) -> v = l) ps
+       then x
+       else { x with v_constraints = (l, []) :: x.v_constraints })
+    env
+    ts
 
 
 let lookup_constraints tv env =
@@ -198,9 +200,8 @@ let lookup_constraints tv env =
 let rec is_instance_of pos t k env = match t with
   | TyVar (_, v) ->
     let cs = lookup_constraints v env in
-    if not (List.exists
-              (fun k' -> k = k' || is_superclass pos k' k env) cs) then
-      raise (NotAnInstance pos)
+    if not (List.exists (fun k' -> k = k' || is_superclass pos k' k env) cs)
+    then raise (NotAnInstance pos)
   | TyApp (_, g, ts) ->
     try
       let is = List.assoc g env.instances in

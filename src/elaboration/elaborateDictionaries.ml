@@ -11,8 +11,7 @@ let string_of_type ty      = ASTio.(XAST.(to_string pprint_ml_type ty))
 
 
 let rec program p = handle_error List.(fun () ->
-    flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p))
-  )
+    flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p)))
 
 and block env = function
   | BTypeDefinitions ts ->
@@ -52,6 +51,7 @@ and type_definition env = function
 and datatype_definition t env = function
   | DAlgebraic ds ->
     List.fold_left algebraic_dataconstructor env ds
+
   | DRecordType (ts, ltys) ->
     List.fold_left (label_type ts t) env ltys
 
@@ -66,8 +66,9 @@ and algebraic_dataconstructor env (pos, DName k, ts, kty) =
 
 and introduce_type_parameters env ts ps pos =
   List.iter
-  (fun (ClassPredicate(a,b)) -> if not(List.mem b ts) then raise(InvalidOverloading(pos)))
-  ps; 
+    (fun (ClassPredicate(a,b)) ->
+       if not (List.mem b ts) then raise (InvalidOverloading pos))
+    ps; 
   let env = List.fold_left (fun env t -> bind_type_variable t env) env ts in
   let env = add_predicates ps env pos in     
   let env = add_unconstrained_tv ts env ps in
@@ -88,34 +89,37 @@ and check_wf_type env xkind = function
 and check_type_constructor_application pos env k tys =
   match tys, k with
   | [], KStar -> ()
+
   | ty :: tys, KArrow (k, ks) ->
     check_wf_type env k ty;
     check_type_constructor_application pos env ks tys
+
   | _ -> raise (IllKindedType pos)
 
 and check_equivalent_kind pos k1 k2 =
   match k1, k2 with
   | KStar, KStar -> ()
+
   | KArrow (k1, k2), KArrow (k1', k2') ->
     check_equivalent_kind pos k1 k1';
     check_equivalent_kind pos k2 k2'
+
   | _ -> raise (IncompatibleKinds (pos, k1, k2))
 
-and env_of_bindings env cdefs = List.(
-    (function
-      | BindValue (_, vs)
-      | BindRecValue (_, vs) ->
-        fold_left (fun env (ValueDef (pos, ts, pred, (x, ty), _)) ->
-            bind_scheme pos x ts pred ty env
-          ) env vs
-      | ExternalValue (pos, ts, (x, ty), _) ->
-        bind_scheme pos x ts [] ty env
-    ) cdefs
-  )
+and env_of_bindings env = function
+  | BindValue (_, vs)
+  | BindRecValue (_, vs) ->
+    List.fold_left
+      (fun env (ValueDef (pos, ts, pred, (x, ty), _)) ->
+         bind_scheme pos x ts pred ty env)
+      env vs
+
+  | ExternalValue (pos, ts, (x, ty), _) ->
+    bind_scheme pos x ts [] ty env
 
 and check_equal_types pos ty1 ty2 =
-  if not (equivalent ty1 ty2) then
-    raise (IncompatibleTypes (pos, ty1, ty2))
+  if not (equivalent ty1 ty2)
+  then raise (IncompatibleTypes (pos, ty1, ty2))
 
 and type_application pos env x tys =
   List.iter (check_wf_type env KStar) tys;
@@ -125,7 +129,9 @@ and type_application pos env x tys =
       List.combine ts tys
     with _ -> raise (InvalidTypeApplication pos) in
   List.iter
-    (fun (ClassPredicate (k, t)) -> is_instance_of pos (List.assoc t assoc) k env) ps;
+    (fun (ClassPredicate (k, t)) ->
+       is_instance_of pos (List.assoc t assoc) k env)
+    ps;
   substitute assoc ty
 
 and expression env = function
@@ -164,8 +170,7 @@ and expression env = function
     (e, ty)
 
   | EExists (_, _, e) ->
-    (** Because we are explicitly typed, flexible type variables
-        are useless. *)
+    (** Because we are explicitly typed, flexible type variables are useless. *)
     expression env e
 
   | EDCon (pos, DName x, tys, es) ->
@@ -255,14 +260,9 @@ and expression env = function
     (e, primitive pos p)
 
 and primitive pos = function
-  | PIntegerConstant _ ->
-    TyApp (pos, TName "int", [])
-
-  | PUnit ->
-    TyApp (pos, TName "unit", [])
-
-  | PCharConstant _ ->
-    TyApp (pos, TName "char", [])
+  | PIntegerConstant _ -> TyApp (pos, TName "int",  [])
+  | PUnit              -> TyApp (pos, TName "unit", [])
+  | PCharConstant _    -> TyApp (pos, TName "char", [])
 
 and branch env sty (Branch (pos, p, e)) =
   let denv = pattern env sty p in
@@ -293,8 +293,8 @@ and check_same_denv pos denv1 denv2 =
         let (_, _, (_, ty')) = lookup pos x denv2 in
         check_equal_types pos ty ty'
       with _ ->
-        raise (PatternsMustBindSameVariables pos)
-    ) (values denv1)
+        raise (PatternsMustBindSameVariables pos))
+    (values denv1)
 
 and pattern env xty = function
   | PVar (pos, name) ->
@@ -359,16 +359,21 @@ and eforall pos ts e =
   match ts, e with
   | ts, EForall (pos, [], ((EForall _) as e)) ->
     eforall pos ts e
+
   | [], EForall (pos, [], e) ->
     e
+
   | [], EForall (pos, _, _) ->
     raise (InvalidNumberOfTypeAbstraction pos)
+
   | [], e ->
     e
+
   | x :: xs, EForall (pos, t :: ts, e) ->
     if x <> t then
       raise (SameNameInTypeAbstractionAndScheme pos);
     eforall pos xs (EForall (pos, ts, e))
+
   | _, _ ->
     raise (InvalidNumberOfTypeAbstraction pos)
 
@@ -388,16 +393,16 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     check_equal_types pos xty ty;
     (ValueDef (pos, ts, ps, b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
-  end else begin
-    if ts <> [] then
-      raise (ValueRestriction pos)
-    else
-      let e = eforall pos [] e in
-      let e, ty = expression env e in
-      let b = (x, ty) in
-      if ps <> [] then raise (InvalidOverloading pos);
-      check_equal_types pos xty ty;
-      (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
+  end
+  else if ts <> [] then
+    raise (ValueRestriction pos)
+  else begin
+    let e = eforall pos [] e in
+    let e, ty = expression env e in
+    let b = (x, ty) in
+    if ps <> [] then raise (InvalidOverloading pos);
+    check_equal_types pos xty ty;
+    (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
@@ -423,27 +428,24 @@ and is_value_form = function
 
   | _                         ->
     false
- 
+
 (*
  * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
  * contexts and class declarations, and to types of the form K (G a) in
  * instances are for simplicity. Generalizations are possible and discussed
  * later (7.4)"
- * - Canonical constraint
 *)
+
 and check_method env pos ts ps s k (RecordBinding (LName l, e)) = 
   let xty = lookup_method pos k (LName l) in
   let xty = substitute [k.class_parameter, s] xty in 
-  ignore
-    (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
+  ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
 
 and check_instance_definitions env = function
   | [] -> ()
-  | {
-      instance_position       = pos;
+  | { instance_position       = pos;
       instance_parameters     = ts;
-      instance_typing_context = ps;
-    } as i :: t ->
+      instance_typing_context = ps; } as i :: t ->
     let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
     List.iter 
       (check_method env pos ts ps
@@ -469,25 +471,36 @@ and names_vdef acc (ValueDef (pos, _, _, (x, _), e)) =
 
 and names_e acc = function
   | EVar _
-  | EPrimitive _              -> acc
-  | ELambda (pos, (x, _), e)  -> names_e ((pos, x) :: acc) e
+  | EPrimitive _              ->
+    acc
+
+  | ELambda (pos, (x, _), e)  ->
+    names_e ((pos, x) :: acc) e
+
   | EBinding (_, b, e)        ->
     let acc = names_vb acc b in
     names_e acc e
+
   | EApp (_, a, b)            ->
     let acc = names_e acc b in
     names_e acc a
+
   | ETypeConstraint (_, e, _)
   | EForall (_, _, e)
   | EExists (_, _, e)
-  | ERecordAccess (_, e, _)   -> names_e acc e
-  | EDCon (_, _, _, es)       -> List.fold_left names_e acc es
+  | ERecordAccess (_, e, _)   ->
+    names_e acc e
+
+  | EDCon (_, _, _, es)       ->
+    List.fold_left names_e acc es
+
   | EMatch (_, s, bs)         ->
     let acc = names_e acc s in
     let vn_branch acc (Branch (pos, p, e)) =
       let acc = names_pattern acc p in
       names_e acc e
     in List.fold_left vn_branch acc bs
+
   | ERecordCon (_, _, _, rbs) ->
     let vn_recordbinding acc (RecordBinding (_, e)) = names_e acc e in
     List.fold_left vn_recordbinding acc rbs

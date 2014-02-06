@@ -140,7 +140,7 @@ let handle_error f =
     fatal' pos (Printf.sprintf "  Not an instance.")
 
   | NotCanonicalConstraint(pos)  ->
-     fatal' pos (Printf.sprintf "  Not a canonical form.")
+    fatal' pos (Printf.sprintf "  Not a canonical form.")
 
   | NotImplemented (pos, str) ->
     fatal' pos (Printf.sprintf "  Not implemented: `%s'." str)
