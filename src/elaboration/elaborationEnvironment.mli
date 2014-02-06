@@ -69,9 +69,9 @@ val add_name : t -> position * name -> t
 
 val bind_instance : t -> instance_definition -> t
 
-val if_canonical_then_return : Types.class_predicate list -> t -> position -> t
+val add_predicates : Types.class_predicates -> t -> position -> t
 
-val add_no_constraint_free_tv : tnames -> t -> Types.class_predicate list -> t 
+val add_no_constraint_free_tv : tnames -> t -> Types.class_predicates -> t 
 (** [is_instance_of pos t k e] raises an exception if t is not an
     instance of k in e *)
 val is_instance_of : position -> Types.t -> tname -> t -> unit

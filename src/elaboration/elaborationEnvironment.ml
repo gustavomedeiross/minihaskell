@@ -156,7 +156,7 @@ let bind_instance env t =
   with Not_found -> { env with instances = (t.instance_index, [t])
                                            :: env.instances}
 
-let if_canonical_then_return cstr env pos =
+let add_predicates cstr env pos =
   let rec regroup acc = function
   | []     -> acc
   | ClassPredicate(cn,tn) :: q -> 
@@ -175,7 +175,7 @@ let if_canonical_then_return cstr env pos =
     cs
   in
   let constr = regroup [] cstr in
-  let is_canonical = List.fold_left (fun a (_, b) -> a && check_canonical b) 
+  let is_canonical = List.fold_left (fun a (_, b) -> a && check_canonical b)
                          true
                          constr in
   if is_canonical then {env with v_constraints = constr @ env.v_constraints} else 
