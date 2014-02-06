@@ -184,7 +184,7 @@ let if_canonical_then_return cstr env pos =
 let add_no_constraint_free_tv ts env ps =
   List.fold_left 
   (fun x l -> if not(List.exists 
-                     (fun (ClassPredicate(a,b)) -> l = a )
+                     (fun (ClassPredicate(k,v)) -> v = l )
                      ps)    
               then {x with v_constraints = (l,[])::x.v_constraints} 
               else x)
@@ -195,7 +195,7 @@ let add_no_constraint_free_tv ts env ps =
 let lookup_constraints tv env =
   try
     List.assoc tv env.v_constraints
-  with Not_found -> []
+  with Not_found -> assert false
 
 let rec is_instance_of pos t k env = match t with
   | TyVar (_, v) ->
