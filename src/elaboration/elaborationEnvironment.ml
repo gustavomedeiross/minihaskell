@@ -45,7 +45,7 @@ let lookup pos x env =
   with Not_found -> raise (UnboundIdentifier (pos, x))
 
 let bind_scheme pos x ts pred ty env =
-  { env with values = (ts, pred, (x, ty)) :: env.values }
+  { env with values = (ts, pred, (x, ty)) :: env.values}
 
 let bind_simple pos x ty env =
   bind_scheme pos x [] [] ty env
@@ -170,16 +170,27 @@ let if_canonical_then_return cstr env pos =
     (fun canon name -> canon &&
                        not(List.exists
                        (fun y-> is_superclass pos y name env)
-                       (List.filter (fun x-> x=name) cs)))
+                       (List.filter (fun x-> x = name) cs)))
     true 
     cs
   in
   let constr = regroup [] cstr in
-  let is_canonical = List.fold_left (fun a (_, b) ->a && check_canonical b) 
+  let is_canonical = List.fold_left (fun a (_, b) -> a && check_canonical b) 
                          true
                          constr in
-  if is_canonical then constr else 
+  if is_canonical then {env with v_constraints = constr @ env.v_constraints} else 
     raise(NotCanonicalConstraint(pos))
+
+let add_no_constraint_free_tv ts env ps =
+  List.fold_left 
+  (fun x l -> if not(List.exists 
+                     (fun (ClassPredicate(a,b)) -> l = a )
+                     ps)    
+              then {x with v_constraints = (l,[])::x.v_constraints} 
+              else x)
+  env 
+  ts
+
 
 let lookup_constraints tv env =
   try

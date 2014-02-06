@@ -60,14 +60,17 @@ and label_type ts rtcon env (pos, l, ty) =
   bind_label pos l ts ty rtcon env
 
 and algebraic_dataconstructor env (pos, DName k, ts, kty) =
-  check_wf_scheme env ts kty;
+  check_wf_scheme env ts kty pos;
   bind_scheme pos (Name k) ts [] kty env
 
-and introduce_type_parameters env ts =
-  List.fold_left (fun env t -> bind_type_variable t env) env ts
+and introduce_type_parameters env ts ps pos =
+  (*check ps in ts*)
+  let env = if_canonical_then_return ps env pos in     
+  let env = add_no_constraint_free_tv ts env ps in
+  env
 
-and check_wf_scheme env ts ty =
-  check_wf_type (introduce_type_parameters env ts) KStar ty
+and check_wf_scheme env ts ty pos =
+  check_wf_type (introduce_type_parameters env ts [] pos) KStar ty
 
 and check_wf_type env xkind = function
   | TyVar (pos, t) ->
@@ -366,7 +369,7 @@ and eforall pos ts e =
 
 
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
-  let env = introduce_type_parameters env ts in
+  let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
   check_wf_type env KStar xty;
   List.iter
     (fun (ClassPredicate (c, v)) -> 
