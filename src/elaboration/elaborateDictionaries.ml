@@ -413,6 +413,11 @@ and is_value_form = function
   | _                         ->
     false
 
+(*(tname * (tname list)) list*)
+and is_canonical cstr =
+  
+  assert(false)
+
 (*
  * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
  * contexts and class declarations, and to types of the form K (G a) in
