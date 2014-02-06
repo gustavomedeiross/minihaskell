@@ -156,17 +156,30 @@ let bind_instance t env =
   with Not_found -> { env with instances = (t.instance_index, [t])
                                            :: env.instances}
 
-let if_canonical_then_return cstr =
+let if_canonical_then_return cstr env pos =
   let rec regroup acc = function
   | []     -> acc
   | ClassPredicate(tn,cn) :: q -> 
             try let old_class = List.assoc tn acc in
-                let new_class = cn::old_class in
-                let acc    = List.remove_assoc tn acc in
-                regroup ((tn,new_class)::acc) q
-            with Not_found -> regroup ((tn,[cn])::acc) q in
-  let rec check_canonical (cs : (tname list)) = assert(false) in
-  assert(false)
+                let new_class = cn :: old_class in
+                let acc       = List.remove_assoc tn acc in
+                regroup ((tn, new_class) :: acc) q
+            with Not_found -> regroup ((tn, [cn]) :: acc) q in
+  let check_canonical (cs : (tname list)) =
+    List.fold_left 
+    (fun canon name -> canon &&
+                       not(List.exists
+                       (fun y-> is_superclass pos y name env)
+                       (List.filter (fun x-> x=name) cs)))
+    true 
+    cs
+  in
+  let constr = regroup [] cstr in
+  let is_canonical = List.fold_left (fun a (_, b) ->a && check_canonical b) 
+                         true
+                         constr in
+  if is_canonical then constr else 
+    raise(NotCanonicalConstraint(pos))
 
 let lookup_constraints tv env =
   try

@@ -119,6 +119,8 @@ exception AmbiguousTypeclass of position * tname
     implements a method that is not part of the class *)
 exception NotAMethodOf of position * lname * tname
 
+exception NotCanonicalConstraint of position
+
 exception MultipleMethods of position * lname
 
 exception NotAnInstance of position

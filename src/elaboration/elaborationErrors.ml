@@ -123,7 +123,7 @@ let handle_error f =
                                 a variable and a method name." x)
 
   | AmbiguousTypeclass(pos, TName l) ->
-    fatal' pos (Printf.sprintf " The parameter of the type class `%s' doesn't \
+    fatal' pos (Printf.sprintf "  The parameter of the type class `%s' doesn't \
                                 occur in the definition." l)
 
   | TooFreeTypeVariableTypeclass(pos, TName l) ->
@@ -131,13 +131,16 @@ let handle_error f =
                                 in typeclass `%s'." l)
 
   | NotAMethodOf (pos, LName l, TName k) ->
-    fatal' pos (Printf.sprintf " `%s' is not a method of class `%s'." l k)
+    fatal' pos (Printf.sprintf "  `%s' is not a method of class `%s'." l k)
 
   | MultipleMethods (pos, LName l) ->
-    fatal' pos (Printf.sprintf " `%s' is declared twice as a method." l)
+    fatal' pos (Printf.sprintf "  `%s' is declared twice as a method." l)
 
   | NotAnInstance pos ->
     fatal' pos (Printf.sprintf "  Not an instance.")
+
+  | NotCanonicalConstraint(pos)  ->
+     fatal' pos (Printf.sprintf "  Not a canonical form.")
 
   | NotImplemented (pos, str) ->
     fatal' pos (Printf.sprintf "  Not implemented: `%s'." str)
