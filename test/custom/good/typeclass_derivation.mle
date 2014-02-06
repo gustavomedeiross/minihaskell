@@ -1,0 +1,8 @@
+class F 'a { f : 'a -> 'a }
+type 'a list = Nil | Cons of 'a * 'a list
+instance ['a] F 'a => F 'a list {
+  f = fun (l : 'a list) ->
+    match l[] with
+    | Nil['a] -> Nil['a]
+    | Cons['a] (h, t) -> Cons['a] (f['a] h[], f['a list] t[])
+}
