@@ -168,7 +168,26 @@ let if_canonical_then_return cstr =
   let rec check_canonical (cs : (tname list)) = assert(false) in
   assert(false)
 
-let constraints ty env =
+let lookup_constraints tv env =
   try
-    List.assoc ty env.v_constraints
+    List.assoc tv env.v_constraints
   with Not_found -> []
+
+let rec is_instance_of pos t k env = match t with
+  | TyVar (_, v) ->
+    let cs = lookup_constraints v env in
+    if not (List.exists
+              (fun k' -> k = k' || is_superclass pos k' k env) cs) then
+      raise (NotAnInstance pos)
+  | TyApp (_, g, ts) ->
+    try
+      let is = List.assoc g env.instances in
+      let i = List.find (fun i -> i.instance_class_name = k) is in
+      let assoc = List.combine i.instance_parameters ts in
+      List.iter
+        (fun (ClassPredicate (k, v)) ->
+           is_instance_of pos (List.assoc v assoc) k env)
+        i.instance_typing_context;
+    with Not_found -> raise (NotAnInstance pos)
+      
+    

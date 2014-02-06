@@ -69,4 +69,6 @@ val add_name : t -> position * name -> t
 
 val bind_instance : instance_definition -> t -> t
 
-val constraints : tname -> t -> tnames
+(** [is_instance_of pos t k e] raises an exception if t is not an
+    instance of k in e *)
+val is_instance_of : position -> Types.t -> tname -> t -> unit
