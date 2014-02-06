@@ -1,5 +1,9 @@
 #!/bin/bash
 
+NEUTRAL='\e[0;m'
+RED='\e[0;31m'
+GREEN='\e[1;32m'
+
 JOUJOU="../src/joujou"
 
 if [ ! -x $JOUJOU  ]
@@ -8,26 +12,33 @@ if [ ! -x $JOUJOU  ]
     exit 1
 fi
 
-GOOD=`find -path '*/good/*.ml[et]' | sort`
-BAD=`find -path '*/bad/*.ml[et]' | sort`
+GOODE=`find -path '*/good/*.mle' | sort`
+BADE=`find -path '*/bad/*.mle' | sort`
 
-for f in $GOOD
+GOODT=`find -path '*/good/*.mlt' | sort`
+BADT=`find -path '*/bad/*.mlt' | sort`
+
+echo "Typechecking, the fails with mle:"
+nbrexpli=0
+for f in $GOODE
   do
   OUTPUT=`$JOUJOU $f 2>&1`
   RET=$?
   if [ $RET != 0 ]
     then
+      ((nbrexpli++)); 
       echo "$f: $RET"
 #      echo "$OUTPUT"
   fi
 done
 
-for f in $BAD
+for f in $BADE
   do
   OUTPUT=`$JOUJOU $f 2>&1`
   RET=$?
   if [ $RET != 1 ]
     then
+      ((nbrexpli++));
       echo "$f: $RET"
 #      if [ -n "$OUTPUT" ]
 #        then echo "$OUTPUT"
@@ -35,3 +46,45 @@ for f in $BAD
   fi
 done
 
+echo "Typechecking, the fails with mlt:"
+nbrimpli=0
+for f in $GOODT
+  do
+  OUTPUT=`$JOUJOU $f 2>&1`
+  RET=$?
+  if [ $RET != 0 ]
+    then
+      ((nbrimpli++));
+      echo "$f: $RET"
+#      echo "$OUTPUT"
+  fi
+done
+
+for f in $BADT
+  do
+  OUTPUT=`$JOUJOU $f 2>&1`
+  RET=$?
+  if [ $RET != 1 ]
+    then
+      ((nbrimpli++));
+      echo "$f: $RET"
+#      if [ -n "$OUTPUT" ]
+#        then echo "$OUTPUT"
+#      fi
+  fi
+done
+
+
+if [ $nbrexpli = 0 ]
+ then
+    echo -e "Explicit :${GREEN}$nbrexpli${NEUTRAL} fail\n"
+ else
+    echo -e "Explicit :${RED}$nbrexpli${NEUTRAL} fail(s)\n"
+fi
+
+if [ $nbrimpli = 0 ]
+  then 
+    echo -e "Implicit :${GREEN}$nbrimpli${NEUTRAL} fail\n"
+  else
+    echo -e "Implicit :${RED}$nbrimpli${NEUTRAL} fail(s)\n"
+fi
