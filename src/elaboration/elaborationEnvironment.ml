@@ -5,21 +5,21 @@ open Types
 open ElaborationExceptions
 
 type t = {
-  values       : (tnames * class_predicates * binding) list;
-  types        : (tname * (Types.kind * type_definition)) list;
-  classes      : (tname * class_definition) list;
-  labels       : (lname * (tnames * Types.t * tname)) list;
-  types_constraints : (tname * (tname list)) list;
-  instances    : (tname*(instance_definition list)) list;
-  method_names : lname list;
-  names        : name list;
+  values        : (tnames * class_predicates * binding) list;
+  types         : (tname * (Types.kind * type_definition)) list;
+  classes       : (tname * class_definition) list;
+  labels        : (lname * (tnames * Types.t * tname)) list;
+  v_constraints : (tname * tname list) list;
+  instances     : (tname * instance_definition list) list;
+  method_names  : lname list;
+  names         : name list;
 }
 
 let name_of_lname = function 
   | LName s -> Name s
 
 let empty = { values = []; types = []; classes = []; labels = [];
-              method_names = []; names = []; types_constraints = [];
+              method_names = []; names = []; v_constraints = [];
               instances = []}
 
 let values env = env.values
@@ -158,5 +158,5 @@ let bind_instance t env =
 
 let constraints ty env =
   try
-    List.assoc ty env.types_constraints
+    List.assoc ty env.v_constraints
   with Not_found -> []
