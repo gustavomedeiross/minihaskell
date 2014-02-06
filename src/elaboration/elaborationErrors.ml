@@ -136,5 +136,8 @@ let handle_error f =
   | MultipleMethods (pos, LName l) ->
     fatal' pos (Printf.sprintf " `%s' is declared twice as a method." l)
 
+  | NotCanonicalConstraint(pos)  ->
+     fatal' pos (Printf.sprintf "Not a canonical form")
+
   | NotImplemented (pos, str) ->
     fatal' pos (Printf.sprintf "  Not implemented: `%s'." str)
