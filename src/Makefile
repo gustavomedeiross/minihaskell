@@ -84,6 +84,9 @@ $(EXECUTABLE).opt: $(MODULES:%=%.cmx)
 %.ml: %.mll
 	$(OCAMLLEX) $*.mll
 
+test: $(EXECUTABLE)
+	cd ../test && ./test
+
 clean:
 	rm -f $(EXECUTABLE) $(EXECUTABLE).opt parsing/parser.ml parsing/lexer.ml *.cm[iox] **/*.cm[iox] **/*.o *.annot **/*.annot
 
