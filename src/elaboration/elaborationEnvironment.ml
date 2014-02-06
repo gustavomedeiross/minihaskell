@@ -166,32 +166,26 @@ let add_predicates cstr env pos =
                 regroup ((tn, new_class) :: acc) q
             with Not_found -> regroup ((tn, [cn]) :: acc) q in
   let check_canonical (cs : (tname list)) =
-    List.fold_left 
-    (fun canon name -> canon &&
-                       not(List.exists
-                       (fun y-> is_superclass pos y name env)
-                       (List.filter (fun x-> x = name) cs)))
-                         (* TODO! this = [name, name, name, ...] *)
-    true 
+    List.for_all 
+    (fun name -> not(List.exists
+                 (fun y-> y = name || is_superclass pos y name env)
+                 (List.filter (fun x -> not(x == name)) cs)))
+                   (* TODO! this = [name, name, name, ...] *)
     cs
-    (* TODO! List.fold_left (fun acc ... -> acc && ...) true = List.for_all,
-     * unless you want to accumulate something else *)
   in
   let constr = regroup [] cstr in
-  let is_canonical = List.fold_left (fun a (_, b) -> a && check_canonical b)
-                         true
-                         constr in
+  let is_canonical = List.for_all (fun (_, b) -> check_canonical b)
+                     constr in
   if is_canonical then {env with v_constraints = constr @ env.v_constraints} else 
     raise(NotCanonicalConstraint(pos))
 
 let add_unconstrained_tv ts env ps =
   List.fold_left 
-  (fun x l -> if not(List.exists 
-                     (fun (ClassPredicate(k,v)) -> v = l )
-                     ps)    
-              then {x with v_constraints = (l,[])::x.v_constraints} 
-              else x)
-  (* TODO? if not(blabla) then A else B === if blabla then B else A *)
+  (fun x l -> if List.exists 
+                 (fun (ClassPredicate(k,v)) -> v = l )
+                 ps    
+              then x
+              else {x with v_constraints = (l,[])::x.v_constraints}) 
   env 
   ts
 
