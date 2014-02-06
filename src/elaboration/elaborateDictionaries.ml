@@ -413,6 +413,17 @@ and is_value_form = function
   | _                         ->
     false
 
+(* (class_predicates) list -> (tname * (tname list)) list *)
+and if_canonical_then_return cstr =
+  let rec regroup acc = function
+  | []     -> acc
+  | ClassPredicate(tn,cn) :: q -> 
+            try let old_class = List.mem tn acc in
+                let new_class = cn::old_class in
+                let acc    = List.remove_assoc tn acc in
+                regroup ((tn,new_class)::acc) q
+            with Not_found -> regroup ((tn,[cn])::acc) q 
+
 (*
  * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
  * contexts and class declarations, and to types of the form K (G a) in
