@@ -1,0 +1,6 @@
+class K 'a { k : 'a -> 'a }
+class L 'a { l : 'a -> 'a }
+let [ 'a ] [ L 'a ] (f : 'a -> 'a) = [ 'a ]
+  fun (x : 'a) ->
+    let [ 'a ] [ K 'a ] (ka : 'a) = [ 'a ] l [ 'a ] in
+    x []
