@@ -120,12 +120,13 @@ and check_equal_types pos ty1 ty2 =
 and type_application pos env x tys =
   List.iter (check_wf_type env KStar) tys;
   let (ts, ps, (_, ty)) = lookup pos x env in
-  let assoc = List.combine ts tys in
+  let assoc =
+    try
+      List.combine ts tys
+    with _ -> raise (InvalidTypeApplication pos) in
   List.iter
     (fun (ClassPredicate (k, t)) -> is_instance_of pos (List.assoc t assoc) k env) ps;
-  try
-    substitute assoc ty
-  with _ -> raise (InvalidTypeApplication pos)
+  substitute assoc ty
 
 and expression env = function
   | EVar (pos, ((Name s) as x), tys) ->
@@ -377,7 +378,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   check_wf_type env KStar xty;
   List.iter
     (fun (ClassPredicate (c, v)) -> 
-       if not (List.mem v ts && TS.mem v (free xty)) then
+       if not (TS.mem v (free xty)) then
          raise (InvalidOverloading pos)) 
     ps;
   if is_value_form e then begin
@@ -430,25 +431,36 @@ and is_value_form = function
  * later (7.4)"
  * - Canonical constraint
 *)
-and check_method pos env s k (RecordBinding (l, e)) = 
-  let e, ty = expression env e in
-  let xty = lookup_method pos k l in
+and check_method env pos ts ps s k (RecordBinding (LName l, e)) = 
+  let xty = lookup_method pos k (LName l) in
   let xty = substitute [k.class_parameter, s] xty in 
-  check_equal_types pos xty ty;
+  ignore
+    (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
+  (*let e, ty = expression env e in
+  check_equal_types pos xty ty;*)
 
 and check_instance_definitions env = function
   | [] -> ()
-  | t :: q ->
+  | {
+      instance_position       = pos;
+      instance_parameters     = ts;
+      instance_typing_context = ps;
+      instance_class_name     = k;
+      instance_index          = ix;
+    } as i :: t ->
+    let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
+    (*
     let env =
       List.fold_left
         (fun x y -> bind_type_variable y x)
         env
         t.instance_parameters in
+    *)
     List.iter 
-      (check_method t.instance_position env
-         (cons_type t.instance_index t.instance_parameters)
-         (lookup_class t.instance_position t.instance_class_name env))
-      t.instance_members
+      (check_method env pos ts ps
+         (cons_type ix ts)
+         (lookup_class pos k env))
+      i.instance_members
 
 and cons_type hd vars =
   TyApp (undefined_position,
