@@ -74,17 +74,18 @@ for f in $BADT
   fi
 done
 
+echo
 
 if [ $nbrexpli = 0 ]
  then
-    echo -e "Explicit :${GREEN}$nbrexpli${NEUTRAL} fail\n"
+    echo -e "Explicit: ${GREEN}$nbrexpli${NEUTRAL} fail\n"
  else
-    echo -e "Explicit :${RED}$nbrexpli${NEUTRAL} fail(s)\n"
+    echo -e "Explicit: ${RED}$nbrexpli${NEUTRAL} fail(s)\n"
 fi
 
 if [ $nbrimpli = 0 ]
   then 
-    echo -e "Implicit :${GREEN}$nbrimpli${NEUTRAL} fail\n"
+    echo -e "Implicit: ${GREEN}$nbrimpli${NEUTRAL} fail\n"
   else
-    echo -e "Implicit :${RED}$nbrimpli${NEUTRAL} fail(s)\n"
+    echo -e "Implicit: ${RED}$nbrimpli${NEUTRAL} fail(s)\n"
 fi
