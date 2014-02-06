@@ -436,8 +436,6 @@ and check_method env pos ts ps s k (RecordBinding (LName l, e)) =
   let xty = substitute [k.class_parameter, s] xty in 
   ignore
     (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
-  (*let e, ty = expression env e in
-  check_equal_types pos xty ty;*)
 
 and check_instance_definitions env = function
   | [] -> ()
@@ -445,21 +443,12 @@ and check_instance_definitions env = function
       instance_position       = pos;
       instance_parameters     = ts;
       instance_typing_context = ps;
-      instance_class_name     = k;
-      instance_index          = ix;
     } as i :: t ->
     let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-    (*
-    let env =
-      List.fold_left
-        (fun x y -> bind_type_variable y x)
-        env
-        t.instance_parameters in
-    *)
     List.iter 
       (check_method env pos ts ps
-         (cons_type ix ts)
-         (lookup_class pos k env))
+         (cons_type i.instance_index ts)
+         (lookup_class pos i.instance_class_name env))
       i.instance_members
 
 and cons_type hd vars =
