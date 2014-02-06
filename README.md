@@ -10,5 +10,3 @@ TODO
 ----
 
 - Tasks
-
-- OMG test/elaboration/bad/typeclass\_local\_let\_bound\_and\_overload.mle
