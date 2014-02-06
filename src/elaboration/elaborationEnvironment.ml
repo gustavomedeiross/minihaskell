@@ -142,7 +142,7 @@ let lookup_method pos k x =
     t
   with Not_found -> raise (NotAMethodOf (pos, x, k.class_name))
 
-let bind_instance t env =
+let bind_instance env t =
   try
     let listinstance = List.assoc t.instance_index env.instances in
     if List.exists

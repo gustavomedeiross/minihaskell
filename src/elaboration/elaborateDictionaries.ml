@@ -30,7 +30,8 @@ and block env = function
     ([BClassDefinition c], env)
 
   | BInstanceDefinitions is ->
-    let env = instance_definitions env is in
+    let env = List.fold_left bind_instance env is in
+    check_instance_definitions env is;
     ([BInstanceDefinitions is], env)
 
 and type_definitions env (TypeDefs (_, tdefs)) =
@@ -435,21 +436,19 @@ and check_method pos env s k (RecordBinding (l, e)) =
   let xty = substitute [k.class_parameter, s] xty in 
   check_equal_types pos xty ty;
 
-and instance_definitions env l = match l with
-  | [] -> env
+and check_instance_definitions env = function
+  | [] -> ()
   | t :: q ->
-    let env' =
+    let env =
       List.fold_left
         (fun x y -> bind_type_variable y x)
         env
         t.instance_parameters in
     List.iter 
-      (check_method t.instance_position env'
+      (check_method t.instance_position env
          (cons_type t.instance_index t.instance_parameters)
-         (lookup_class t.instance_position t.instance_class_name env'))
-      t.instance_members;
-    let env = bind_instance t env in	
-    instance_definitions env q
+         (lookup_class t.instance_position t.instance_class_name env))
+      t.instance_members
 
 and cons_type hd vars =
   TyApp (undefined_position,
