@@ -377,10 +377,9 @@ and eforall pos ts e =
   | _, _ ->
     raise (InvalidNumberOfTypeAbstraction pos)
 
-
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
-  let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-  check_wf_type env KStar xty;
+  let env' = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
+  check_wf_type env' KStar xty;
   List.iter
     (fun (ClassPredicate (c, v)) -> 
        if not (TS.mem v (free xty)) then
@@ -388,9 +387,11 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     ps;
   if is_value_form e then begin
     let e = eforall pos ts e in
-    let e, ty = expression env e in
+    let e, ty = expression env' e in
     let b = (x, ty) in
     check_equal_types pos xty ty;
+    (*
+<<<<<<< HEAD
     (ValueDef (pos, ts, ps, b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
   end
@@ -403,6 +404,18 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     if ps <> [] then raise (InvalidOverloading pos);
     check_equal_types pos xty ty;
     (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
+=======*)
+    (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
+     bind_scheme pos x ts ps ty env)
+  end else begin
+    if ts <> [] then
+      raise (ValueRestriction pos)
+    else
+      let e = eforall pos [] e in
+      let e, ty = expression env' e in
+      let b = (x, ty) in
+      check_equal_types pos xty ty;
+      (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
