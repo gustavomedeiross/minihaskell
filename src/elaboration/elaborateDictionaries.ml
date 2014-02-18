@@ -24,14 +24,26 @@ and block env = function
     let d, env = value_binding env d in
     ([BDefinition d], env)
 
-  | BClassDefinition c ->
-    let env = bind_class c.class_name c env in   
-    ([BClassDefinition c], env)
+(*We transform class definition into type definition. Next, we call block
+  recursively.*)
+ 
+ | BClassDefinition c ->
+    let env    = bind_class c.class_name c env in
+    let single_record = elaborate_class c env in   
+    block env (BTypeDefinitions single_record)
 
   | BInstanceDefinitions is ->
     let env = List.fold_left bind_instance env is in
     check_instance_definitions env is;
     ([BInstanceDefinitions is], env)
+
+and elaborate_class c env =
+  TypeDefs(c.class_position, 
+          [TypeDef(c.class_position,
+                   KArrow(KStar,KStar),
+                   c.class_name,
+                   DRecordType([c.class_parameter],
+                               c.class_members))]) 
 
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
