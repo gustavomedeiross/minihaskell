@@ -1,0 +1,111 @@
+e3e0124a2e8a6a5ef45ffbd233f038ccccb108aa Merge branch 'master' of http://github.com/minmell/minihaskell
+c6fa843b856e36a26ef5034fd70295fbfb368ecb add preludeTypes
+e14cb89562214d8c34268c1494327e301b122676 Untrack test/inference/*/*.mle
+9fa7c654ffaf34e2b93c31dbbf00c771fec35306 In progress
+1bb6897ad878364a8219e0e6cc9f88de296c1113 Ballade in parsing/prettyPrint : the bird land WTF CRAQUAGE
+8f9f7918c2027928d401dda60cd86ba17b4487c7 elaboration classes
+156553026ffa1a2d6c9a6d12f298624bc7a33713 Merge remote-tracking branch 'upstream/master'
+ed28a6f87e942d547c8f5e85cd37e93540922e36 * value_definition: Fix an invalid threading of the typing environment .
+4efd4c838d08866040d2961d73d481986f6000fd * sujet.pdf: Minor remarks about identifiers.
+0b964a067465499cbf3853525213efed09592c26 Script edit
+9ed40b8b0a43d0a9eee3d79d8150b04a475dce36 Merge branch 'master' of http://github.com/minmell/minihaskell
+41d53be4d7e9514b1b49aa5ca91a620581b85e8a True prettification
+a65f1089fa03fd1ce9af83b4abd06862ceec0f86 5 minutes of fun with the script
+3f531918fd5979fc5be43fe255e72cca186aa378 Prettification : Yes, I'm Thomas, nobody takes possession of me.
+d4e44d067dcf569e9f838a08bcfe6e4758a8ec20 You can now 'make test'
+df03b631f570abe08cd0160d1fac586fd80b4f34 Outdated README comment
+18e9d9f269e8e15d6290c891a40b02c6c3e52386 Merge remote-tracking branch 'upstream/master'
+fb7b08b070a45ae117668904132748517052f9bf Added TODO comments
+e4764aa03388d0f2852454c434498a7bf5572786 Renamed a function
+73485923520576a0baab5725607d57c4d4a3b2b9 Minor clean up
+a0dd644bdb45391e88e129b019a6f14f06048443 New test file
+3630fea3081d4a92941b446df76dfbb0f9dc648a Method definition checked using value_definition
+665632be10ec3005e1146e8650cb7a823a95c82c Support for mutually recursive instance definitions
+cf9c368fb5f20101934cdc79e0037f70a21633df Fixed a bug (ClassPredicate (CLASS, VARIABLE))
+65dea9dda284a6bc69e3b66db4761c4e4ac86eaf Merge branch 'master' of http://github.com/minmell/minihaskell
+bd305c87331a3f17a413ab3ef8cf851c9b155551 Fix some other bugs
+c890fa6c9867cb9cda66bb8dab8bdb1810fc258c Merge branch 'master' of http://github.com/minmell/minihaskell
+c31a474060f83cc8a277bcbf7c62d75198e51979 Fix a fucking bug!
+604a3c64d9b5a09fb4699196f166f712115c13b9 Check ts in ps for let bindings
+beec14a702998a3a3883131fc52f3881f824fe62 Merge branch 'master' of http://github.com/minmell/minihaskell
+3138fe473f6cf2204d61db72164cb00a03133e19 Canonical. TODO : check ps in ts
+b07fdc231962c3f7fec711c08d43f4da3f34c69d New test file
+d79e7f05c0d14d13c3f670f0a2bae3d81c6022b6 Merge branch 'master' of http://github.com/minmell/minihaskell
+8075ed7de923d1bacce11e258e7e87056cc5fb68 Function is_instance_of
+2f1e5ded27cbba2d11e5f72fbec52bd7142742d1 Adds signature in mli
+a931ef1c6249b7dfabd3f335603dd07121f46a2e adds is_canonical code.
+350f80600fec48a7dfa1a0ac58c11573536e2dd3 Merging
+327067a6073f365ebef66d28d29189b16a5e9854 Merge branch 'master' of http://github.com/minmell/minihaskell
+3be4746522b213b2d70d66a7c65d972f3e2d67c9 Renamed a field in ElaborationEnvironment.t
+fcb6a188d991a85357d2327b4d5a51c691fb1a5d Add canonical
+305cd24d0d82b62f96a5d7335089186151fafb0a Deletion of the type_constraints
+9ac6bddebf70bbbfaefa1f39b7be0171a11cc94a * Fix a bug in the OCaml pretty-printer.
+e0b1c19c51aa82cee665eb76e6722c8ef3414dc1 External declarations properly handled They were not bound as top-level values when they should have been More prettification + a bit of factoring
+441fb450e7a6384f09f275c58656af34950fe292 Typeclass had one check not enabled More test files
+bb87bf845c4df5e2dde206d45f750366aea73edb Test files was not explicitly typed
+1acaf4ef0f6edf3eac1527187b8ecc238d15f36a Test file re-add
+b022a0041d93af72d7fa2a64c43e6c52fce589dd Update to make compileable (boo)
+bf2286af776f561f786c0c64f757e9d4613812fe More prettification
+8413dca3f1733553ddfd076f4e99a176de3a22bd ocp-indent magic
+2766633f512c9e0def8770a19b2a8434b122dae2 modif todo
+309d2da1685d935f8cab67ef90a6928a2deadd72 Commit of the victory
+4778a908c124857111ccfe3fa8dc1474b31e2d66 Non on réfléchit pas
+0b5d1cafc86c58dbc87dd0a4f0e155436681b0a1 Merge branch 'master' of https://github.com/minmell/minihaskell
+0558b23f9030d7e70fa83aae4c342e6b12a89906 Merging
+5fbb1e7190e09a575bbcc02081de1ce70664a95a Type class constraints
+037a836d13a6aafa1af244c1fbafee3106e58c50 euowiii
+110e2232304639d87ad476cbac39cbc97bcc27f1 Unreachable constraints, and change t.values
+93524760e414bc7ff32e2958150a1d24bbb8ee8e Export type set
+7e4ea62cc7e28a4386a8105d5dabe1408f8f48e1 Fix a bug about a checking
+a22a83f60387c4fb24bab72436cb829e36f8323f Update test to be less verbose
+8126351e92dfa26d3baa5273982bffceec3bee3c Separate method names from variables We can try to use a set/ordered list in the future
+a022d97dd9bebd71c37b85c5fa8b58f2f9de7683 Added a new test file + renaming The following term seems to be accepted:
+399e9c7ea84c2e5317c6bd63d3834c5a3ea95ad5 .mle test files were not explicitly typed programs
+834ea15586a9dc0e6be47c37a1a6779e573cc0b7 lookup_method function. Added an exception for that.
+eca47b9a17bb5f8be1ea49dd4f8f72707cb351f9 Typechecking instances
+18f4686dfe7c103d76b235ddf37eda7a16da5753 TODO definition typeclass done
+302d27d39220cc5c67b0c0f8aad7384bc9925a61 Merge branch 'master' of http://github.com/minmell/minihaskell
+2bd8966a524211ec65cd553ef1aefb9be4d0b507 Updated gitignore
+9990c2456ac1c0c3aafb965b2645c0d43765b77d Fix bug
+ed294c311631376a1c3fa524cedecab7b651e1a0 it works!
+b3642c24d1a74515ce723127ece40b90383eb3de Merge branch 'master' of https://github.com/minmell/minihaskell
+bac363f8f4c46f33e14edd19f8a1b9d462ec96c8 Add ambiguous features, checking the free type variables
+0530949382709ea2b9a967cbdd8024e55751af16 Merge branch 'master' of http://github.com/minmell/minihaskell
+a8d2afba65bd70fa80cd3a77ca73d76ac6ab3214 Add a free function listing all free type variables in a type
+08912ced3567ba044324e9a50ef36f31cee13e42 Clean up
+cb48f5c73bfb157a9af089e0b88d9c6cf49ec24e Beautiful factorization!
+602f7cb8d5e5a47bdce003b70aa0ce2b9cf8a509 Add gitignore in test directory
+aaeb2cceb2cf8003a64b1307b304c9d48027d4c8 Fix some problems with binding : Overloaded cannot be let bound
+e1d673e06abf2c46917527014319cf53fa35aa5b Some simplifications
+bf7753f054763fa2606e59ccb3a870dbd5885874 Inconsequential commit
+2c4b6d0b350ae61dec798d0bfac2a6bf2e528376 Update README.md
+3c5833729f51758d1c1c871668c5b20ed87cb8f3 Test file updated for proper transcription of multiline output
+5b06ea46022f89f6169d0d5acb2bfda3c092c662 Merge http://github.com/threonorm/mpri13
+1f1f0fe37d79546e9fcdc3163e5c7863317dec4a Add class definitions
+384b1b2fef8723e3760c58642c04de0e6358b08e Readme update...
+076dc93f773f0b764119432e8ba974b973142739 Merge github.com:Syrak/minihaskell into syrakbranch
+ba282ff07d0a68fa28b9ee721f4280eb82bf26a5 * Minor clarification about the distinction between variables and methods names.
+59dc1ded32628a922cb91a5df03ddfdf6c051e31 * Front: Fix invalid overwriting of source files while processing .mle files.
+e1cd540d25de76bf9973ce15f97d8d849de62897 Merge remote-tracking branch 'upstream/master'
+f1aae25b55d96b60b6749c1bec224a3ca1e3b023 * Fix typos.
+1d4442f17665ea7f868e048ad65b0ec441689df1 * Update sujet.pdf. A wrong version was pushed earlier.
+ad2bee614b898f0891ae8d6fef77bfea40247989 * Extend the specification with a new restriction: overloaded names   and let-bound names live in two different spaces.
+9d4ea40045e475cb2900184f20abc7691c99d37c test update
+897e09e448b8d64149345acd21d8978a8c794368 xMerge remote-tracking branch 'upstream/master'
+79829049aa15f9eeb75d3fe83d140b38fbe7b245 * Fix a bug in type externalization.
+b04e183fdb8b2db1fed7a856a283097225386f10 Merge remote-tracking branch 'upstream/master'
+822ef5f923ca82d16117520b42f3df28b94da717 test files
+f37f0136173b11a7a3a1ff9406d379ee31b38ff9 * Fix a bug in the typechecking of eMH.
+c9cbffedb53709f33fbc0e32b9bbcdf27ac82598 Comments (2)
+8a1335bce4dc6a3279e2fbc39939b44320f40c4b Added comments summarizing constraints
+84eaac453625e55e689275afc9f6abe38b7d5777 elaborateDictionaries edit
+875697ab403aaf67930233760ea2f9371866cb9a test files update
+cf7d02c749d9969e2bb94c01d9241cbeb3fe422c class_definition, simple checks
+ad1c96c4c8410a46c8b6d23f0842f03407646090 is_superclass
+fc48e01d3be52713ef68129e7ccdd73985877ed0 Introduced new functions, to define
+ea536d2d5ca91e924a99e4d4c0e12bf4097797cd More test files
+4c3251330c3050416328d23652e2486ec24a2764 README Update
+7c522830e252735378a4063456e336cea8c8db53 * Update specification.
+a3fd8cef7b87b7e87e3185888b129f22a73e7fd3 * sujet a jour
+0fe4a090750ec2cdd7715eb0aa862c82de3e0339 * Initial version.
+07a52fd7bffcff35389e7333fee5ed5d644a877b Initial commit
