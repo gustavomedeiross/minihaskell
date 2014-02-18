@@ -1,5 +1,5 @@
 type name = Name of string
-
+          | IName of string 
 type dname = DName of string
 
 type lname = LName of string

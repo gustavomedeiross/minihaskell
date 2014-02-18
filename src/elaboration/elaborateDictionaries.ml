@@ -9,6 +9,10 @@ open ElaborationEnvironment
 
 let string_of_type ty      = ASTio.(XAST.(to_string pprint_ml_type ty))
 
+let fresh = 
+   let a = ref 0 in
+   (fun () -> incr a;
+    !a)
 
 let rec program p = handle_error List.(fun () ->
     flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p)))
@@ -31,11 +35,34 @@ and block env = function
     let env    = bind_class c.class_name c env in
     let single_record = elaborate_class c env in   
     block env (BTypeDefinitions single_record)
+(*Idem*)
 
-  | BInstanceDefinitions is ->
-    let env = List.fold_left bind_instance env is in
+ | BInstanceDefinitions is ->
+    let is' = map (fun x-> 
+                      match x.instance_class_name with
+                       | TName s -> (x,
+                                     s^"_"^string_of_int (fresh()))
+                       | CName s -> assert false)
+                  is in   
+    let env = List.fold_left bind_instance env is' in
     check_instance_definitions env is;
-    ([BInstanceDefinitions is], env)
+    let dictionaries = elaborate_instance env is';
+    block env dictionaries
+
+and elaborate_instance env is =
+  let to_value (i,name) =
+    let cname = match i.instance_class_name with
+                  | CName s -> assert false
+                  | TName s -> CName s in 
+   (* 
+
+     ValueDef(i.instance_position,
+             i.instance_parameters,
+             (name,TyApp(undefined_position, cname, [])),
+             )*) 
+  in 
+  BindRecValue(undefined_position, 
+               map to_value is      
 
 and elaborate_class c env =
    match c.class_name with 

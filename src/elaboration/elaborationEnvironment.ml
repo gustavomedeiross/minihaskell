@@ -10,7 +10,7 @@ type t = {
   classes       : (tname * class_definition) list;
   labels        : (lname * (tnames * Types.t * tname)) list;
   v_constraints : (tname * tname list) list;
-  instances     : (tname * instance_definition list) list;
+  instances     : (tname * (instance_definition*name) list) list;
   method_names  : lname list;
   names         : name list;
 }
@@ -146,7 +146,7 @@ let lookup_method pos k x =
     t
   with Not_found -> raise (NotAMethodOf (pos, x, k.class_name))
 
-let bind_instance env t =
+let bind_instance env (t, num) =
   try
     let listinstance = List.assoc t.instance_index env.instances in
     if List.exists
@@ -155,9 +155,9 @@ let bind_instance env t =
     then raise (OverlappingInstances (t.instance_position,
                                       t.instance_class_name))
     else let instances = List.remove_assoc t.instance_index env.instances in
-      { env with instances = (t.instance_index, t :: listinstance)
+      { env with instances = (t.instance_index, (t,num) :: listinstance)
                              :: instances }
-  with Not_found -> { env with instances = (t.instance_index, [t])
+  with Not_found -> { env with instances = (t.instance_index, [t,num])
                                            :: env.instances}
 
 let add_predicates cstr env pos =

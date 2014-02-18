@@ -2,7 +2,7 @@
 
 (** Program identifiers. *)
 type name = Name of string
-
+          | IName of string
 (** Data constructor identifiers. *)
 type dname = DName of string
 

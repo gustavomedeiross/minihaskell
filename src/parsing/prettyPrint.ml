@@ -33,6 +33,10 @@ module Make (GAST : AST.GenericS) = struct
     | AssocLeft, `L -> false
     | _, _ -> true
 
+  let name = function 
+    | Name s  -> !^ ("v_"^s)
+    | IName s -> !^ ("i_"^s)
+  
   let tname = function
     | TName s -> if s.[0] ='\'' 
                    then !^ s 
@@ -117,8 +121,8 @@ module Make (GAST : AST.GenericS) = struct
 
     in
     let rec expression = function
-      | EVar (_, Name x, i) ->
-        group (!^ x ^^ instantiation i)
+      | EVar (_, x, i) ->
+        group (name x ^^ instantiation i)
 
       | ELambda (_, b, e) ->
         group (!^ "fun" ^/^ binding b ^/^ !^ "->") ^//^ group (expression e)
@@ -213,14 +217,14 @@ module Make (GAST : AST.GenericS) = struct
             )
 
     and pattern = function
-      | PVar (_, Name x) ->
-        !^ x
+      | PVar (_, x) ->
+        name x
 
       | PWildcard _ ->
         !^ "_"
 
-      | PAlias (_, Name x, p) ->
-        pattern p ^/^ !^ "as" ^/^ !^ x
+      | PAlias (_, x, p) ->
+        pattern p ^/^ !^ "as" ^/^ name x
 
       | PTypeConstraint (_, p, ty) ->
         annotate (pattern p) (ml_type ty)
@@ -273,8 +277,8 @@ module Make (GAST : AST.GenericS) = struct
       if produce_ocaml then
         let b =
           match destruct_binding b with
-          | (Name x, None) -> !^ x
-          | (Name x, Some ty) -> !^ x ^/^ !^ ":" ^/^ ocaml_type_scheme ts ty
+          | ( x, None) -> name x
+          | ( x, Some ty) -> name x ^/^ !^ ":" ^/^ ocaml_type_scheme ts ty
         in
         group (b ^/^ !^ "=") ^//^ group (expression e)
       else
@@ -320,10 +324,10 @@ module Make (GAST : AST.GenericS) = struct
 
     and binding b =
       match destruct_binding b with
-      | (Name x, None) ->
-        !^ x
-      | (Name x, Some ty) ->
-        annotate (!^ x) (ml_type ty)
+      | (x, None) ->
+        name x
+      | (x, Some ty) ->
+        annotate (name x) (ml_type ty)
 
     and type_mutual_definitions (TypeDefs (_, tdefs)) =
       group (
