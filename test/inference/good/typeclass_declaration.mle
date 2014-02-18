@@ -1,4 +1,4 @@
-type bool = True | False
-class Eq 'a { equal : 'a -> 'a -> bool }
-class Eq 'a => Ord 'a { lt : 'a -> 'a -> bool }
+type t_bool = True | False
+class t_Eq 'a { equal : 'a -> 'a -> t_bool }
+class t_Eq 'a => t_Ord 'a { lt : 'a -> 'a -> t_bool }
 let (main : int) = 0

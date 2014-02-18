@@ -9,6 +9,7 @@ MODULES =					\
   common/misc					\
   common/mark					\
   name types AST IAST XAST			\
+  preludeTypes\
   parsing/tokens				\
   parsing/parser				\
   inference/intRank				\

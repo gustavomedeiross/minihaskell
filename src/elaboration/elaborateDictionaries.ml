@@ -38,12 +38,15 @@ and block env = function
     ([BInstanceDefinitions is], env)
 
 and elaborate_class c env =
-  TypeDefs(c.class_position, 
-          [TypeDef(c.class_position,
-                   KArrow(KStar,KStar),
-                   c.class_name,
-                   DRecordType([c.class_parameter],
-                               c.class_members))]) 
+   match c.class_name with 
+    | TName name ->
+      TypeDefs(c.class_position, 
+               [TypeDef(c.class_position,
+                        KArrow(KStar,KStar),
+                        CName(name),
+                        DRecordType([c.class_parameter],
+                                     c.class_members))]) 
+    | CName name -> assert false (*By construction*)
 
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in

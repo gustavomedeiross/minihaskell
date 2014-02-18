@@ -33,10 +33,19 @@ module Make (GAST : AST.GenericS) = struct
     | AssocLeft, `L -> false
     | _, _ -> true
 
-  let tname (TName s) = !^ s
+  let tname = function
+    | TName s -> if s.[0] ='\'' 
+                   then !^ s 
+                   else 
+                    if List.mem_assoc (TName s) PreludeTypes.types 
+                      then !^ s 
+                      else !^("t_"^s) (* <- Don't look at that *)
 
-  let rname (TName s) =
-    !^ (if s.[0] = '\'' then String.sub s 1 (String.length s - 1) else s)
+    | CName s -> !^ ("c_"^s)
+      
+  let rname = function
+    | (TName s) -> !^ (if s.[0] = '\'' then String.sub s 1 (String.length s - 1) else s)
+    | (CName s) -> assert(false)    
 
   let rec ml_type ?generics = function
     | TyVar (_, s) ->
@@ -66,37 +75,37 @@ module Make (GAST : AST.GenericS) = struct
         | _ -> true
       ) (ml_type ?generics ty)
 
-  and type_application ?generics ((TName sn) as n) ts =
+  and type_application ?generics n ts =
     group (
       match as_symbol n with
       | None ->
         begin match ts with
           | [] ->
-            !^ sn
+            tname n
           | [x] ->
-            ml_type'' ?generics x ^/^ !^ sn
+            ml_type'' ?generics x ^/^ tname n
           | xs ->
-            group (parens (separate_map comma (ml_type ?generics) xs)) ^/^ !^ sn
+            group (parens (separate_map comma (ml_type ?generics) xs)) ^/^ tname n
         end
       | Some s ->
         if infix s then
           match ts with
           | [ a; b ] ->
             group (ml_type' ?generics `L s a)
-            ^//^ !^ sn ^/^ group (ml_type' ?generics `R s b)
+            ^//^ tname n ^/^ group (ml_type' ?generics `R s b)
           | _ -> assert false (* We only handle infix binary operators. *)
         else
           match ts with
-          | [] -> !^ sn
+          | [] -> tname n
           | [x] -> begin match associativity s with
               | EnclosedBy (l, r) ->
                 group (!^ l ^//^ ml_type ?generics x ^//^ !^ r)
               | _ ->
-                group (parens (ml_type ?generics x) ^/^ !^ sn)
+                group (parens (ml_type ?generics x) ^/^ tname n)
             end
           | xs ->
             group (parens (separate_map comma (ml_type ?generics) xs))
-            ^/^ !^ sn
+            ^/^ tname n
     )
 
   let printer produce_ocaml =
@@ -326,18 +335,18 @@ module Make (GAST : AST.GenericS) = struct
       )
 
     and type_definition = function
-      | TypeDef (_, _, TName t, dt) ->
+      | TypeDef (_, _, t, dt) ->
         let ts = extract_type_parameters dt in
-        group (group (adt_type_parameters ts ^^ !^ t ^/^ !^ "=")
+        group (group (adt_type_parameters ts ^^ tname t ^/^ !^ "=")
                ^/^ datatype_definition dt)
-
-      | ExternalType (_, ts, TName t, s) ->
+       
+      | ExternalType (_, ts, t, s) ->
         if produce_ocaml then
-          group (adt_type_parameters ts ^^ !^ t ^/^ !^ "="
+          group (adt_type_parameters ts ^^ tname t ^/^ !^ "="
                  ^/^ !^ s)
         else
           group (!^ "external"
-                 ^/^ group (adt_type_parameters ts ^^ !^ t ^/^ !^ "=")
+                 ^/^ group (adt_type_parameters ts ^^ tname t ^/^ !^ "=")
                  ^/^ string_literal s)
 
     and datatype_definition = function

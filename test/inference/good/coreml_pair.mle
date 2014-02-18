@@ -1,7 +1,7 @@
-type ('a, 'b) pair = Pair of 'a * 'b
-let (x : (int,char) pair) = Pair[int, char] (0, 'a')
-let (y : (char,int) pair) = Pair[char, int] ('a', 0)
+type ('a, 'b) t_pair = Pair of 'a * 'b
+let (x : (int,char) t_pair) = Pair[int, char] (0, 'a')
+let (y : (char,int) t_pair) = Pair[char, int] ('a', 0)
 let
-['b 'a] (f : 'a -> 'b -> ('a,'b) pair) =
+['b 'a] (f : 'a -> 'b -> ('a,'b) t_pair) =
   ['b 'a] fun (x_1 : 'a) -> fun (y_1 : 'b) -> Pair['a, 'b] (x_1[], y_1[])
-let (z : (int,unit) pair) = f[unit, int] 0 ()
+let (z : (int,unit) t_pair) = f[unit, int] 0 ()

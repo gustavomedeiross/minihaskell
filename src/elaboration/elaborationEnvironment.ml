@@ -93,12 +93,15 @@ let assert_independent pos sc env =
             (fun acc k -> List.iter (unrelated pos env k) acc; k :: acc) [] sc)
 
 (* Parameter is the singleton of the free variable of the class *)
-let rec check_free_variables name (TName s as parameter) (pos, _, t) =
-  let freeT = free t in
-  if not (TS.mem parameter freeT) then
-    raise (AmbiguousTypeclass (pos, name))
-  else if not (TS.is_empty (TS.remove parameter freeT)) then
-    raise (TooFreeTypeVariableTypeclass (pos, name))
+let rec check_free_variables name parameter (pos, _, t) =
+  match parameter with
+    | CName _ -> assert false
+    | TName s -> 
+           let freeT = free t in
+           if not (TS.mem parameter freeT) then
+             raise (AmbiguousTypeclass (pos, name))
+           else if not (TS.is_empty (TS.remove parameter freeT)) then
+             raise (TooFreeTypeVariableTypeclass (pos, name))
 
 let bind_class k c env =
   try
@@ -134,10 +137,7 @@ let initial =
   List.fold_left
     (fun env (t, k) -> bind_type t k (primitive_type t k) env)
     empty 
-    [(TName "->", KArrow (KStar, KArrow (KStar, KStar)));
-     (TName "int", KStar);
-     (TName "char", KStar);
-     (TName "unit", KStar)]
+    PreludeTypes.types
 
 
 let lookup_method pos k x =

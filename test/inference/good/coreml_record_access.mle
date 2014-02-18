@@ -1,2 +1,2 @@
-type t = {x : int}
-let ['b 'a] (f : t -> int) = ['b 'a] fun (r : t) -> r[] .x
+type t_t = {x : int}
+let ['b 'a] (f : t_t -> int) = ['b 'a] fun (r : t_t) -> r[] .x

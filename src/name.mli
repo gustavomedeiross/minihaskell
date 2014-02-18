@@ -11,3 +11,4 @@ type lname = LName of string
 
 (** Type identifiers. *)
 type tname = TName of string
+           | CName of string
