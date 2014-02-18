@@ -1,2 +1,0 @@
-type t_t = {x : int}
-type t_u = {x : int}

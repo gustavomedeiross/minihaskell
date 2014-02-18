@@ -1,2 +1,0 @@
-type t_t = {x : int; y : int}
-let (x : t_t) = {x = 0; y = 0}[]

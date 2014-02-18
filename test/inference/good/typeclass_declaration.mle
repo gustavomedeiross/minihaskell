@@ -1,4 +1,0 @@
-type t_bool = True | False
-class t_Eq 'a { equal : 'a -> 'a -> t_bool }
-class t_Eq 'a => t_Ord 'a { lt : 'a -> 'a -> t_bool }
-let (main : int) = 0
