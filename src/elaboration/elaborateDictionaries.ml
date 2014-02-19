@@ -214,7 +214,7 @@ and type_application pos env x tys =
   substitute assoc ty
 
 and expression env = function
-  | EVar (pos, ((Name s) as x), tys) ->
+  | EVar (pos, x, tys) ->
     (EVar (pos, x, tys), type_application pos env x tys)
 
   | ELambda (pos, ((x, aty) as b), e') ->
@@ -528,10 +528,12 @@ and is_value_form = function
  * later (7.4)"
 *)
 
-and check_method env pos ts ps s k (RecordBinding (LName l, e)) = 
-  let xty = lookup_method pos k (LName l) in
-  let xty = substitute [k.class_parameter, s] xty in 
-  ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
+and check_method env pos ts ps s k (RecordBinding (l, e)) = match l with
+  | KName _ -> assert false
+  | LName l -> 
+    let xty = lookup_method pos k (LName l) in
+    let xty = substitute [k.class_parameter, s] xty in 
+    ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
 
 and check_instance_definitions env = function
   | [] -> ()

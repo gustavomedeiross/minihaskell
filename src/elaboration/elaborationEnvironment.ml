@@ -26,7 +26,7 @@ let empty = { values = []; types = []; classes = []; labels = [];
 let values env = env.values
 
 let add_name env (pos, name) = match name with
-  | IName _ -> assert false
+  | IName _ -> env
   | Name s ->
     if List.mem (LName s) env.method_names
     then raise (VariableIsAMethodName (pos, Name s))

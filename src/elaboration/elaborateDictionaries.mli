@@ -3,3 +3,6 @@
 
 (** [program p] is [p] with explicit dictionary passing. *)
 val program : XAST.program -> XAST.program
+
+(* If we run it again on an elaborated program,
+ * program (program ast) = program ast *)
