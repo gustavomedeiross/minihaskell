@@ -37,12 +37,12 @@ let document =
         please consult the following references:")
       ^^
       nest 2 (
-	twice (break 1)
-	^^
-	separate_map (break 1) (fun s -> nest 2 (url s)) [
-	  "http://www.cs.uu.nl/~daan/pprint.html";
-	  "http://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf";
-	]
+        twice (break 1)
+        ^^
+        separate_map (break 1) (fun s -> nest 2 (url s)) [
+          "http://www.cs.uu.nl/~daan/pprint.html";
+          "http://homepages.inf.ed.ac.uk/wadler/papers/prettier/prettier.pdf";
+        ]
       )
       ^^
       twice (break 1)

@@ -100,13 +100,13 @@ let assert_independent pos sc env =
 (* Parameter is the singleton of the free variable of the class *)
 let rec check_free_variables name parameter (pos, _, t) =
   match parameter with
-    | CName _ -> assert false
-    | TName s -> 
-           let freeT = free t in
-           if not (TS.mem parameter freeT) then
-             raise (AmbiguousTypeclass (pos, name))
-           else if not (TS.is_empty (TS.remove parameter freeT)) then
-             raise (TooFreeTypeVariableTypeclass (pos, name))
+  | CName _ -> assert false
+  | TName s -> 
+    let freeT = free t in
+    if not (TS.mem parameter freeT) then
+      raise (AmbiguousTypeclass (pos, name))
+    else if not (TS.is_empty (TS.remove parameter freeT)) then
+      raise (TooFreeTypeVariableTypeclass (pos, name))
 
 let bind_class k c env =
   try

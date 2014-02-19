@@ -36,17 +36,17 @@ module Make (GAST : AST.GenericS) = struct
   let name = function 
     | Name s        -> !^ ("v_" ^ s)
     | IName (k, id) -> !^ ("i_" ^ string_of_int id ^ "_" ^ k)
-  
+
   let tname = function
     | TName s -> if s.[0] ='\'' 
-                   then !^ s 
-                   else 
-                    if List.mem_assoc (TName s) PreludeTypes.types 
-                      then !^ s 
-                      else !^("t_"^s) (* <- Don't look at that *)
+      then !^ s 
+      else 
+      if List.mem_assoc (TName s) PreludeTypes.types 
+      then !^ s 
+      else !^("t_"^s) (* <- Don't look at that *)
 
     | CName s -> !^ ("c_"^s)
-      
+
   let rname = function
     | (CName s) -> assert false
     | (TName s) ->
@@ -348,7 +348,7 @@ module Make (GAST : AST.GenericS) = struct
         let ts = extract_type_parameters dt in
         group (group (adt_type_parameters ts ^^ tname t ^/^ !^ "=")
                ^/^ datatype_definition dt)
-       
+
       | ExternalType (_, ts, t, s) ->
         if produce_ocaml then
           group (adt_type_parameters ts ^^ tname t ^/^ !^ "="

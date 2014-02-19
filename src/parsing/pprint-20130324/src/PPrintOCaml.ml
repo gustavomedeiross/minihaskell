@@ -42,9 +42,9 @@ let valid_float_lexeme (s : string) : string =
   let rec loop i =
     if i >= l then
       (* If we reach the end of the string and have found only characters in
-	 the set '0' .. '9' and '-', then this string will be considered as an
-	 integer literal by OCaml. Adding a trailing dot makes it a float
-	 literal. *)
+         	 the set '0' .. '9' and '-', then this string will be considered as an
+         	 integer literal by OCaml. Adding a trailing dot makes it a float
+         	 literal. *)
       s ^ "."
     else
       match s.[i] with
@@ -61,14 +61,14 @@ let float_representation (f : float) : string =
   | FP_nan ->
     "nan"
   | FP_infinite ->
-      if f < 0.0 then "neg_infinity" else "infinity"
+    if f < 0.0 then "neg_infinity" else "infinity"
   | _ ->
-      (* Try increasing precisions and validate. *)
-      let s = sprintf "%.12g" f in
-      if f = float_of_string s then valid_float_lexeme s else
+    (* Try increasing precisions and validate. *)
+    let s = sprintf "%.12g" f in
+    if f = float_of_string s then valid_float_lexeme s else
       let s = sprintf "%.15g" f in
       if f = float_of_string s then valid_float_lexeme s else
-      sprintf "%.18g" f
+        sprintf "%.18g" f
 
 (* ------------------------------------------------------------------------- *)
 
@@ -99,7 +99,7 @@ let seq2 opening separator closing =
 (* There is no protection against cyclic values. *)
 
 type representation =
-    document
+  document
 
 let tuple =
   seq1 lparen comma rparen
@@ -107,18 +107,18 @@ let tuple =
 let variant _ cons _ args =
   match args with
   | [] ->
-      !^cons
+    !^cons
   | _ :: _ ->
-      !^cons ^^ tuple args
+    !^cons ^^ tuple args
 
 let record _ fields =
   seq2 lbrace semi rbrace (fun (k, v) -> infix 2 1 equals !^k v) fields
 
 let option f = function
   | None ->
-      none
+    none
   | Some x ->
-      some ^^ tuple [f x]
+    some ^^ tuple [f x]
 
 let list f xs =
   seq2 lbracket semi rbracket f xs

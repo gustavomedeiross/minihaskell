@@ -10,8 +10,8 @@ open ElaborationEnvironment
 let string_of_type ty      = ASTio.(XAST.(to_string pprint_ml_type ty))
 
 let fresh = 
-   let a = ref 0 in
-   (fun () -> incr a;
+  let a = ref 0 in
+  (fun () -> incr a;
     !a)
 
 let rec program p = handle_error List.(fun () ->
@@ -28,22 +28,22 @@ and block env = function
     let d, env = value_binding env d in
     ([BDefinition d], env)
 
-(* We transform class definition into type definition. Next, we call block
-   recursively. *)
- 
- | BClassDefinition c ->
+  (* We transform class definition into type definition. Next, we call block
+     recursively. *)
+
+  | BClassDefinition c ->
     let env    = bind_class c.class_name c env in
     let single_record = elaborate_class c env in   
     block env (BTypeDefinitions single_record)
 
-(* Idem *)
+  (* Idem *)
 
- | BInstanceDefinitions is ->
+  | BInstanceDefinitions is ->
     let is' = List.map (function
-                    | { instance_class_name = TName s } as i ->
-                      (i, IName (s, fresh ()))
-                    | _ -> assert false)
-                  is in   
+        | { instance_class_name = TName s } as i ->
+          (i, IName (s, fresh ()))
+        | _ -> assert false)
+        is in   
     let env = List.fold_left bind_instance env is' in
     check_instance_definitions env is;
     let dictionaries = elaborate_instance env is' in
@@ -54,7 +54,7 @@ and block env = function
 and arrow_of_predicates ps ty =
   let type_of_predicate = function
     | ClassPredicate (TName k, tvar) ->
-        TyApp (undefined_position, CName k, [TyVar (undefined_position, tvar)])
+      TyApp (undefined_position, CName k, [TyVar (undefined_position, tvar)])
     | ClassPredicate (CName _, _) -> assert false in
   ntyarrow undefined_position (List.map type_of_predicate ps) ty
 
@@ -67,8 +67,8 @@ and lambda_of_predicates ps e =
 and elaborate_instance env is =
   let to_value (i, name) =
     let cname = match i.instance_class_name with
-                  | CName s -> assert false
-                  | TName s -> CName s in 
+      | CName s -> assert false
+      | TName s -> CName s in 
     let itype =
       if i.instance_parameters = [] then 
         TyVar (undefined_position, i.instance_index)
@@ -76,8 +76,8 @@ and elaborate_instance env is =
         TyApp (
           undefined_position,
           i.instance_index,
-           List.map (fun tn -> TyVar (undefined_position, tn))
-                    i.instance_parameters) in
+          List.map (fun tn -> TyVar (undefined_position, tn))
+            i.instance_parameters) in
     let binding =
       (name,
        arrow_of_predicates
@@ -85,10 +85,10 @@ and elaborate_instance env is =
          (TyApp (undefined_position, cname, [itype]))) in
     let fs = i.instance_members in
     let record = ERecordCon (
-      i.instance_position,
-      name, (* WTF ? *)
-      [itype],
-      fs) in
+        i.instance_position,
+        name, (* WTF ? *)
+        [itype],
+        fs) in
     let e = lambda_of_predicates i.instance_typing_context record in
     ValueDef (
       i.instance_position,
@@ -100,17 +100,17 @@ and elaborate_instance env is =
 
 (* TODO: Superclasses are not dealt with correctly *)
 and elaborate_class c env =
-   match c.class_name with 
-    | TName name ->
-      TypeDefs
-       (c.class_position, 
-        [TypeDef
+  match c.class_name with 
+  | TName name ->
+    TypeDefs
+      (c.class_position, 
+       [TypeDef
           (c.class_position,
            KArrow (KStar,KStar),
            CName name,
            DRecordType ([c.class_parameter],
                         c.class_members))]) 
-    | CName name -> assert false (*By construction*)
+  | CName name -> assert false (*By construction*)
 
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in

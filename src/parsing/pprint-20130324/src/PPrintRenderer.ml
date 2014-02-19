@@ -14,7 +14,7 @@
 (** A common signature for the multiple document renderers proposed by {!PPrintEngine}. *)
 
 module type RENDERER = sig
-  
+
   (** Output channels. *)
   type channel
 

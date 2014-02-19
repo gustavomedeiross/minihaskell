@@ -92,10 +92,10 @@ let brackets        = enclose lbracket rbracket
 let foldli (f : int -> 'b -> 'a -> 'b) (accu : 'b) (xs : 'a list) : 'b =
   let r = ref 0 in
   List.fold_left (fun accu x ->
-    let i = !r in
-    r := i + 1;
-    f i accu x
-  ) accu xs
+      let i = !r in
+      r := i + 1;
+      f i accu x
+    ) accu xs
 
 (* ------------------------------------------------------------------------- *)
 
@@ -113,39 +113,39 @@ let concat docs =
 
 let separate sep docs =
   foldli (fun i accu doc ->
-    if i = 0 then
-      doc
-    else
-      accu ^^ sep ^^ doc
-  ) empty docs
+      if i = 0 then
+        doc
+      else
+        accu ^^ sep ^^ doc
+    ) empty docs
 
 let concat_map f xs =
   List.fold_left (fun accu x ->
-    accu ^^ f x
-  ) empty xs
+      accu ^^ f x
+    ) empty xs
 
 let separate_map sep f xs =
   foldli (fun i accu x ->
-    if i = 0 then
-      f x
-    else
-      accu ^^ sep ^^ f x
-  ) empty xs
+      if i = 0 then
+        f x
+      else
+        accu ^^ sep ^^ f x
+    ) empty xs
 
 let separate2 sep last_sep docs =
   let n = List.length docs in
   foldli (fun i accu doc ->
-    if i = 0 then
-      doc
-    else
-      accu ^^ (if i < n - 1 then sep else last_sep) ^^ doc
-  ) empty docs
+      if i = 0 then
+        doc
+      else
+        accu ^^ (if i < n - 1 then sep else last_sep) ^^ doc
+    ) empty docs
 
 let optional f = function
   | None ->
-      empty
+    empty
   | Some x ->
-      f x
+    f x
 
 (* ------------------------------------------------------------------------- *)
 
@@ -166,10 +166,10 @@ let lines s =
   let rec chop accu i =
     match index_from s i '\n' with
     | Some j ->
-        let accu = substring s i (j - i) :: accu in
-	chop accu (j + 1)
+      let accu = substring s i (j - i) :: accu in
+      chop accu (j + 1)
     | None ->
-        substring s i (String.length s - i) :: accu
+      substring s i (String.length s - i) :: accu
   in
   List.rev (chop [] 0)
 
@@ -195,11 +195,11 @@ let split ok s =
   let rec chop accu i =
     match index_from i with
     | Some j ->
-        let accu = substring s i (j - i) :: accu in
-	let accu = char s.[j] :: accu in
-	chop accu (j + 1)
+      let accu = substring s i (j - i) :: accu in
+      let accu = char s.[j] :: accu in
+      chop accu (j + 1)
     | None ->
-        substring s i (String.length s - i) :: accu
+      substring s i (String.length s - i) :: accu
   in
   List.rev (chop [] 0)
 
@@ -215,44 +215,44 @@ let words s =
       (* There was whitespace at the end. Drop it. *)
       accu
     else match s.[i] with
-    | ' '
-    | '\t'
-    | '\n'
-    | '\r' ->
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' ->
         (* Skip more whitespace. *)
-	skipping accu (i + 1)
-    | _ ->
+        skipping accu (i + 1)
+      | _ ->
         (* Begin a new word. *)
-	word accu i (i + 1)
+        word accu i (i + 1)
   (* In this state, we have skipped at least one non-blank character. *)
   and word accu i j =
     if j = n then
       (* Final word. *)
       substring s i (j - i) :: accu
     else match s.[j] with
-    | ' '
-    | '\t'
-    | '\n'
-    | '\r' ->
+      | ' '
+      | '\t'
+      | '\n'
+      | '\r' ->
         (* A new word has been identified. *)
         let accu = substring s i (j - i) :: accu in	
-	skipping accu (j + 1)
-    | _ ->
+        skipping accu (j + 1)
+      | _ ->
         (* Continue inside the current word. *)
-	word accu i (j + 1)
+        word accu i (j + 1)
   in
   List.rev (skipping [] 0)
 
 let flow_map sep f docs =
   foldli (fun i accu doc ->
-    if i = 0 then
-      f doc
-    else
-      accu ^^
-      (* This idiom allows beginning a new line if [doc] does not
-	 fit on the current line. *)
-      group (sep ^^ f doc)
-  ) empty docs  
+      if i = 0 then
+        f doc
+      else
+        accu ^^
+        (* This idiom allows beginning a new line if [doc] does not
+           	 fit on the current line. *)
+        group (sep ^^ f doc)
+    ) empty docs  
 
 let flow sep docs =
   flow_map sep (fun x -> x) docs
@@ -266,10 +266,10 @@ let url s =
 
 let align d =
   column (fun k ->
-    nesting (fun i ->
-      nest (k - i) d
+      nesting (fun i ->
+          nest (k - i) d
+        )
     )
-  )
 
 let hang i d =
   align (nest i d)
@@ -289,8 +289,8 @@ let jump n b y =
   group (nest n (break b ^^ y))
 
 (* Deprecated.
-let ( ^@^  ) x y = group (x ^/^ y)
-let ( ^@@^ ) x y = group (nest 2 (x ^/^ y))
+   let ( ^@^  ) x y = group (x ^/^ y)
+   let ( ^@@^ ) x y = group (nest 2 (x ^/^ y))
 *)
 
 let infix n b op x y =
@@ -305,14 +305,14 @@ let soft_surround n b opening contents closing =
 let surround_separate n b void opening sep closing docs =
   match docs with
   | [] ->
-      void
+    void
   | _ :: _ ->
-      surround n b opening (separate sep docs) closing
+    surround n b opening (separate sep docs) closing
 
 let surround_separate_map n b void opening sep closing f xs =
   match xs with
   | [] ->
-      void
+    void
   | _ :: _ ->
-      surround n b opening (separate_map sep f xs) closing
+    surround n b opening (separate_map sep f xs) closing
 
