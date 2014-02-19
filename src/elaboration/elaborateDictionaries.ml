@@ -35,34 +35,68 @@ and block env = function
     let env    = bind_class c.class_name c env in
     let single_record = elaborate_class c env in   
     block env (BTypeDefinitions single_record)
+
 (*Idem*)
 
  | BInstanceDefinitions is ->
-    let is' = map (fun x-> 
-                      match x.instance_class_name with
-                       | TName s -> (x,
-                                     s^"_"^string_of_int (fresh()))
-                       | CName s -> assert false)
+    let is' = List.map (function
+                    | { instance_class_name = TName s } as i ->
+                      (i, IName (s^"_"^string_of_int (fresh())))
+                    | _ -> assert false)
                   is in   
     let env = List.fold_left bind_instance env is' in
     check_instance_definitions env is;
-    let dictionaries = elaborate_instance env is';
-    block env dictionaries
+    let dictionaries = elaborate_instance env is' in
+    block env (BDefinition dictionaries)
+
+    (* (K 'a => ... => L 'b => ty) to
+     * ('a k -> ... -> 'b l -> ty) *)
+and arrow_of_predicates ps ty =
+  let type_of_predicate = function
+    | ClassPredicate (TName k, tvar) ->
+        TyApp (undefined_position, CName k, [TyVar (undefined_position, tvar)])
+    | ClassPredicate (CName _, _) -> assert false in
+  ntyarrow undefined_position (List.map type_of_predicate ps) ty
+
+and lambda_of_predicates ps e =
+  let lop e = function
+    | ClassPredicate (TName k, tvar) -> assert false
+    | ClassPredicate (CName _, _) -> assert false in
+  List.fold_left lop e ps
 
 and elaborate_instance env is =
   let to_value (i,name) =
     let cname = match i.instance_class_name with
                   | CName s -> assert false
                   | TName s -> CName s in 
-   (* 
-
-     ValueDef(i.instance_position,
-             i.instance_parameters,
-             (name,TyApp(undefined_position, cname, [])),
-             )*) 
-  in 
-  BindRecValue(undefined_position, 
-               map to_value is      
+    let itype =
+      if i.instance_parameters = [] then 
+        TyVar (undefined_position, i.instance_index)
+      else
+        TyApp (
+          undefined_position,
+          i.instance_index,
+           List.map (fun tn -> TyVar (undefined_position, tn))
+                    i.instance_parameters) in
+    let binding =
+      (name,
+       arrow_of_predicates
+         i.instance_typing_context
+         (TyApp (undefined_position, cname, [itype]))) in
+    let fs = i.instance_members in
+    let record = ERecordCon (
+      i.instance_position,
+      name, (* WTF ? *)
+      [itype],
+      fs) in
+    let e = lambda_of_predicates i.instance_typing_context record in
+    ValueDef(
+      i.instance_position,
+      i.instance_parameters,
+      [], (* Elaboration eliminates class predicates *)
+      binding,
+      e) in 
+  BindRecValue(undefined_position, List.map to_value is)
 
 and elaborate_class c env =
    match c.class_name with 
