@@ -150,7 +150,7 @@ let bind_instance env (t, num) =
   try
     let listinstance = List.assoc t.instance_index env.instances in
     if List.exists
-        (fun x -> x.instance_class_name = t.instance_class_name )
+        (fun (x, _) -> x.instance_class_name = t.instance_class_name )
         listinstance
     then raise (OverlappingInstances (t.instance_position,
                                       t.instance_class_name))
@@ -205,7 +205,7 @@ let rec is_instance_of pos t k env = match t with
   | TyApp (_, g, ts) ->
     try
       let is = List.assoc g env.instances in
-      let i = List.find (fun i -> i.instance_class_name = k) is in
+      let (i, _) = List.find (fun (i, _) -> i.instance_class_name = k) is in
       let assoc = List.combine i.instance_parameters ts in
       List.iter
         (fun (ClassPredicate (k, v)) ->

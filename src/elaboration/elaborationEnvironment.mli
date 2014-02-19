@@ -67,7 +67,7 @@ val lookup_method : position -> class_definition -> lname -> Types.t
 
 val add_name : t -> position * name -> t
 
-val bind_instance : t -> instance_definition -> t
+val bind_instance : t -> instance_definition * name -> t
 
 val add_predicates : Types.class_predicates -> t -> position -> t
 
