@@ -34,8 +34,8 @@ module Make (GAST : AST.GenericS) = struct
     | _, _ -> true
 
   let name = function 
-    | Name s  -> !^ ("v_"^s)
-    | IName s -> !^ ("i_"^s)
+    | Name s        -> !^ ("v_" ^ s)
+    | IName (k, id) -> !^ ("i_" ^ string_of_int id ^ "_" ^ k)
   
   let tname = function
     | TName s -> if s.[0] ='\'' 
@@ -48,8 +48,13 @@ module Make (GAST : AST.GenericS) = struct
     | CName s -> !^ ("c_"^s)
       
   let rname = function
-    | (TName s) -> !^ (if s.[0] = '\'' then String.sub s 1 (String.length s - 1) else s)
-    | (CName s) -> assert(false)    
+    | (CName s) -> assert false
+    | (TName s) ->
+      !^ (if s.[0] = '\'' then String.sub s 1 (String.length s - 1) else s)
+
+  let lname = function
+    | LName l       -> ("l_" ^ l)
+    | KName (k, k') -> ("k_" ^ k ^ k')
 
   let rec ml_type ?generics = function
     | TyVar (_, s) ->
@@ -148,11 +153,11 @@ module Make (GAST : AST.GenericS) = struct
         group (bind_values bvs ^/^ !^ "in")
         ^//^ group (expression e)
 
-      | ERecordAccess (_, e, LName l) ->
+      | ERecordAccess (_, e, l) ->
         parens_if (match e with
             | EVar _ -> false
             | _ -> true
-          ) (expression e) ^/^ !^ ("." ^ l)
+          ) (expression e) ^/^ !^ ("." ^ lname l)
 
       | ERecordCon (_, _, i, rbs) ->
         if produce_ocaml && rbs = [] then
@@ -205,8 +210,8 @@ module Make (GAST : AST.GenericS) = struct
     and record_bindings rbs =
       separate_map (!^ ";" ^^ break 1) record_binding rbs
 
-    and record_binding (RecordBinding (LName l, e)) =
-      group (!^ l ^/^ !^ "="  ^/^ expression' `RecordField e)
+    and record_binding (RecordBinding (l, e)) =
+      group (!^ (lname l) ^/^ !^ "="  ^/^ expression' `RecordField e)
 
     and branches bs =
       group (separate_map (break 1 ^^ group (!^ "|" ^^ break 1)) branch bs)
@@ -366,8 +371,8 @@ module Make (GAST : AST.GenericS) = struct
     and row r =
       separate_map (!^ ";" ^^ break 1) label_type r
 
-    and label_type (_, LName l, ty) =
-      !^ l ^/^ !^ ":" ^/^ ml_type ty
+    and label_type (_, l, ty) =
+      !^ (lname l) ^/^ !^ ":" ^/^ ml_type ty
 
     and adt_type_parameters = function
       | [] -> empty

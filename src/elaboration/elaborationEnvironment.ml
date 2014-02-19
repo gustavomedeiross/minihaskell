@@ -17,6 +17,7 @@ type t = {
 
 let name_of_lname = function 
   | LName s -> Name s
+  | KName _ -> assert false
 
 let empty = { values = []; types = []; classes = []; labels = [];
               method_names = []; names = []; v_constraints = [];
@@ -24,22 +25,26 @@ let empty = { values = []; types = []; classes = []; labels = [];
 
 let values env = env.values
 
-let add_name env (pos, Name s) =
-  if List.mem (LName s) env.method_names
-  then raise (VariableIsAMethodName (pos, Name s))
-  else { env with names = Name s :: env.names }
+let add_name env (pos, name) = match name with
+  | IName _ -> assert false
+  | Name s ->
+    if List.mem (LName s) env.method_names
+    then raise (VariableIsAMethodName (pos, Name s))
+    else { env with names = Name s :: env.names }
 
-let add_methods c env (pos, LName s, ty) =
-  if List.mem (LName s) env.method_names then
-    raise (MultipleMethods (pos, LName s))
-  else if List.mem (Name s) env.names then
-    raise (VariableIsAMethodName (pos, Name s))
-  else
-    { env with method_names = (LName s) :: env.method_names;
-               values = ([c.class_parameter],
-                         [ClassPredicate (c.class_name, c.class_parameter)],
-                         (Name s,ty))
-                        :: env.values}
+let add_methods c env (pos, l, ty) = match l with
+  | KName _ -> assert false
+  | LName s ->
+    if List.mem (LName s) env.method_names then
+      raise (MultipleMethods (pos, LName s))
+    else if List.mem (Name s) env.names then
+      raise (VariableIsAMethodName (pos, Name s))
+    else
+      { env with method_names = (LName s) :: env.method_names;
+                 values = ([c.class_parameter],
+                           [ClassPredicate (c.class_name, c.class_parameter)],
+                           (Name s,ty))
+                          :: env.values}
 
 let lookup pos x env =
   try

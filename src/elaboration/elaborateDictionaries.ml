@@ -41,7 +41,7 @@ and block env = function
  | BInstanceDefinitions is ->
     let is' = List.map (function
                     | { instance_class_name = TName s } as i ->
-                      (i, IName (s^"_"^string_of_int (fresh())))
+                      (i, IName (s, fresh ()))
                     | _ -> assert false)
                   is in   
     let env = List.fold_left bind_instance env is' in
