@@ -98,6 +98,7 @@ and elaborate_instance env is =
       e) in 
   BindRecValue(undefined_position, List.map to_value is)
 
+(* TODO: Superclasses are not dealt with correctly *)
 and elaborate_class c env =
    match c.class_name with 
     | TName name ->
