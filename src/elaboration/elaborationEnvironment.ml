@@ -10,7 +10,7 @@ type t = {
   classes       : (tname * class_definition) list;
   labels        : (lname * (tnames * Types.t * tname)) list;
   v_constraints : (tname * tname list) list;
-  instances     : (tname * (instance_definition*name) list) list;
+  instances     : (tname * (instance_definition * name) list) list;
   method_names  : lname list;
   names         : name list;
 }

@@ -28,15 +28,15 @@ and block env = function
     let d, env = value_binding env d in
     ([BDefinition d], env)
 
-(*We transform class definition into type definition. Next, we call block
-  recursively.*)
+(* We transform class definition into type definition. Next, we call block
+   recursively. *)
  
  | BClassDefinition c ->
     let env    = bind_class c.class_name c env in
     let single_record = elaborate_class c env in   
     block env (BTypeDefinitions single_record)
 
-(*Idem*)
+(* Idem *)
 
  | BInstanceDefinitions is ->
     let is' = List.map (function
@@ -49,8 +49,8 @@ and block env = function
     let dictionaries = elaborate_instance env is' in
     block env (BDefinition dictionaries)
 
-    (* (K 'a => ... => L 'b => ty) to
-     * ('a k -> ... -> 'b l -> ty) *)
+(* (K 'a => ... => L 'b => ty) to
+ * ('a k -> ... -> 'b l -> ty) *)
 and arrow_of_predicates ps ty =
   let type_of_predicate = function
     | ClassPredicate (TName k, tvar) ->
@@ -65,7 +65,7 @@ and lambda_of_predicates ps e =
   List.fold_left lop e ps
 
 and elaborate_instance env is =
-  let to_value (i,name) =
+  let to_value (i, name) =
     let cname = match i.instance_class_name with
                   | CName s -> assert false
                   | TName s -> CName s in 
@@ -90,24 +90,26 @@ and elaborate_instance env is =
       [itype],
       fs) in
     let e = lambda_of_predicates i.instance_typing_context record in
-    ValueDef(
+    ValueDef (
       i.instance_position,
       i.instance_parameters,
       [], (* Elaboration eliminates class predicates *)
       binding,
       e) in 
-  BindRecValue(undefined_position, List.map to_value is)
+  BindRecValue (undefined_position, List.map to_value is)
 
 (* TODO: Superclasses are not dealt with correctly *)
 and elaborate_class c env =
    match c.class_name with 
     | TName name ->
-      TypeDefs(c.class_position, 
-               [TypeDef(c.class_position,
-                        KArrow(KStar,KStar),
-                        CName(name),
-                        DRecordType([c.class_parameter],
-                                     c.class_members))]) 
+      TypeDefs
+       (c.class_position, 
+        [TypeDef
+          (c.class_position,
+           KArrow (KStar,KStar),
+           CName name,
+           DRecordType ([c.class_parameter],
+                        c.class_members))]) 
     | CName name -> assert false (*By construction*)
 
 and type_definitions env (TypeDefs (_, tdefs)) =
