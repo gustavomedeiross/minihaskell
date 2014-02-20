@@ -84,8 +84,8 @@ and elaborate_instance env is =
       let k = lookup_class i.instance_position icname env in
       List.map
         (fun s ->
-          RecordBinding (mk_kname (s,icname),
-                         elaborate_dictionary env s i.instance_index))
+           RecordBinding (mk_kname (s,icname),
+                          elaborate_dictionary env s i.instance_index))
         k.superclasses in
     let fs = sub_dict @ i.instance_members in
     let record = ERecordCon (
@@ -113,14 +113,14 @@ and mk_cname = function
 and elaborate_class c env =
   let superclass = 
     List.map
-    (fun sup ->
-    let s = lookup_class c.class_position sup env in 
-    (s.class_position,
-     mk_kname (s.class_name,c.class_name),
-     TyApp(s.class_position,
-           mk_cname s.class_name,
-           [TyVar(c.class_position, c.class_parameter)])))
-    c.superclasses  
+      (fun sup ->
+         let s = lookup_class c.class_position sup env in 
+         (s.class_position,
+          mk_kname (s.class_name,c.class_name),
+          TyApp(s.class_position,
+                mk_cname s.class_name,
+                [TyVar(c.class_position, c.class_parameter)])))
+      c.superclasses  
   in
   match c.class_name with 
   | TName name ->
