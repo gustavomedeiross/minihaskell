@@ -58,15 +58,12 @@ and arrow_of_predicates ps ty =
     | ClassPredicate (CName _, _) -> assert false in
   ntyarrow undefined_position (List.map type_of_predicate ps) ty
 
-and lambda_of_predicates ps e =
-  let lop e = function
-    | ClassPredicate (TName k, tvar) -> assert false
-    | ClassPredicate (CName _, _) -> assert false in
-  List.fold_left lop e ps
+(* Return the dictionary for the instance (k index) *)
+and elaborate_dictionary env k index = assert false
 
 and elaborate_instance env is =
-  let to_value (i, name) =
-    let cname = match i.instance_class_name with
+  let to_value ({ instance_class_name = icname } as i, name) =
+    let cname = match icname with
       | CName s -> assert false
       | TName s -> CName s in 
     let itype =
@@ -83,19 +80,25 @@ and elaborate_instance env is =
        arrow_of_predicates
          i.instance_typing_context
          (TyApp (undefined_position, cname, [itype]))) in
-    let fs = i.instance_members in
+    let sub_dict =
+      let k = lookup_class i.instance_position icname env in
+      List.map
+        (fun s ->
+          RecordBinding (mk_kname (s,icname),
+                         elaborate_dictionary env s i.instance_index))
+        k.superclasses in
+    let fs = sub_dict @ i.instance_members in
     let record = ERecordCon (
         i.instance_position,
-        name, (* WTF ? *)
+        name, (* WTF ? every record has a name *)
         [itype],
         fs) in
-    let e = lambda_of_predicates i.instance_typing_context record in
     ValueDef (
       i.instance_position,
       i.instance_parameters,
-      [], (* Elaboration eliminates class predicates *)
+      i.instance_typing_context,
       binding,
-      e) in 
+      record) in 
   BindRecValue (undefined_position, List.map to_value is)
 
 (* TODO: Superclasses are not dealt with correctly *)
