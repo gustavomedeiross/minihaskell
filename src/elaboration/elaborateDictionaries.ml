@@ -236,6 +236,7 @@ and type_application pos env x tys =
   substitute assoc ty
 
 and expression env = function
+  (*If an identifier is a method or overloaded we elaborate *)
   | EVar (pos, x, tys) ->
     (EVar (pos, x, tys), type_application pos env x tys)
 
@@ -255,7 +256,7 @@ and expression env = function
         check_equal_types pos b_ty ity;
         (EApp (pos, a, b), oty)
     end
-
+  (*If we have constraints, value_binding behaves differently*)
   | EBinding (pos, vb, e) ->
     let vb, env = value_binding env vb in
     let e, ty = expression env e in
@@ -443,6 +444,7 @@ and record_binding env (RecordBinding (l, e)) =
   (RecordBinding (l, e), ty)
 
 and value_binding env = function
+  (*TODO : Elaborate binding when overloaded symbols*)
   | BindValue (pos, vs) ->
     let (vs, env) = Misc.list_foldmap value_definition env vs in
     (BindValue (pos, vs), env)
@@ -491,21 +493,6 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     let e, ty = expression env' e in
     let b = (x, ty) in
     check_equal_types pos xty ty;
-    (*
-<<<<<<< HEAD
-    (ValueDef (pos, ts, ps, b, EForall (pos, ts, e)),
-     bind_scheme pos x ts ps ty env)
-  end
-  else if ts <> [] then
-    raise (ValueRestriction pos)
-  else begin
-    let e = eforall pos [] e in
-    let e, ty = expression env e in
-    let b = (x, ty) in
-    if ps <> [] then raise (InvalidOverloading pos);
-    check_equal_types pos xty ty;
-    (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
-=======*)
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
   end else begin
