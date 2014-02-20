@@ -102,7 +102,26 @@ and elaborate_instance env is =
   BindRecValue (undefined_position, List.map to_value is)
 
 (* TODO: Superclasses are not dealt with correctly *)
+and mk_kname = function
+  | (TName a, TName b) -> KName(a,b) 
+  | _ -> assert(false)
+
+and mk_cname = function 
+  | TName a -> CName a
+  | _ -> assert(false)
+
 and elaborate_class c env =
+  let superclass = 
+    List.map
+    (fun sup ->
+    let s = lookup_class c.class_position sup env in 
+    (s.class_position,
+     mk_kname (s.class_name,c.class_name),
+     TyApp(s.class_position,
+           mk_cname s.class_name,
+           [TyVar(c.class_position, c.class_parameter)])))
+    c.superclasses  
+  in
   match c.class_name with 
   | TName name ->
     TypeDefs
@@ -112,7 +131,7 @@ and elaborate_class c env =
            KArrow (KStar,KStar),
            CName name,
            DRecordType ([c.class_parameter],
-                        c.class_members))]) 
+                        c.class_members@superclass))]) 
   | CName name -> assert false (*By construction*)
 
 and type_definitions env (TypeDefs (_, tdefs)) =
