@@ -76,3 +76,5 @@ val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t
 (** [is_instance_of pos t k e] raises an exception if t is not an
     instance of k in e *)
 val is_instance_of : position -> Types.t -> tname -> t -> unit
+
+val is_method : lname -> t -> bool 

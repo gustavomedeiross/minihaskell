@@ -58,8 +58,8 @@ and arrow_of_predicates ps ty =
     | ClassPredicate (CName _, _) -> assert false in
   ntyarrow undefined_position (List.map type_of_predicate ps) ty
 
-(* Return the dictionary for the instance (k index) *)
-and elaborate_dictionary env k index = assert false
+(* Return the dictionary for the instance (k ty) *)
+and elaborate_dictionary env k ty = assert false
 
 and elaborate_instance env is =
   let to_value ({ instance_class_name = icname } as i, name) =
@@ -85,7 +85,7 @@ and elaborate_instance env is =
       List.map
         (fun s ->
            RecordBinding (mk_kname (s,icname),
-                          elaborate_dictionary env s i.instance_index))
+                          elaborate_dictionary env s (assert(false))))
         k.superclasses in
     let fs = sub_dict @ i.instance_members in
     let record = ERecordCon (
@@ -235,11 +235,35 @@ and type_application pos env x tys =
     ps;
   substitute assoc ty
 
+
 and expression env = function
   (*If an identifier is a method or overloaded we elaborate *)
   | EVar (pos, x, tys) ->
-    (EVar (pos, x, tys), type_application pos env x tys)
-
+    let (types, ps, binding) = lookup pos x env in
+    let types_easyform = List.combine types tys in
+    if ps = [] 
+    then
+      let lx = match x with |Name s -> LName s in (*Warning, check that*)
+      if is_method lx env
+      then let (vars_meth, type_meth, _) = lookup_label pos lx env in
+        match ps with 
+        | [ClassPredicate(cl,_)] -> let dic = elaborate_dictionary env cl type_meth in
+          (ERecordAccess(pos, dic, lx), type_application pos env x tys)
+        | _ -> assert(false) (* Methods have exactly one constraint*)
+      else (EVar (pos, x, tys), type_application pos env x tys)
+    else ((List.fold_left
+             (fun acc t -> 
+                match t with
+                |ClassPredicate(cl,ty)->
+                  let inst_ty = List.assoc ty types_easyform in 
+                  let record_i = elaborate_dictionary env cl inst_ty in
+                  (*Check if try on List.assoc is necessary or if it's safe
+                     by construction. I think it's safe *) 
+                  (EApp(pos, acc, record_i))
+             )
+             (EVar(pos,x,tys))
+             ps),
+          type_application pos env x tys)
   | ELambda (pos, ((x, aty) as b), e') ->
     check_wf_type env KStar aty;
     let env = bind_simple pos x aty env in

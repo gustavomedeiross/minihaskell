@@ -46,6 +46,8 @@ let add_methods c env (pos, l, ty) = match l with
                            (Name s,ty))
                           :: env.values}
 
+let is_method x env = List.mem x (env.method_names)
+
 let lookup pos x env =
   try
     List.find (fun (_, _, (x', _)) -> x = x') env.values
