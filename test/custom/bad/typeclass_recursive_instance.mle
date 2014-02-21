@@ -1,0 +1,15 @@
+class K 'a { k : 'a }
+class L 'b { l : 'b }
+
+type 'a list = Nil | Cons of 'a * 'a list
+type 'a lost = Nol | Cins of 'a * 'a lost
+
+let rec ['a] (to_lost : 'a list -> 'a lost) = ['a]
+  fun (x : 'a list) ->
+    match x[] with
+    | Nil['a] -> Nol['a]
+    | Cons['a] (h, t) -> Cins['a] (h[], to_lost['a] t[])
+
+instance ['b] L 'b => K ('b lost) { k = to_lost['b] k['b] }
+instance ['b] L 'b => K ('b list) { k = Cons['b] (l['b], Nil['b]) }
+
