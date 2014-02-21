@@ -36,8 +36,7 @@ and block env = function
     let single_record = elaborate_class c env in   
     block env (BTypeDefinitions single_record)
 
-  (* Idem *)
-
+  (* TODO: Collect variable names from member definitions *)
   | BInstanceDefinitions is ->
     let is' = List.map (function
         | { instance_class_name = TName s } as i ->
@@ -59,8 +58,13 @@ and arrow_of_predicates ps ty =
   ntyarrow undefined_position (List.map type_of_predicate ps) ty
 
 (* Return the dictionary for the instance (k ty) *)
-and elaborate_dictionary env k ty = assert false
+and elaborate_dictionary env k ty = assert false (* <- TODO *)
 
+(* TODO: Rewrite elaborate instance
+ * The initial idea was to elaborate partially into an
+ * overloaded let-binding, but it is incorrect.
+ * Proof: All members may not be elaborated in the same environment, as per
+ * sujet.pdf, "Elaboration of instance definitions" *)
 and elaborate_instance env is =
   let to_value ({ instance_class_name = icname } as i, name) =
     let cname = match icname with
@@ -349,6 +353,7 @@ and expression env = function
     (** We syntactically forbids empty records. *)
     assert false
 
+    (* TODO: It seems incomplete record definitions are not detected (verify) *)
   | ERecordCon (pos, n, i, rbs) ->
     let rbstys = List.map (record_binding env) rbs in
     let rec check others rty = function
