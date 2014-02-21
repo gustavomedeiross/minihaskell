@@ -9,10 +9,14 @@ open ElaborationEnvironment
 
 let string_of_type ty      = ASTio.(XAST.(to_string pprint_ml_type ty))
 
-let fresh = 
+let fresh =
   let a = ref 0 in
   (fun () -> incr a;
     !a)
+
+let fresh_iname = function
+  | TName s -> IName (s, fresh ())
+  | CName _ -> assert false
 
 let rec program p = handle_error List.(fun () ->
     flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p)))
@@ -33,21 +37,116 @@ and block env = function
 
   | BClassDefinition c ->
     let env    = bind_class c.class_name c env in
-    let single_record = elaborate_class c env in   
+    let single_record = elaborate_class c env in
     block env (BTypeDefinitions single_record)
 
-  (* TODO: Collect variable names from member definitions *)
   | BInstanceDefinitions is ->
+    let dict, env = elaborate_instances env is in
+    ([BDefinition dict], env)
+    (*
     let is' = List.map (function
         | { instance_class_name = TName s } as i ->
           (i, IName (s, fresh ()))
         | _ -> assert false)
-        is in   
+        is in
     let env = List.fold_left bind_instance env is' in
     check_instance_definitions env is;
     let dictionaries = elaborate_instance env is' in
     block env (BDefinition dictionaries)
+    *)
 
+(* Return an expression whose value is
+ * the dictionary for the instance (K ty) *)
+and elaborate_dictionary env k ty = assert false (*TODO*)
+
+(* Instance elaboration
+ *
+ *   instance L 'a => K ('a cons) { ... }
+ *
+ * becomes
+ *
+ *   let (fresh_name_K : 'b _l -> 'a cons _k) =
+ *     fun (fresh_name_L : 'b _l) -> { ... }
+ * *)
+
+(* TODO: Collect variable names from member definitions *)
+and elaborate_instances env is =
+  let is = (* Associate a fresh name to every instance *)
+    List.map
+      (function
+        | { instance_class_name = k } as i ->
+          (i, fresh_iname k)
+        | _ -> assert false)
+      is in
+  let env' = List.fold_left bind_instance env is in (* Full context *)
+  let defs, _ = List.fold_left (instance_definition env') ([], env) is in
+  BindRecValue (undefined_position, defs), env'
+
+(* env': full context, where all instances mutually recursive with the
+ *       current instance are in scope
+ *       (Gamma_h',h,h'' in [1,sujet.pdf])
+ * env: "current" context, contains only instances declared earlier
+ *      (Gamma_h' in [1])
+ * def: list of all previously elaborated instances
+ * i: current instance
+ *    (h in [1])
+ * *)
+and instance_definition env' (defs, env) (i, name) =
+  let { instance_position       = pos;
+        instance_parameters     = ts;
+        instance_typing_context = ps; } = i in
+
+  (* The constraints are elaborated into a lambda abstraction,
+   * this creates one dictionary variable per constraint *)
+  let local_dict, local_dict_variables = List.split (List.map dict_variable ps) in
+  (* i defines the instance K itype *)
+  let k = lookup_class pos i.instance_class_name env in
+  let cname = mk_cname i.instance_class_name in
+  let itype = cons_type i.instance_index ts in
+
+  (* Add the local context *)
+  let add_local_context env =
+    let env = introduce_type_parameters env ts [] pos in
+    (* Binding dictionary variables is similar to
+     * declaring instances for each of them *)
+    List.fold_left bind_instance env local_dict in
+  let env'_ = add_local_context env' in
+  let env_ = add_local_context env in
+
+  (* Elaborate record definition *)
+  let sub_dict = assert false in (*TODO*)
+  let methods = assert false in
+  let record = ERecordCon (pos, name, [itype], sub_dict @ methods) in
+
+  let env = bind_instance env (i, name) in
+  let inst_body, inst_type =
+    List.fold_right abstract local_dict_variables (record, itype) in
+  let inst_body = EForall (pos, ts, inst_body) in
+  let def =
+    ValueDef (pos, ts, [], (name, inst_type), inst_body) in
+  def :: defs, env
+
+(* Declare a new dictionary variable
+ * [dict_variable {K 'a}] = (instance K 'a, fresh_name_K) *)
+and dict_variable (ClassPredicate (k, v)) =
+  let i =
+    { instance_position = undefined_position;
+      instance_parameters     = [];
+      instance_typing_context = [];
+      instance_class_name     = k;
+      instance_index          = v; (* is a variable here *)
+      instance_members        = []; } in
+  let name = fresh_iname k in
+  (i, name),
+  (name, TyApp (undefined_position,
+                mk_cname k,
+                [TyVar (undefined_position, v)]))
+
+(* Make a lambda abstraction
+ * [abstract {x : t} {e : ty}] = (\(x : t) . e) : t -> ty *)
+and abstract (x, t) (e, ty) = assert false
+
+(* The following may inspire the implementation of abstract *)
 (* (K 'a => ... => L 'b => ty) to
  * ('a k -> ... -> 'b l -> ty) *)
 and arrow_of_predicates ps ty =
@@ -57,85 +156,70 @@ and arrow_of_predicates ps ty =
     | ClassPredicate (CName _, _) -> assert false in
   ntyarrow undefined_position (List.map type_of_predicate ps) ty
 
-(* Return the dictionary for the instance (k ty) *)
-and elaborate_dictionary env k ty = assert false (* <- TODO *)
+(*****)
 
-(* TODO: Rewrite elaborate instance
- * The initial idea was to elaborate partially into an
- * overloaded let-binding, but it is incorrect.
- * Proof: All members may not be elaborated in the same environment, as per
- * sujet.pdf, "Elaboration of instance definitions" *)
-and elaborate_instance env is =
-  let to_value ({ instance_class_name = icname } as i, name) =
-    let cname = match icname with
-      | CName s -> assert false
-      | TName s -> CName s in 
-    let itype =
-      if i.instance_parameters = [] then 
-        TyVar (undefined_position, i.instance_index)
-      else
-        TyApp (
-          undefined_position,
-          i.instance_index,
-          List.map (fun tn -> TyVar (undefined_position, tn))
-            i.instance_parameters) in
-    let binding =
-      (name,
-       arrow_of_predicates
-         i.instance_typing_context
-         (TyApp (undefined_position, cname, [itype]))) in
-    let sub_dict =
-      let k = lookup_class i.instance_position icname env in
-      List.map
-        (fun s ->
-           RecordBinding (mk_kname (s,icname),
-                          elaborate_dictionary env s (assert(false))))
-        k.superclasses in
-    let fs = sub_dict @ i.instance_members in
-    let record = ERecordCon (
-        i.instance_position,
-        name, (* WTF ? every record has a name *)
-        [itype],
-        fs) in
-    ValueDef (
-      i.instance_position,
-      i.instance_parameters,
-      i.instance_typing_context,
-      binding,
-      record) in 
-  BindRecValue (undefined_position, List.map to_value is)
+(* TODO: The following is to be used as a reference for elaborate_instance(s)
+ * Code for type-checking, to be integrated with elaboration
+ * *)
+
+(*
+ * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
+ * contexts and class declarations, and to types of the form K (G a) in
+ * instances are for simplicity. Generalizations are possible and discussed
+ * later (7.4)"
+ * *)
+
+and check_method env pos ts ps s k (RecordBinding (l, e)) = match l with
+  | KName _ -> assert false
+  | LName l ->
+    let xty = lookup_method pos k (LName l) in
+    let xty = substitute [k.class_parameter, s] xty in
+    ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
+
+and check_instance_definitions env = function
+  | [] -> ()
+  | { instance_position       = pos;
+      instance_parameters     = ts;
+      instance_typing_context = ps; } as i :: t ->
+    let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
+    List.iter
+      (check_method env pos ts ps
+         (cons_type i.instance_index ts)
+         (lookup_class pos i.instance_class_name env))
+      i.instance_members
+(*****)
 
 (* TODO: Superclasses are not dealt with correctly *)
 and mk_kname = function
-  | (TName a, TName b) -> KName(a,b) 
+  | (TName a, TName b) -> KName(a,b)
   | _ -> assert(false)
 
-and mk_cname = function 
+and mk_cname = function
   | TName a -> CName a
   | _ -> assert(false)
 
 and elaborate_class c env =
-  let superclass = 
+  let superclass =
     List.map
       (fun sup ->
-         let s = lookup_class c.class_position sup env in 
+         let s = lookup_class c.class_position sup env in
          (s.class_position,
           mk_kname (s.class_name,c.class_name),
           TyApp(s.class_position,
                 mk_cname s.class_name,
                 [TyVar(c.class_position, c.class_parameter)])))
-      c.superclasses  
+      c.superclasses
   in
-  match c.class_name with 
+  match c.class_name with
   | TName name ->
     TypeDefs
-      (c.class_position, 
+      (c.class_position,
        [TypeDef
           (c.class_position,
            KArrow (KStar,KStar),
            CName name,
            DRecordType ([c.class_parameter],
-                        c.class_members@superclass))]) 
+                        c.class_members@superclass))])
   | CName name -> assert false (*By construction*)
 
 and type_definitions env (TypeDefs (_, tdefs)) =
@@ -169,13 +253,29 @@ and algebraic_dataconstructor env (pos, DName k, ts, kty) =
   check_wf_scheme env ts kty pos;
   bind_scheme pos (Name k) ts [] kty env
 
+(* TODO 'introduce_type_parameters'
+ *  revert back to the old version, commented out *)
+(* The reason is that a class predicate K 'a can be added to env as
+ * an "instance of K at type 'a"
+ * - 'add_predicates' and 'add_unconstrained_tv' (ElaborationEnvironment)
+ *   are to be considered obsolete
+ * - the relevant operations are not part of the role of this function anymore
+*)
+
+(*
+and introduce_type_parameters env ts =
+  List.fold_left (fun env t -> bind_type_variable t env) env ts
+*)
+
+(* We currently keep this implementation,
+ * which 'value_binding' relies on for type-checking *)
 and introduce_type_parameters env ts ps pos =
   List.iter
     (fun (ClassPredicate(a,b)) ->
        if not (List.mem b ts) then raise (InvalidOverloading pos))
-    ps; 
+    ps;
   let env = List.fold_left (fun env t -> bind_type_variable t env) env ts in
-  let env = add_predicates ps env pos in     
+  let env = add_predicates ps env pos in
   let env = add_unconstrained_tv ts env ps in
   env
 
@@ -245,24 +345,24 @@ and expression env = function
   | EVar (pos, x, tys) ->
     let (types, ps, binding) = lookup pos x env in
     let types_easyform = List.combine types tys in
-    if ps = [] 
+    if ps = []
     then
       let lx = match x with |Name s -> LName s in (*Warning, check that*)
       if is_method lx env
       then let (vars_meth, type_meth, _) = lookup_label pos lx env in
-        match ps with 
+        match ps with
         | [ClassPredicate(cl,_)] -> let dic = elaborate_dictionary env cl type_meth in
           (ERecordAccess(pos, dic, lx), type_application pos env x tys)
         | _ -> assert(false) (* Methods have exactly one constraint*)
       else (EVar (pos, x, tys), type_application pos env x tys)
     else ((List.fold_left
-             (fun acc t -> 
+             (fun acc t ->
                 match t with
                 |ClassPredicate(cl,ty)->
-                  let inst_ty = List.assoc ty types_easyform in 
+                  let inst_ty = List.assoc ty types_easyform in
                   let record_i = elaborate_dictionary env cl inst_ty in
                   (*Check if try on List.assoc is necessary or if it's safe
-                     by construction. I think it's safe *) 
+                     by construction. I think it's safe *)
                   (EApp(pos, acc, record_i))
              )
              (EVar(pos,x,tys))
@@ -353,7 +453,7 @@ and expression env = function
     (** We syntactically forbids empty records. *)
     assert false
 
-    (* TODO: It seems incomplete record definitions are not detected (verify) *)
+  (* TODO: It seems incomplete record definitions are not detected (verify) *)
   | ERecordCon (pos, n, i, rbs) ->
     let rbstys = List.map (record_binding env) rbs in
     let rec check others rty = function
@@ -509,13 +609,14 @@ and eforall pos ts e =
   | _, _ ->
     raise (InvalidNumberOfTypeAbstraction pos)
 
+(*TODO: elaborate ps into an abstraction*)
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   let env' = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
   check_wf_type env' KStar xty;
   List.iter
-    (fun (ClassPredicate (c, v)) -> 
+    (fun (ClassPredicate (c, v)) ->
        if not (TS.mem v (free xty)) then
-         raise (InvalidOverloading pos)) 
+         raise (InvalidOverloading pos))
     ps;
   if is_value_form e then begin
     let e = eforall pos ts e in
@@ -558,32 +659,6 @@ and is_value_form = function
 
   | _                         ->
     false
-
-(*
- * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
- * contexts and class declarations, and to types of the form K (G a) in
- * instances are for simplicity. Generalizations are possible and discussed
- * later (7.4)"
-*)
-
-and check_method env pos ts ps s k (RecordBinding (l, e)) = match l with
-  | KName _ -> assert false
-  | LName l -> 
-    let xty = lookup_method pos k (LName l) in
-    let xty = substitute [k.class_parameter, s] xty in 
-    ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
-
-and check_instance_definitions env = function
-  | [] -> ()
-  | { instance_position       = pos;
-      instance_parameters     = ts;
-      instance_typing_context = ps; } as i :: t ->
-    let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-    List.iter 
-      (check_method env pos ts ps
-         (cons_type i.instance_index ts)
-         (lookup_class pos i.instance_class_name env))
-      i.instance_members
 
 and cons_type hd vars =
   TyApp (undefined_position,
