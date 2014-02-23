@@ -353,14 +353,6 @@ and expression env = function
       | [ClassPredicate(cl,var)] -> 
         let t = List.assoc var types_easyform in 
         begin
-          match t with
-          | TyVar(_,n) -> (*Var unbounded*)
-            begin 
-              let s = lookup_dictionary env cl t in 
-              (ERecordAccess(pos, EVar(pos, s, []), lx),
-               type_application pos env x ty)
-            end
-          | TyApp(_,n,l) ->
               let dico = elaborate_dictionary env cl t in
               (ERecordAccess(pos, dico, lx),
                type_application pos env x tys)  (*Check this type_appli*)
@@ -372,14 +364,10 @@ and expression env = function
                 |ClassPredicate(cl,ty)->
                   let ty = List.assoc ty types_easyform in
                   begin
-                    match ty with
-                    | TyVar(_,n) ->
                       begin 
-                        let s = lookup_dictionary env cl ty in 
-                        EApp(pos, acc, EVar(pos, s, []))
+                        let s = elaborate_dictionary env cl ty in 
+                        EApp(pos, acc, s)
                       end
-                    |TyApp(_,n,l)->         
-                      (EApp(pos, acc, assert(false)))
                   end             
              )
              (EVar(pos,x,tys))
