@@ -16,7 +16,7 @@ type lname =
             (* Regular field name *)
           | LName of string
 
-            (* (class, superclass) -> "s_$CLASS_$SUPER" *)
+            (* (superclass, class) -> "s_$SUPER_$CLASS" *)
           | KName of string * string
 
 (** Type identifiers. *)
