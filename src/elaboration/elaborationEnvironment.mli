@@ -77,4 +77,7 @@ val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t
     instance of k in e *)
 val is_instance_of : position -> Types.t -> tname -> t -> unit
 
+val lookup_dictionary : t -> tname -> Types.t 
+  -> name   
+
 val is_method : lname -> t -> bool 

@@ -342,31 +342,48 @@ and type_application pos env x tys =
 
 and expression env = function
   (*If an identifier is a method or overloaded we elaborate *)
+  (*Check the second member of this function -> written guided by types*)
   | EVar (pos, x, tys) ->
     let (types, ps, binding) = lookup pos x env in
     let types_easyform = List.combine types tys in
-    if ps = []
-    then
-      let lx = match x with |Name s -> LName s in (*Warning, check that*)
-      if is_method lx env
-      then let (vars_meth, type_meth, _) = lookup_label pos lx env in
-        match ps with
-        | [ClassPredicate(cl,_)] -> let dic = elaborate_dictionary env cl type_meth in
-          (ERecordAccess(pos, dic, lx), type_application pos env x tys)
-        | _ -> assert(false) (* Methods have exactly one constraint*)
-      else (EVar (pos, x, tys), type_application pos env x tys)
+    let lx = match x with |Name s -> LName s in (*Warning, check that (Not exhs)*)
+    if is_method lx env
+    then 
+      match ps with
+      | [ClassPredicate(cl,var)] -> 
+        let t = List.assoc var types_easyform in 
+        begin
+          match t with
+          | TyVar(_,n) -> (*Var unbounded*)
+            begin 
+              let s = lookup_dictionary env cl t in 
+              (ERecordAccess(pos, EVar(pos, s, []), lx),
+               type_application pos env x ty)
+            end
+          | TyApp(_,n,l) ->
+              let dico = elaborate_dictionary env cl t in
+              (ERecordAccess(pos, dico, lx),
+               type_application pos env x tys)  (*Check this type_appli*)
+        end
+      | _ -> assert(false) (* Methods have exactly one constraint*)
     else ((List.fold_left
              (fun acc t ->
                 match t with
                 |ClassPredicate(cl,ty)->
-                  let inst_ty = List.assoc ty types_easyform in
-                  let record_i = elaborate_dictionary env cl inst_ty in
-                  (*Check if try on List.assoc is necessary or if it's safe
-                     by construction. I think it's safe *)
-                  (EApp(pos, acc, record_i))
+                  let ty = List.assoc ty types_easyform in
+                  begin
+                    match ty with
+                    | TyVar(_,n) ->
+                      begin 
+                        let s = lookup_dictionary env cl ty in 
+                        EApp(pos, acc, EVar(pos, s, []))
+                      end
+                    |TyApp(_,n,l)->         
+                      (EApp(pos, acc, assert(false)))
+                  end             
              )
              (EVar(pos,x,tys))
-             ps),
+             (List.rev ps)), (*TODO check if this rev is necessary*)
           type_application pos env x tys)
   | ELambda (pos, ((x, aty) as b), e') ->
     check_wf_type env KStar aty;

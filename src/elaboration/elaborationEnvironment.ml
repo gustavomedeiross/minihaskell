@@ -53,6 +53,15 @@ let lookup pos x env =
     List.find (fun (_, _, (x', _)) -> x = x') env.values
   with Not_found -> raise (UnboundIdentifier (pos, x))
 
+let lookup_dictionary env c ty =
+  match ty with
+  |TyVar(_,n) | TyApp(_,n,_) -> let insts = List.assoc n env.instances in 
+    let (_,name) = List.find 
+        (fun (x,y)-> x.instance_class_name = c)
+        insts in
+    name 
+
+
 let bind_scheme pos x ts pred ty env =
   { env with values = (ts, pred, (x, ty)) :: env.values}
 
