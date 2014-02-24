@@ -127,6 +127,6 @@ exception LackingMethod of position * tname * lname
 
 exception TooManyMethods of position * tname
 
-exception NotAnInstance of position
+exception NotAnInstance of position * tname * Types.t
 
 exception NotImplemented of position * string
