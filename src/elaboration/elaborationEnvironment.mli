@@ -73,6 +73,8 @@ val lookup_instances : t -> tname -> (instance_definition * name) list
 
 val add_predicates : Types.class_predicates -> t -> position -> t
 
+val add_predicates' : (tname * (instance_definition * name) list) list -> t -> t
+
 val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t 
 
 (** [is_instance_of pos t k e] raises an exception if t is not an

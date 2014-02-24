@@ -204,6 +204,9 @@ let add_predicates cstr env pos =
   then { env with v_constraints = constr @ env.v_constraints }
   else raise (NotCanonicalConstraint pos)
 
+let add_predicates' ps env =
+  { env with instances = ps @ env.instances }
+
 let add_unconstrained_tv ts env ps =
   List.fold_left
     (fun x l ->
