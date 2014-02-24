@@ -175,7 +175,7 @@ and instance_definition env' (defs, env) (i, name) =
   let env_ = add_local_context env in
 
   (* Elaborate record definition *)
-  let sub_dict = sub_dictionaries pos env i.instance_class_name itype in
+  let sub_dict = sub_dictionaries pos env_ i.instance_class_name itype in
   let methods = assert false in (*TODO*)
   let record = ERecordCon (pos, name, [itype], sub_dict @ methods) in
 
