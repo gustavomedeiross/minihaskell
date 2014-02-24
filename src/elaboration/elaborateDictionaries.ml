@@ -446,15 +446,9 @@ and check_equal_types pos ty1 ty2 =
 and type_application pos env x tys =
   List.iter (check_wf_type env KStar) tys;
   let (ts, ps, (_, ty)) = lookup pos x env in
-  let assoc =
-    try
-      List.combine ts tys
-    with _ -> raise (InvalidTypeApplication pos) in
-  List.iter
-    (fun (ClassPredicate (k, t)) ->
-       is_instance_of pos (List.assoc t assoc) k env)
-    ps;
-  substitute assoc ty
+  try
+    substitute (List.combine ts tys) ty
+  with Invalid_argument _ -> raise (InvalidTypeApplication pos)
 
 
 and expression env = function
