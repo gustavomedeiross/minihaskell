@@ -749,20 +749,25 @@ and eforall pos ts e =
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) = 
   (*x name, xty binding*)
   let env' = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-  let e = List.fold_left 
-      (fun acc x -> 
+  let (env,e) = List.fold_left 
+      (fun (env,acc) x -> 
          match x with
          | ClassPredicate(cl,ty)->
-           let dict = elaborate_dictionary 
-               pos 
-               env' 
-               cl
-               (TyVar(undefined_position,ty))
+           let name = fresh_iname cl in
+           let env = bind_instance env 
+               ({
+                 instance_position       =pos;
+                 instance_parameters     = [ty];
+                 instance_typing_context = [x];
+                 instance_class_name     = cl;
+                 instance_index          = ty;
+                 instance_members        = [];}
+               ,name) 
            in
-           EApp(pos,
-                acc,
-                dict))
-      e
+           (env,EApp(pos,
+                     acc,
+                     EVar(pos, name, []))))
+      (env,e)
       (List.rev ps)
   in 
   check_wf_type env' KStar xty;
