@@ -176,6 +176,11 @@ let bind_instance env (t, num) =
   with Not_found -> { env with instances = (t.instance_index, [t,num])
                                            :: env.instances}
 
+let lookup_instances env c =
+  try
+    List.assoc c env.instances
+  with Not_found -> []
+
 let add_predicates cstr env pos =
   let rec regroup acc = function
     | [] -> acc

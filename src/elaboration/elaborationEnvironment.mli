@@ -69,6 +69,8 @@ val add_name : t -> position * name -> t
 
 val bind_instance : t -> instance_definition * name -> t
 
+val lookup_instances : t -> tname -> (instance_definition * name) list
+
 val add_predicates : Types.class_predicates -> t -> position -> t
 
 val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t 

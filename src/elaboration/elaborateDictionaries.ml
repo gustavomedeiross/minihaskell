@@ -55,9 +55,69 @@ and block env = function
     block env (BDefinition dictionaries)
     *)
 
-(* Return an expression whose value is
- * the dictionary for the instance (K ty) *)
-and elaborate_dictionary env k ty = assert false (*TODO*)
+(* Return an expression whose value is the dictionary of type (K ty),
+ * may raise NotAnInstance
+ * - TODO: The current search has exponential complexity
+ * Some memoization may alleviate this *)
+and elaborate_dictionary pos env k ty =
+  try
+    elaborate_dictionary' env k ty
+  with Not_found -> raise (NotAnInstance pos)
+
+and elaborate_dictionary' env k = function
+  | TyVar (pos, v) as ty ->
+    let is = lookup_instances env v in
+    try_d_proj env k ty is
+  | TyApp (pos, c, ts) ->
+    let is = lookup_instances env c in
+    let i, name =
+      List.find (fun (i, _) -> i.instance_class_name = k) is in
+    d_ovar_inst env i name ts
+
+(* Rule D-OVAR-INST *)
+and d_ovar_inst env i name ts =
+  let t_inst = List.combine i.instance_parameters ts in
+  (* Substitute predicates by instanciated types *)
+  let predicates =
+    List.map
+      (fun (ClassPredicate (k, ty)) -> k, List.assoc ty t_inst)
+      i.instance_typing_context in
+  let f_dict = EVar (undefined_position, name, ts) in
+  List.fold_left (dict_application env) f_dict predicates
+
+(* Apply a dictionary abstraction f_dict to (k ty) dictionary
+ * [dict_application env f_dict (k, ty)] = {f_dict (k ty)} *)
+and dict_application env f_dict (k, ty) =
+  let dict = elaborate_dictionary' env k ty in
+  EApp (undefined_position, f_dict, dict)
+
+(* Rule D-PROJ/D-VAR, seeking to obtain (k ty) by sub-dictionary projections
+ * (when ty is a type variable) on some existing instance *)
+and try_d_proj env k ty = function
+  | [] -> raise Not_found
+  | (i, name) :: is ->
+    try
+      d_proj
+        env
+        (EVar (undefined_position, name, [ty]))
+        k
+        i.instance_class_name
+    with
+    | Not_found -> try_d_proj env k ty is
+
+and d_proj env q k k' =
+  if k = k'
+  then q
+  else let ks = (lookup_class undefined_position k' env).superclasses in
+    try_proj_superclass env q k k' ks
+
+and try_proj_superclass env q k k' = function
+  | [] -> raise Not_found
+  | k'' :: ks ->
+    try
+      let q = ERecordAccess (undefined_position, q, mk_kname (k'', k')) in
+      d_proj env q k k''
+    with Not_found -> try_proj_superclass env q k k' ks
 
 (* Instance elaboration
  *
@@ -348,14 +408,14 @@ and expression env = function
     let types_easyform = List.combine types tys in
     let lx = match x with |Name s -> LName s in (*Warning, check that (Not exhs)*)
     if is_method lx env
-    then 
+    then
       match ps with
-      | [ClassPredicate(cl,var)] -> 
-        let t = List.assoc var types_easyform in 
+      | [ClassPredicate(cl,var)] ->
+        let t = List.assoc var types_easyform in
         begin
-              let dico = elaborate_dictionary env cl t in
-              (ERecordAccess(pos, dico, lx),
-               type_application pos env x tys)  (*Check this type_appli*)
+          let dico = elaborate_dictionary pos env cl t in
+          (ERecordAccess(pos, dico, lx),
+           type_application pos env x tys)  (*Check this type_appli*)
         end
       | _ -> assert(false) (* Methods have exactly one constraint*)
     else ((List.fold_left
@@ -364,11 +424,11 @@ and expression env = function
                 |ClassPredicate(cl,ty)->
                   let ty = List.assoc ty types_easyform in
                   begin
-                      begin 
-                        let s = elaborate_dictionary env cl ty in 
-                        EApp(pos, acc, s)
-                      end
-                  end             
+                    begin
+                      let s = elaborate_dictionary pos env cl ty in
+                      EApp(pos, acc, s)
+                    end
+                  end
              )
              (EVar(pos,x,tys))
              (List.rev ps)), (*TODO check if this rev is necessary*)
