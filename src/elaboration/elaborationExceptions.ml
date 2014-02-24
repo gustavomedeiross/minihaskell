@@ -35,6 +35,8 @@ exception AmbiguousTypeclass of position * tname
 exception TooFreeTypeVariableTypeclass of position * tname
 exception NotAMethodOf of position * lname * tname
 exception MultipleMethods of position * lname
+exception LackingMethod of position * tname * lname
+exception TooManyMethods of position * tname
 exception NotAnInstance of position
 exception NotCanonicalConstraint of position
 

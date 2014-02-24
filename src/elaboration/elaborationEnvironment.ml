@@ -155,12 +155,13 @@ let initial =
     empty 
     PreludeTypes.types
 
-
+(*
 let lookup_method pos k x =
   try
     let (_, _, t) = List.find (fun (_, y, _) -> x = y) k.class_members in
     t
   with Not_found -> raise (NotAMethodOf (pos, x, k.class_name))
+*)
 
 let bind_instance env (t, num) =
   try
@@ -202,6 +203,9 @@ let add_predicates cstr env pos =
   if all_canonical
   then { env with v_constraints = constr @ env.v_constraints }
   else raise (NotCanonicalConstraint pos)
+
+let add_predicates' ps env =
+  { env with instances = ps @ env.instances }
 
 let add_unconstrained_tv ts env ps =
   List.fold_left

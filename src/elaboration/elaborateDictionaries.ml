@@ -130,13 +130,11 @@ and try_proj_superclass env q k k' = function
  * *)
 
 (* TODO: Collect variable names from member definitions *)
+(* TODO: Conflict between record fields and method names ? *)
 and elaborate_instances env is =
   let is = (* Associate a fresh name to every instance *)
     List.map
-      (function
-        | { instance_class_name = k } as i ->
-          (i, fresh_iname k)
-        | _ -> assert false)
+      (fun ({ instance_class_name = k } as i) -> (i, fresh_iname k))
       is in
   let env' = List.fold_left bind_instance env is in (* Full context *)
   let defs, _ = List.fold_left (instance_definition env') ([], env) is in
@@ -158,34 +156,32 @@ and instance_definition env' (defs, env) (i, name) =
 
   (* The constraints are elaborated into a lambda abstraction,
    * this creates one dictionary variable per constraint *)
-  let local_dict, local_dict_variables =
-    List.split (List.map dict_variable ps) in
-  (* i defines the instance K itype *)
-  let k = lookup_class pos i.instance_class_name env in
+  let ps', local_dict_variables = dict_variables pos env ps in
+  (* i defines the instance (K itype) where K = c.class_name *)
+  let c = lookup_class pos i.instance_class_name env in
   let cname = mk_cname i.instance_class_name in
   let itype = cons_type i.instance_index ts in
 
   (* Add the local context *)
   let add_local_context env =
     let env = introduce_type_parameters env ts [] pos in
-    (* Binding dictionary variables is similar to
-     * declaring instances for each of them *)
-    List.fold_left bind_instance env local_dict in
+    add_predicates' ps' env in
   let env'_ = add_local_context env' in
   let env_ = add_local_context env in
 
   (* Elaborate record definition *)
   (* Sub-dictionaries are elaborated in the "current" context *)
-  (* TODO: This doesn't seem necessary.
+  (* TODO: This ^ doesn't seem necessary.
    * An instance of the superclass should have been declared somewhere
    * so a direct sub-dictionary should be available *)
-  let sub_dict = sub_dictionaries pos env_ i.instance_class_name itype in
-  let methods = assert false in (*TODO*)
+  let sub_dict = sub_dictionaries pos env_ c itype in
+  let methods = elaborate_methods env'_ env_ c i itype in
   let record = ERecordCon (pos, name, [itype], sub_dict @ methods) in
 
   let env = bind_instance env (i, name) in
   let inst_body, inst_type =
-    List.fold_right abstract local_dict_variables (record, itype) in
+    List.fold_right abstract local_dict_variables
+      (record, TyApp (undefined_position, cname, [itype])) in
   let inst_body = EForall (pos, ts, inst_body) in
   let def =
     ValueDef (pos, ts, [], (name, inst_type), inst_body) in
@@ -193,6 +189,34 @@ and instance_definition env' (defs, env) (i, name) =
 
 (* Declare a new dictionary variable
  * [dict_variable {K 'a}] = (instance K 'a, fresh_name_K) *)
+and dict_variables pos env ps =
+  let qs = List.map dict_variable ps in
+  collect_by_variable pos env [] qs,
+  List.map (fun (_, name, ty) -> (name, ty)) qs
+
+and collect_by_variable pos env map = function
+  | [] -> map
+  | ({ instance_class_name = k;
+       instance_index      = v; } as i, name, _) :: qs ->
+    let is = try List.assoc v map
+      with Not_found -> [] in
+    if List.exists
+        (fun ({ instance_class_name = k' }, _) ->
+           k = k' ||
+           is_superclass pos k k' env ||
+           is_superclass pos k' k env)
+        is
+    then raise (NotCanonicalConstraint pos);
+    let map = map_add v (i, name) map in
+    collect_by_variable pos env map qs
+
+and map_add key v = function
+  | [] -> [key, [v]]
+  | (key', vs) :: map ->
+    if key = key'
+    then (key, v :: vs) :: map
+    else (key', vs) :: map_add key v map
+
 and dict_variable (ClassPredicate (k, v)) =
   let i =
     { instance_position = undefined_position;
@@ -202,10 +226,7 @@ and dict_variable (ClassPredicate (k, v)) =
       instance_index          = v; (* is a variable here *)
       instance_members        = []; } in
   let name = fresh_iname k in
-  (i, name),
-  (name, TyApp (undefined_position,
-                mk_cname k,
-                [TyVar (undefined_position, v)]))
+  (i, name, cons_type (mk_cname k) [v])
 
 (* Make a lambda abstraction
  * [abstract {x : t} {e : ty}] = (\(x : t) . e) : t -> ty *)
@@ -223,13 +244,39 @@ and arrow_of_predicates ps ty =
     | ClassPredicate (CName _, _) -> assert false in
   ntyarrow undefined_position (List.map type_of_predicate ps) ty
 
-and sub_dictionaries pos env k itype =
+and sub_dictionaries pos env c itype =
   let record_binding k' =
     RecordBinding (
-      mk_kname (k', k),
+      mk_kname (k', c.class_name),
       elaborate_dictionary pos env k' itype) in
-  let ks = (lookup_class undefined_position k env).superclasses in
-  List.map record_binding ks
+  List.map record_binding c.superclasses
+
+and elaborate_methods env' env c i ity =
+  let { instance_position   = pos;
+        instance_class_name = k;
+        instance_members    = ms; } = i in
+
+  let elaborate_method (_, lname, ty) =
+    try
+      let RecordBinding (_, e) =
+        List.find (fun (RecordBinding (lname', _)) -> lname' = lname) ms in
+      let ty = substitute [c.class_parameter, ity] ty in
+      let env = if is_abstraction e then env' else env in
+      let e = eforall pos [] e in
+      let e, ty' = expression env e in
+      check_equal_types pos ty ty';
+      RecordBinding (lname, e)
+    with Not_found -> raise (LackingMethod (pos, k, lname)) in
+
+  let members = List.map elaborate_method c.class_members in
+  (* Make sure all methods are present once exactly
+   * and no inexistent method has been introduced *)
+  if List.length members <> List.length ms then raise (TooManyMethods (pos, k));
+  members
+
+and is_abstraction = function
+  | ELambda _ -> true
+  | _ -> false
 
 (*****)
 
@@ -244,13 +291,16 @@ and sub_dictionaries pos env k itype =
  * later (7.4)"
  * *)
 
+(*
 and check_method env pos ts ps s k (RecordBinding (l, e)) = match l with
   | KName _ -> assert false
   | LName l ->
     let xty = lookup_method pos k (LName l) in
     let xty = substitute [k.class_parameter, s] xty in
     ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
+*)
 
+(*
 and check_instance_definitions env = function
   | [] -> ()
   | { instance_position       = pos;
@@ -262,6 +312,7 @@ and check_instance_definitions env = function
          (cons_type i.instance_index ts)
          (lookup_class pos i.instance_class_name env))
       i.instance_members
+      *)
 (*****)
 
 (* TODO: Superclasses are not dealt with correctly *)
@@ -273,6 +324,7 @@ and mk_cname = function
   | TName a -> CName a
   | _ -> assert(false)
 
+(* Check wf type of methods *)
 and elaborate_class c env =
   let superclass =
     List.map

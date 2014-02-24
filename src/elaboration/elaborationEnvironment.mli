@@ -63,7 +63,7 @@ val bind_label : position -> lname -> tnames -> Types.t -> tname -> t -> t
     the record type constructor of the label [l] in [e]. *)
 val lookup_label : position -> lname -> t -> tnames * Types.t * tname
 
-val lookup_method : position -> class_definition -> lname -> Types.t
+(*val lookup_method : position -> class_definition -> lname -> Types.t*)
 
 val add_name : t -> position * name -> t
 
@@ -72,6 +72,8 @@ val bind_instance : t -> instance_definition * name -> t
 val lookup_instances : t -> tname -> (instance_definition * name) list
 
 val add_predicates : Types.class_predicates -> t -> position -> t
+
+val add_predicates' : (tname * (instance_definition * name) list) list -> t -> t
 
 val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t 
 
