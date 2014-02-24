@@ -143,8 +143,9 @@ let handle_error f =
     fatal' pos (Printf.sprintf "  Instance of `%s' \
     contains too many methods." k)
 
-  | NotAnInstance pos ->
-    fatal' pos (Printf.sprintf "  Not an instance.")
+  | NotAnInstance (pos, TName k, ty) ->
+    fatal' pos (Printf.sprintf "  Type\n  %s\n  is not an instance of \
+    class `%s'." (string_of_type ty) k)
 
   | NotCanonicalConstraint(pos)  ->
     fatal' pos (Printf.sprintf "  Not a canonical form.")

@@ -62,7 +62,7 @@ and block env = function
 and elaborate_dictionary pos env k ty =
   try
     elaborate_dictionary' env k ty
-  with Not_found -> raise (NotAnInstance pos)
+  with Not_found -> raise (NotAnInstance (pos, k, ty))
 
 and elaborate_dictionary' env k = function
   | TyVar (pos, v) as ty ->
@@ -233,16 +233,6 @@ and dict_variable (ClassPredicate (k, v)) =
 and abstract (x, t) (e, ty) =
   ELambda (undefined_position, (x, t), e),
   TyApp (undefined_position, TName "->", [t; ty])
-
-(* The following may inspire the implementation of abstract *)
-(* (K 'a => ... => L 'b => ty) to
- * ('a k -> ... -> 'b l -> ty) *)
-and arrow_of_predicates ps ty =
-  let type_of_predicate = function
-    | ClassPredicate (TName k, tvar) ->
-      TyApp (undefined_position, CName k, [TyVar (undefined_position, tvar)])
-    | ClassPredicate (CName _, _) -> assert false in
-  ntyarrow undefined_position (List.map type_of_predicate ps) ty
 
 and sub_dictionaries pos env c itype =
   let record_binding k' =

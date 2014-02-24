@@ -226,7 +226,7 @@ let rec is_instance_of pos t k env = match t with
   | TyVar (_, v) ->
     let cs = lookup_constraints v env in
     if not (List.exists (fun k' -> k = k' || is_superclass pos k' k env) cs)
-    then raise (NotAnInstance pos)
+    then raise (NotAnInstance (pos, k, t))
   | TyApp (_, g, ts) ->
     try
       let is = List.assoc g env.instances in
@@ -236,5 +236,5 @@ let rec is_instance_of pos t k env = match t with
         (fun (ClassPredicate (k, v)) ->
            is_instance_of pos (List.assoc v assoc) k env)
         i.instance_typing_context;
-    with Not_found -> raise (NotAnInstance pos)
+    with Not_found -> raise (NotAnInstance (pos, k, t))
 
