@@ -158,7 +158,8 @@ and instance_definition env' (defs, env) (i, name) =
 
   (* The constraints are elaborated into a lambda abstraction,
    * this creates one dictionary variable per constraint *)
-  let local_dict, local_dict_variables = List.split (List.map dict_variable ps) in
+  let local_dict, local_dict_variables =
+    List.split (List.map dict_variable ps) in
   (* i defines the instance K itype *)
   let k = lookup_class pos i.instance_class_name env in
   let cname = mk_cname i.instance_class_name in
@@ -174,8 +175,8 @@ and instance_definition env' (defs, env) (i, name) =
   let env_ = add_local_context env in
 
   (* Elaborate record definition *)
-  let sub_dict = assert false in (*TODO*)
-  let methods = assert false in
+  let sub_dict = sub_dictionaries pos env i.instance_class_name itype in
+  let methods = assert false in (*TODO*)
   let record = ERecordCon (pos, name, [itype], sub_dict @ methods) in
 
   let env = bind_instance env (i, name) in
@@ -204,7 +205,9 @@ and dict_variable (ClassPredicate (k, v)) =
 
 (* Make a lambda abstraction
  * [abstract {x : t} {e : ty}] = (\(x : t) . e) : t -> ty *)
-and abstract (x, t) (e, ty) = assert false
+and abstract (x, t) (e, ty) =
+  ELambda (undefined_position, (x, t), e),
+  TyApp (undefined_position, TName "->", [t; ty])
 
 (* The following may inspire the implementation of abstract *)
 (* (K 'a => ... => L 'b => ty) to
@@ -215,6 +218,14 @@ and arrow_of_predicates ps ty =
       TyApp (undefined_position, CName k, [TyVar (undefined_position, tvar)])
     | ClassPredicate (CName _, _) -> assert false in
   ntyarrow undefined_position (List.map type_of_predicate ps) ty
+
+and sub_dictionaries pos env k itype =
+  let record_binding k' =
+    RecordBinding (
+      mk_kname (k', k),
+      elaborate_dictionary pos env k' itype) in
+  let ks = (lookup_class undefined_position k env).superclasses in
+  List.map record_binding ks
 
 (*****)
 
