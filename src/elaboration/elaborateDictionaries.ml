@@ -732,9 +732,17 @@ and eforall pos ts e =
 (*TODO: elaborate ps into an abstraction*)
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) = 
   (*x name, xty binding*)
+
   let env' = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-  let (env,e) = List.fold_left 
-      (fun (env,acc) x -> 
+
+  check_wf_type env' KStar xty;
+  List.iter
+    (fun (ClassPredicate (c, v)) ->
+       if not (TS.mem v (free xty)) then
+         raise (InvalidOverloading pos))
+    ps;
+  let env' = List.fold_left
+      (fun env x -> 
          match x with
          | ClassPredicate(cl,ty)->
            let name = fresh_iname cl in
@@ -748,23 +756,26 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
                  instance_members        = [];}
                ,name) 
            in
-           (env,EApp(pos,
-                     acc,
-                     EVar(pos, name, []))))
-      (env,e)
+           env) 
+      env'
       (List.rev ps)
-  in 
-  check_wf_type env' KStar xty;
-  List.iter
-    (fun (ClassPredicate (c, v)) ->
-       if not (TS.mem v (free xty)) then
-         raise (InvalidOverloading pos))
-    ps;
+  in
   if is_value_form e then begin
     let e = eforall pos ts e in
     let e, ty = expression env' e in
     let b = (x, ty) in
     check_equal_types pos xty ty;
+    let e = List.fold_left 
+        (fun acc x -> 
+           match x with
+           | ClassPredicate(cl,ty)->
+             let dic = elaborate_dictionary pos env' cl (TyVar(pos,ty))  in
+             EApp(pos,
+                  acc,
+                  dic))
+        e
+        (List.rev ps)
+    in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
   end else begin
@@ -775,6 +786,17 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e, ty = expression env' e in
       let b = (x, ty) in
       check_equal_types pos xty ty;
+      let e = List.fold_left 
+          (fun acc x -> 
+             match x with
+             | ClassPredicate(cl,ty)->
+               let dic = elaborate_dictionary pos env' cl (TyVar(pos,ty))  in
+               EApp(pos,
+                         acc,
+                         dic))
+          e
+          (List.rev ps)
+      in
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
