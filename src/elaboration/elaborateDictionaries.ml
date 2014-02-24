@@ -175,6 +175,10 @@ and instance_definition env' (defs, env) (i, name) =
   let env_ = add_local_context env in
 
   (* Elaborate record definition *)
+  (* Sub-dictionaries are elaborated in the "current" context *)
+  (* TODO: This doesn't seem necessary.
+   * An instance of the superclass should have been declared somewhere
+   * so a direct sub-dictionary should be available *)
   let sub_dict = sub_dictionaries pos env_ i.instance_class_name itype in
   let methods = assert false in (*TODO*)
   let record = ERecordCon (pos, name, [itype], sub_dict @ methods) in
