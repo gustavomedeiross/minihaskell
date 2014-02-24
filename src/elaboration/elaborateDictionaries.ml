@@ -464,11 +464,15 @@ and expression env = function
         check_equal_types pos b_ty ity;
         (EApp (pos, a, b), oty)
     end
+
+
   (*If we have constraints, value_binding behaves differently*)
-  | EBinding (pos, vb, e) ->
+  | EBinding (pos, vb, e) -> 
     let vb, env = value_binding env vb in
     let e, ty = expression env e in
     (EBinding (pos, vb, e), ty)
+
+
 
   | EForall (pos, tvs, e) ->
     (** Because type abstractions are removed by [value_binding]. *)
@@ -690,8 +694,25 @@ and eforall pos ts e =
     raise (InvalidNumberOfTypeAbstraction pos)
 
 (*TODO: elaborate ps into an abstraction*)
-and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
+and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) = 
+  (*x name, xty binding*)
   let env' = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
+  let e = List.fold_left 
+      (fun acc x -> 
+         match x with
+         | ClassPredicate(cl,ty)->
+           let dict = elaborate_dictionary 
+               pos 
+               env' 
+               cl
+               (TyVar(undefined_position,ty))
+           in
+           EApp(pos,
+                acc,
+                dict))
+      e
+      (List.rev ps)
+  in 
   check_wf_type env' KStar xty;
   List.iter
     (fun (ClassPredicate (c, v)) ->
