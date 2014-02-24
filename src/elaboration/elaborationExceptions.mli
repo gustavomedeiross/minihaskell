@@ -123,6 +123,10 @@ exception NotCanonicalConstraint of position
 
 exception MultipleMethods of position * lname
 
+exception LackingMethod of position * tname * lname
+
+exception TooManyMethods of position * tname
+
 exception NotAnInstance of position
 
 exception NotImplemented of position * string

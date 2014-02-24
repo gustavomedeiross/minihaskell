@@ -134,10 +134,7 @@ and try_proj_superclass env q k k' = function
 and elaborate_instances env is =
   let is = (* Associate a fresh name to every instance *)
     List.map
-      (function
-        | { instance_class_name = k } as i ->
-          (i, fresh_iname k)
-        | _ -> assert false)
+      (fun ({ instance_class_name = k } as i) -> (i, fresh_iname k))
       is in
   let env' = List.fold_left bind_instance env is in (* Full context *)
   let defs, _ = List.fold_left (instance_definition env') ([], env) is in
@@ -177,11 +174,11 @@ and instance_definition env' (defs, env) (i, name) =
 
   (* Elaborate record definition *)
   (* Sub-dictionaries are elaborated in the "current" context *)
-  (* TODO: This doesn't seem necessary.
+  (* TODO: This ^ doesn't seem necessary.
    * An instance of the superclass should have been declared somewhere
    * so a direct sub-dictionary should be available *)
   let sub_dict = sub_dictionaries pos env_ i.instance_class_name itype in
-  let methods = assert false in (*TODO*)
+  let methods = elaborate_methods env'_ env_ i itype in
   let record = ERecordCon (pos, name, [itype], sub_dict @ methods) in
 
   let env = bind_instance env (i, name) in
@@ -232,6 +229,35 @@ and sub_dictionaries pos env k itype =
   let ks = (lookup_class undefined_position k env).superclasses in
   List.map record_binding ks
 
+and elaborate_methods env' env i ity =
+  let { instance_position   = pos;
+        instance_class_name = k;
+        instance_members    = ms; } = i in
+
+  let c = lookup_class pos k env in
+
+  let elaborate_method (_, lname, ty) =
+    try
+      let RecordBinding (_, e) =
+        List.find (fun (RecordBinding (lname', _)) -> lname' = lname) ms in
+      let ty = substitute [c.class_parameter, ity] ty in
+      let env = if is_abstraction e then env' else env in
+      let e = eforall pos [] e in
+      let e, ty' = expression env e in
+      check_equal_types pos ty ty';
+      RecordBinding (lname, e)
+    with Not_found -> raise (LackingMethod (pos, k, lname)) in
+
+  let members = List.map elaborate_method c.class_members in
+  (* Make sure all methods are present once exactly
+   * and no inexistent method has been introduced *)
+  if List.length members <> List.length ms then raise (TooManyMethods (pos, k));
+  members
+
+and is_abstraction = function
+  | ELambda _ -> true
+  | _ -> false
+
 (*****)
 
 (* TODO: The following is to be used as a reference for elaborate_instance(s)
@@ -245,13 +271,16 @@ and sub_dictionaries pos env k itype =
  * later (7.4)"
  * *)
 
+(*
 and check_method env pos ts ps s k (RecordBinding (l, e)) = match l with
   | KName _ -> assert false
   | LName l ->
     let xty = lookup_method pos k (LName l) in
     let xty = substitute [k.class_parameter, s] xty in
     ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
+*)
 
+(*
 and check_instance_definitions env = function
   | [] -> ()
   | { instance_position       = pos;
@@ -263,6 +292,7 @@ and check_instance_definitions env = function
          (cons_type i.instance_index ts)
          (lookup_class pos i.instance_class_name env))
       i.instance_members
+      *)
 (*****)
 
 (* TODO: Superclasses are not dealt with correctly *)
@@ -274,6 +304,7 @@ and mk_cname = function
   | TName a -> CName a
   | _ -> assert(false)
 
+(* Check wf type of methods *)
 and elaborate_class c env =
   let superclass =
     List.map

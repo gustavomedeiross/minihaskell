@@ -136,6 +136,13 @@ let handle_error f =
   | MultipleMethods (pos, LName l) ->
     fatal' pos (Printf.sprintf "  `%s' is declared twice as a method." l)
 
+  | LackingMethod (pos, TName k, LName l) ->
+    fatal' pos (Printf.sprintf "  Instance of `%s' lacks method `%s'." k l)
+
+  | TooManyMethods (pos, TName k) ->
+    fatal' pos (Printf.sprintf "  Instance of `%s' \
+    contains too many methods." k)
+
   | NotAnInstance pos ->
     fatal' pos (Printf.sprintf "  Not an instance.")
 
