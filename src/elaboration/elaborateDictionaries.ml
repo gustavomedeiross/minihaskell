@@ -130,6 +130,7 @@ and try_proj_superclass env q k k' = function
  * *)
 
 (* TODO: Collect variable names from member definitions *)
+(* TODO: Conflict between record fields and method names ? *)
 and elaborate_instances env is =
   let is = (* Associate a fresh name to every instance *)
     List.map
