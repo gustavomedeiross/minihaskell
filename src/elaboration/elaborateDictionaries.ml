@@ -464,29 +464,19 @@ and evar pos env x tys =
     | Name s -> LName s in
   (* Not 'assert false' so that typechecking can be done on an elaborated
    * program again *)
+  let elab (ClassPredicate (k, var)) =
+    let t = List.assoc var assoc in
+    elaborate_dictionary pos env k t in
   if is_method lx env
   then
     match ps with
-    | [ClassPredicate (k, var)] ->
-      let t = List.assoc var assoc in
-      let dico = elaborate_dictionary pos env k t in
+    | [p] ->
+      let dico = elab p in
       ERecordAccess (pos, dico, lx), ty
     | _ -> assert false (* Methods have exactly one constraint*)
-  else ((List.fold_left
-           (fun acc t ->
-              match t with
-              |ClassPredicate(cl,ty)->
-                let ty = List.assoc ty assoc in
-                begin
-                  begin
-                    let s = elaborate_dictionary pos env cl ty in
-                    EApp(pos, acc, s)
-                  end
-                end
-           )
-           (EVar(pos,x,tys))
-           (List.rev ps)), (*TODO check if this rev is necessary*)
-        type_application pos env x tys)
+  else
+    let dict = List.map elab ps in
+    List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x, tys)) dict, ty
 
 and expression env = function
   | EVar (pos, x, tys) -> evar pos env x tys
