@@ -450,40 +450,47 @@ and type_application pos env x tys =
     substitute (List.combine ts tys) ty
   with Invalid_argument _ -> raise (InvalidTypeApplication pos)
 
+(*If an identifier is a method or overloaded we elaborate *)
+(*Check the second member of this function -> written guided by types*)
+and evar pos env x tys =
+  List.iter (check_wf_type env KStar) tys;
+  let (ts, ps, (_, ty)) = lookup pos x env in
+  let assoc, ty = try
+      let assoc = List.combine ts tys in
+      assoc, substitute assoc ty
+    with Invalid_argument _ -> raise (InvalidTypeApplication pos) in
+  let lx = match x with
+    | IName _ -> LName "" (* The next check would be false anyway *)
+    | Name s -> LName s in
+  (* Not 'assert false' so that typechecking can be done on an elaborated
+   * program again *)
+  if is_method lx env
+  then
+    match ps with
+    | [ClassPredicate (k, var)] ->
+      let t = List.assoc var assoc in
+      let dico = elaborate_dictionary pos env k t in
+      ERecordAccess (pos, dico, lx), ty
+    | _ -> assert false (* Methods have exactly one constraint*)
+  else ((List.fold_left
+           (fun acc t ->
+              match t with
+              |ClassPredicate(cl,ty)->
+                let ty = List.assoc ty assoc in
+                begin
+                  begin
+                    let s = elaborate_dictionary pos env cl ty in
+                    EApp(pos, acc, s)
+                  end
+                end
+           )
+           (EVar(pos,x,tys))
+           (List.rev ps)), (*TODO check if this rev is necessary*)
+        type_application pos env x tys)
 
 and expression env = function
-  (*If an identifier is a method or overloaded we elaborate *)
-  (*Check the second member of this function -> written guided by types*)
-  | EVar (pos, x, tys) ->
-    let (types, ps, binding) = lookup pos x env in
-    let types_easyform = List.combine types tys in
-    let lx = match x with |Name s -> LName s in (*Warning, check that (Not exhs)*)
-    if is_method lx env
-    then
-      match ps with
-      | [ClassPredicate(cl,var)] ->
-        let t = List.assoc var types_easyform in
-        begin
-          let dico = elaborate_dictionary pos env cl t in
-          (ERecordAccess(pos, dico, lx),
-           type_application pos env x tys)  (*Check this type_appli*)
-        end
-      | _ -> assert(false) (* Methods have exactly one constraint*)
-    else ((List.fold_left
-             (fun acc t ->
-                match t with
-                |ClassPredicate(cl,ty)->
-                  let ty = List.assoc ty types_easyform in
-                  begin
-                    begin
-                      let s = elaborate_dictionary pos env cl ty in
-                      EApp(pos, acc, s)
-                    end
-                  end
-             )
-             (EVar(pos,x,tys))
-             (List.rev ps)), (*TODO check if this rev is necessary*)
-          type_application pos env x tys)
+  | EVar (pos, x, tys) -> evar pos env x tys
+
   | ELambda (pos, ((x, aty) as b), e') ->
     check_wf_type env KStar aty;
     let env = bind_simple pos x aty env in
@@ -749,8 +756,8 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
            let env = bind_instance env 
                ({
                  instance_position       =pos;
-                 instance_parameters     = [ty];
-                 instance_typing_context = [x];
+                 instance_parameters     = [];
+                 instance_typing_context = [];
                  instance_class_name     = cl;
                  instance_index          = ty;
                  instance_members        = [];}
