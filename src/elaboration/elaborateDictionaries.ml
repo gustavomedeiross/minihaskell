@@ -500,7 +500,7 @@ and expression env = function
 
 
   (*If we have constraints, value_binding behaves differently*)
-  | EBinding (pos, vb, e) -> 
+  | EBinding (pos, vb, e) ->
     let vb, env = value_binding env vb in
     let e, ty = expression env e in
     (EBinding (pos, vb, e), ty)
@@ -727,7 +727,7 @@ and eforall pos ts e =
     raise (InvalidNumberOfTypeAbstraction pos)
 
 (*TODO: elaborate ps into an abstraction*)
-and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) = 
+and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   (*x name, xty binding*)
 
   let env' = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
@@ -739,11 +739,11 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
          raise (InvalidOverloading pos))
     ps;
   let env' = List.fold_left
-      (fun env x -> 
+      (fun env x ->
          match x with
          | ClassPredicate(cl,ty)->
            let name = fresh_iname cl in
-           let env = bind_instance env 
+           let env = bind_instance env
                ({
                  instance_position       =pos;
                  instance_parameters     = [];
@@ -751,9 +751,9 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
                  instance_class_name     = cl;
                  instance_index          = ty;
                  instance_members        = [];}
-               ,name) 
+               ,name)
            in
-           env) 
+           env)
       env'
       (List.rev ps)
   in
@@ -761,8 +761,8 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     let e = eforall pos ts e in
     let e, ty = expression env' e in
     check_equal_types pos xty ty;
-    let (e,ty) = List.fold_left 
-        (fun (e,ty) x -> 
+    let (e,ty') = List.fold_left
+        (fun (e,ty) x ->
            match x with
            | ClassPredicate(cl,t)->
              let name = lookup_dictionary env' cl (TyVar(pos,t))  in
@@ -770,7 +770,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
         (e,ty)
         (List.rev ps)
     in
-  let b = (x,ty) in
+  let b = (x,ty') in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
 
@@ -781,15 +781,6 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e = eforall pos [] e in
       let e, ty = expression env' e in
       check_equal_types pos xty ty;
-      let (e,ty) = List.fold_left 
-          (fun (e,ty) x -> 
-             match x with
-             | ClassPredicate(cl,t)->
-               let name = lookup_dictionary env' cl (TyVar(pos,t))  in
-             abstract (name,TyApp(pos,mk_cname cl ,[TyVar(pos,t)])) (e,ty)) (*Change ty with the name*)
-          (e,ty)
-          (List.rev ps)
-      in
       let b = (x,ty) in
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
