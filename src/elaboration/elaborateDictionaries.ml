@@ -797,7 +797,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
              match x with
              | ClassPredicate(cl,ty)->
                let name = lookup_dictionary env' cl (TyVar(pos,ty))  in
-               abstract (name,TyVar(pos,ty)) (e,typ))
+             abstract (name,TyApp(pos,mk_cname cl ,[TyVar(pos,ty)])) (e,typ)) (*Change ty with the name*)
           (e,ty)
           (List.rev ps)
       in
