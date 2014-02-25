@@ -769,10 +769,10 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
         (fun acc x -> 
            match x with
            | ClassPredicate(cl,ty)->
-             let dic = elaborate_dictionary pos env' cl (TyVar(pos,ty))  in
-             EApp(pos,
-                  acc,
-                  dic))
+             let name = lookup_dictionary env' cl (TyVar(pos,ty))  in
+             ELambda(pos,
+                  (name,TyVar(pos,ty)),
+                  acc))
         e
         (List.rev ps)
     in
@@ -790,10 +790,10 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
           (fun acc x -> 
              match x with
              | ClassPredicate(cl,ty)->
-               let dic = elaborate_dictionary pos env' cl (TyVar(pos,ty))  in
-               EApp(pos,
-                         acc,
-                         dic))
+             let name = lookup_dictionary env' cl (TyVar(pos,ty))  in
+             ELambda(pos,
+                  (name,TyVar(pos,ty)),
+                  acc))
           e
           (List.rev ps)
       in
