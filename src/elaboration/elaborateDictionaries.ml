@@ -770,17 +770,17 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   if is_value_form e then begin
     let e = eforall pos ts e in
     let e, ty = expression env' e in
-    let b = (x, ty) in
     check_equal_types pos xty ty;
     let (e,ty) = List.fold_left 
-        (fun (e,typ) x -> 
+        (fun (e,ty) x -> 
            match x with
-           | ClassPredicate(cl,ty)->
-             let name = lookup_dictionary env' cl (TyVar(pos,ty))  in
-             abstract (name,TyApp(pos,mk_cname cl ,[TyVar(pos,ty)])) (e,typ)) (*Change ty with the name*)
+           | ClassPredicate(cl,t)->
+             let name = lookup_dictionary env' cl (TyVar(pos,t))  in
+             abstract (name,TyApp(pos,mk_cname cl ,[TyVar(pos,t)])) (e,ty)) (*Change ty with the name*)
         (e,ty)
         (List.rev ps)
     in
+  let b = (x,ty) in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
 
@@ -790,17 +790,17 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     else
       let e = eforall pos [] e in
       let e, ty = expression env' e in
-      let b = (x, ty) in
       check_equal_types pos xty ty;
       let (e,ty) = List.fold_left 
-          (fun (e,typ) x -> 
+          (fun (e,ty) x -> 
              match x with
-             | ClassPredicate(cl,ty)->
-               let name = lookup_dictionary env' cl (TyVar(pos,ty))  in
-             abstract (name,TyApp(pos,mk_cname cl ,[TyVar(pos,ty)])) (e,typ)) (*Change ty with the name*)
+             | ClassPredicate(cl,t)->
+               let name = lookup_dictionary env' cl (TyVar(pos,t))  in
+             abstract (name,TyApp(pos,mk_cname cl ,[TyVar(pos,t)])) (e,ty)) (*Change ty with the name*)
           (e,ty)
           (List.rev ps)
       in
+      let b = (x,ty) in
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
