@@ -756,8 +756,8 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
            let env = bind_instance env 
                ({
                  instance_position       =pos;
-                 instance_parameters     = [ty];
-                 instance_typing_context = [x];
+                 instance_parameters     = [];
+                 instance_typing_context = [];
                  instance_class_name     = cl;
                  instance_index          = ty;
                  instance_members        = [];}
