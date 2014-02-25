@@ -58,8 +58,8 @@ end
 (** Terms whose parameters are of type ['a]. This data structure
     represents a tree whose depth is exactly equal to 1. *)
 type 'a term =
-  | RowCons of RowLabel.t * 'a * 'a
-  | RowUniform of 'a
+(*  | RowCons of RowLabel.t * 'a * 'a
+  | RowUniform of 'a*)
   | App of 'a * 'a
   | Var of 'a
 
@@ -98,6 +98,9 @@ val gen_change_arterm_vars : ('a * 'a arterm) list -> 'a arterm -> 'a arterm
 val app : 'a arterm -> 'a arterm list -> 'a arterm
 
 (** [uniform t] returns the row type that maps any label to [t]. *)
+(*
+USELESS FUNCTIONS
+
 val uniform : 'a arterm -> 'a arterm
 
 (** [rowcons l t r] returns the row type [(l: t; r)]. *)
@@ -105,3 +108,4 @@ val rowcons : lname -> 'a arterm -> 'a arterm -> 'a arterm
 
 (** [n_rowcons l ts r] returns the row type [(l0: t0; ...; ln: tn; r)]. *)
 val n_rowcons : (lname * 'a arterm) list -> 'a arterm -> 'a arterm
+*)

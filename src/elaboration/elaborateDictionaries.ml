@@ -314,7 +314,7 @@ and mk_cname = function
   | TName a -> CName a
   | _ -> assert(false)
 
-(* Check wf type of methods *)
+(* TODO Check wf type of methods *)
 and elaborate_class c env =
   let superclass =
     List.map
@@ -451,7 +451,6 @@ and type_application pos env x tys =
   with Invalid_argument _ -> raise (InvalidTypeApplication pos)
 
 (*If an identifier is a method or overloaded we elaborate *)
-(*Check the second member of this function -> written guided by types*)
 and evar pos env x tys =
   List.iter (check_wf_type env KStar) tys;
   let (ts, ps, (_, ty)) = lookup pos x env in
@@ -690,7 +689,6 @@ and record_binding env (RecordBinding (l, e)) =
   (RecordBinding (l, e), ty)
 
 and value_binding env = function
-  (*TODO : Elaborate binding when overloaded symbols*)
   | BindValue (pos, vs) ->
     let (vs, env) = Misc.list_foldmap value_definition env vs in
     (BindValue (pos, vs), env)
@@ -744,6 +742,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
          | ClassPredicate(cl,ty)->
            let name = fresh_iname cl in
            let env = bind_instance env
+(*TODO cacher*)
                ({
                  instance_position       =pos;
                  instance_parameters     = [];

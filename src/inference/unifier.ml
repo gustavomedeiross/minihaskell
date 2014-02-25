@@ -204,7 +204,7 @@ let unify pos register =
       (* Both multi-equations contain a uniform row term. Merge the
          multi-equations (dropping one of the terms), then decompose
          the equation that arises between the two terms. *)
-
+(*WHAT THE HELL ?! SIMPLIFICATIONS 
       | Some (RowUniform content1), Some (RowUniform content2), _, _ ->
         merge();
         unify pos content1 content2
@@ -314,5 +314,5 @@ let unify pos register =
 
         unify pos hd1 content2;
         filter tl1 (RowUniform content2)
-
+*)
   in unify pos

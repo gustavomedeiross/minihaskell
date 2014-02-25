@@ -104,8 +104,10 @@ end
     constructor for every row label, the unary constant row
     constructor, and the terms of the underlying free algebra. *)
 type 'a term =
-  | RowCons of RowLabel.t * 'a * 'a
-  | RowUniform of 'a
+  (* WHAT THE HELLL ?!?
+     | RowCons of RowLabel.t * 'a * 'a
+     | RowUniform of 'a
+  *)
   | App of 'a * 'a
   | Var of 'a
 
@@ -116,20 +118,20 @@ type 'a arterm =
   | TTerm of ('a arterm) term
 
 let rec iter f = function
-  | RowCons (_, hd, tl) ->
-    f hd; f tl
-  | RowUniform content ->
-    f content
+  (* | RowCons (_, hd, tl) ->
+     f hd; f tl
+     | RowUniform content ->
+     f content *)
   | App (l, r) ->
     f l; f r
   | Var v ->
     f v
 
 let rec map f = function
-  | RowCons (label, hd, tl) ->
+ (* | RowCons (label, hd, tl) ->
     RowCons (label, f hd, f tl)
   | RowUniform content ->
-    RowUniform (f content)
+    RowUniform (f content)*)
   | App (l, r) ->
     App (f l, f r)
   | Var v ->
@@ -137,10 +139,10 @@ let rec map f = function
 
 let rec fold f term accu =
   match term with
-  | RowCons (_, hd, tl) ->
+(*  | RowCons (_, hd, tl) ->
     f hd (f tl accu)
   | RowUniform content ->
-    f content accu
+    f content accu*)
   | App (l, r) ->
     f r (f l accu)
   | Var v ->
@@ -148,10 +150,10 @@ let rec fold f term accu =
 
 let rec fold2 f term term' accu =
   match term, term' with
-  | RowCons (_, hd, tl), RowCons (_, hd', tl') ->
+ (* | RowCons (_, hd, tl), RowCons (_, hd', tl') ->
     f hd hd' (f tl tl' accu)
   | RowUniform content, RowUniform content' ->
-    f content content' accu
+    f content content' accu*)
   | App (l, r), App (l', r') ->
     f r r' (f l l' accu)
   | Var v, Var v' ->
@@ -195,6 +197,7 @@ let gen_change_term_vars c = change_term (from_assoc c)
 
 let gen_change_arterm_vars c = change_arterm (from_assoc c)
 
+(*
 let uniform v =
   TTerm (RowUniform v)
 
@@ -203,4 +206,4 @@ let rowcons label x y =
   TTerm (RowCons (intern_label, x, y))
 
 let n_rowcons typed_labels y =
-  List.fold_left (fun acu (l, t) -> rowcons l t acu) y typed_labels
+  List.fold_left (fun acu (l, t) -> rowcons l t acu) y typed_labels*)

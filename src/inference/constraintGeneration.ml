@@ -53,6 +53,7 @@ let fold env f =
     variables. [vars] are the fresh variables introduced to type the
     pattern. [tconstraint] is the constraint coming from the instantiation
     of the data constructor scheme. *)
+
 type fragment =
   {
     gamma       : (crterm * position) StringMap.t;
