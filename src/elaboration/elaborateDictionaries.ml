@@ -772,19 +772,18 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     let e, ty = expression env' e in
     let b = (x, ty) in
     check_equal_types pos xty ty;
-    let e = List.fold_left 
-        (fun acc x -> 
+    let (e,ty) = List.fold_left 
+        (fun (e,typ) x -> 
            match x with
            | ClassPredicate(cl,ty)->
              let name = lookup_dictionary env' cl (TyVar(pos,ty))  in
-             ELambda(pos,
-                  (name,TyVar(pos,ty)),
-                  acc))
-        e
+             abstract (name,TyVar(pos,ty)) (e,typ)) (*Change ty with the name*)
+        (e,ty)
         (List.rev ps)
     in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
+
   end else begin
     if ts <> [] then
       raise (ValueRestriction pos)
@@ -793,15 +792,13 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e, ty = expression env' e in
       let b = (x, ty) in
       check_equal_types pos xty ty;
-      let e = List.fold_left 
-          (fun acc x -> 
+      let (e,ty) = List.fold_left 
+          (fun (e,typ) x -> 
              match x with
              | ClassPredicate(cl,ty)->
-             let name = lookup_dictionary env' cl (TyVar(pos,ty))  in
-             ELambda(pos,
-                  (name,TyVar(pos,ty)),
-                  acc))
-          e
+               let name = lookup_dictionary env' cl (TyVar(pos,ty))  in
+               abstract (name,TyVar(pos,ty)) (e,typ))
+          (e,ty)
           (List.rev ps)
       in
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
