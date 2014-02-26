@@ -169,42 +169,6 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
         in
         XAST.ERecordCon (p, n, i, List.map record_binding rbs)
 
-    and expression = function
-      | EVar (p, ((Name x) as n), _) ->
-        let (TyScheme (ts, _, _)) as sx = type_scheme_of p x in
-        let i = instantiation_of_identifier p sx x in
-        XAST.EVar (p, n, i)
-
-      | ELambda (p, b, t) ->
-        XAST.ELambda (p, binding p e b, expression t)
-
-      | EApp (p, a, b) ->
-        XAST.EApp (p, expression a, expression b)
-
-      | EBinding (p, bvs, t) ->
-        XAST.EBinding (p, bind_value bvs, expression t)
-
-      | EDCon (p, ((DName x) as k), _, ts) ->
-        let sx = type_scheme_of_constructor k in
-        XAST.EDCon (p, k,
-                    instantiation_of_identifier p sx x,
-                    List.map expression ts)
-
-      | EPrimitive (p, prim) ->
-        XAST.EPrimitive (p, primitive prim)
-
-      | ERecordCon (p, ((Name x) as n), _, rbs) ->
-        let (_, _, v) = lookup_binding e x in
-        let i =
-          match type_of_variable p v with
-          | TyApp (_, _, tys) ->
-            tys
-          | _ ->
-            (** Because inference only produces well-formed type. *)
-            assert false
-        in
-        XAST.ERecordCon (p, n, i, List.map record_binding rbs)
-
       | ERecordAccess (p, e, l) ->
         XAST.ERecordAccess (p, expression e, l)
 
