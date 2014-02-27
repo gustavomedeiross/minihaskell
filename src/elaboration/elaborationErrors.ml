@@ -141,14 +141,22 @@ let handle_error f =
 
   | TooManyMethods (pos, TName k) ->
     fatal' pos (Printf.sprintf "  Instance of `%s' \
-    contains too many methods." k)
+                                contains too many methods." k)
 
   | NotAnInstance (pos, TName k, ty) ->
     fatal' pos (Printf.sprintf "  Type\n  %s\n  is not an instance of \
-    class `%s'." (string_of_type ty) k)
+                                class `%s'." (string_of_type ty) k)
 
   | NotCanonicalConstraint(pos)  ->
     fatal' pos (Printf.sprintf "  Not a canonical form.")
 
   | NotImplemented (pos, str) ->
     fatal' pos (Printf.sprintf "  Not implemented: `%s'." str)
+
+  | InvalidRecordConstruction pos ->
+    fatal' pos "  Invalid record construction (not the right set of fields)."
+
+  | OverloadedSymbolCannotBeBound (pos, Name x) ->
+    fatal' pos (Printf.sprintf
+                  "  Identifier `%s' cannot be both overloaded and let-bound."
+                  x)
