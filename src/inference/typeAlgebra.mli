@@ -61,20 +61,19 @@ type 'a environment = tname -> 'a arterm
 (** [arrow env t1 t2] return the type [t1 -> t2]. *)
 val arrow : 'a environment -> 'a arterm -> 'a arterm -> 'a arterm
 
-(** [arrow env ts] returns the type [t0 -> ... -> tn]. *)
-val n_arrows: 'a environment -> 'a arterm list -> 'a arterm -> 'a arterm
+(** [n_arrows env t0 ts] returns the type [t0 -> t1 -> ... -> tn]. *)
+val n_arrows: 'a environment -> 'a arterm -> 'a arterm list -> 'a arterm
 
 (** [result_type env t] returns the result type of the type [t] if
     [t] is an arrow type. *)
-val result_type :  'a environment -> 'a arterm -> 'a arterm
+val result_type : 'a environment -> 'a arterm -> 'a arterm
 
-(** [result_type env t] returns the argument types of the type [t] if
+(** [arg_types env t] returns the argument types of the type [t] if
     [t] is an arrow type. *)
 val arg_types : 'a environment -> 'a arterm -> 'a arterm list
 
-(** [tycon_args ty] returns the actual arguments of the type
-    application if [ty] is a type application. It returns the
-    empty list otherwise. *)
+(** [tycon_args ty] returns the actual arguments of the type application
+    if [ty] is a type application. It returns the empty list otherwise. *)
 val tycon_args : 'a arterm -> 'a arterm list
 
 (** [tycon_name ty] returns the name of the type constructor
@@ -87,7 +86,7 @@ val type_of_primitive : 'a environment -> IAST.primitive -> 'a arterm
 (** The type of predefined data constructors. *)
 type builtin_dataconstructor = dname * tname list * Types.t
 
-(** [init_builtin_env variable_maker] uses [variable_maker] to built
+(** [init_builtin_env variable_maker] uses [variable_maker] to build
     a typing environment that maps type constructor names to their arities
     and their type variables. *)
 val init_builtin_env: (?name:tname -> unit -> 'a)

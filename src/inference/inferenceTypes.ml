@@ -26,61 +26,35 @@ open Name
 
 (** This module implements the internal representation of terms. *)
 
-module RowLabel : sig
+(* Row algebra blablabla
+   module RowLabel = struct
 
-  (** This module maintains a global mapping from identifiers to
-      abstract ``labels'', which are internally represented as
-      integers, and back. *)
+   (** A row label is an object of type [t], that is, an integer. *)
+   type t = int
 
-  type t
+   let compare = (-)
 
-  (** [compare x y] is a total ordering. It returns a negative integer
-      if [x] is less than [y], 0 if [x] and [y] are equal, and a
-      positive integer if [x] is greater than [y]. *)
-  val compare: t -> t -> int
-
-  (** [import s] associates a unique label with the identifier [s],
-      possibly extending the global mapping if [s] was never encountered
-      so far. Thus, if [s] and [t] are equal strings, possibly allocated
-      in different memory locations, [import s] and [import t] return
-      the same label. The identifier [s] is recorded and may be later
-      recovered via [export]. *)
-  val import: lname -> t
-
-  (** [export i] provides access to the inverse of the global mapping,
-      that is, associates a unique identifier with every label. The
-      identifier associated with a label is the one originally supplied
-      to [import]. *)
-  val export: t -> lname
-
-end = struct
-
-  (** A row label is an object of type [t], that is, an integer. *)
-  type t = int
-
-  let compare = (-)
-
-  (** A hash table maps all known identifiers to integer values. It
+   (** A hash table maps all known identifiers to integer values. It
       provides one direction of the global mapping. *)
-  let table =
+   let table =
     Hashtbl.create 1023
 
-  (** An infinite array maps all known integer values to identifiers. It
+   (** An infinite array maps all known integer values to identifiers. It
       provides the other direction of the global mapping. *)
-  let array =
+   let array =
     InfiniteArray.make "<BUG>" (* Dummy data. *)
 
-  (** A global counter contains the next available integer label. *)
-  let counter =
+   (** A global counter contains the next available integer label. *)
+   let counter =
     ref 0
 
-  (** [import s] associates a unique label with the identifier [s],
+   (** [import s] associates a unique label with the identifier [s],
       possibly extending the global mapping if [s] was never encountered
       so far. Thus, if [s] and [t] are equal strings, possibly allocated
       in different memory locations, [import s] and [import t] return
       the same label. The identifier [s] is recorded and may be later
       recovered via [export]. *)
-  let import (LName s) =
+   let import (LName s) =
     try
       Hashtbl.find table s
     with Not_found ->
@@ -90,21 +64,22 @@ end = struct
       counter := i + 1;
       i
 
-  (** [export i] provides access to the inverse of the global mapping,
+   (** [export i] provides access to the inverse of the global mapping,
       that is, associates a unique identifier with every label. The
       identifier associated with a label is the one originally supplied
       to [import]. *)
-  let export i =
+   let export i =
     assert (i < !counter);
     LName (InfiniteArray.get array i)
 
-end
+   end
+*)
 
-(** The terms of a row algebra include a binary row extension
-    constructor for every row label, the unary constant row
-    constructor, and the terms of the underlying free algebra. *)
 type 'a term =
-  (* WHAT THE HELLL ?!?
+  (* Row algebra blablabla
+     (** The terms of a row algebra include a binary row extension
+     constructor for every row label, the unary constant row
+     constructor, and the terms of the underlying free algebra. *)
      | RowCons of RowLabel.t * 'a * 'a
      | RowUniform of 'a
   *)
@@ -128,10 +103,10 @@ let rec iter f = function
     f v
 
 let rec map f = function
- (* | RowCons (label, hd, tl) ->
-    RowCons (label, f hd, f tl)
-  | RowUniform content ->
-    RowUniform (f content)*)
+  (* | RowCons (label, hd, tl) ->
+     RowCons (label, f hd, f tl)
+     | RowUniform content ->
+     RowUniform (f content)*)
   | App (l, r) ->
     App (f l, f r)
   | Var v ->
@@ -139,10 +114,10 @@ let rec map f = function
 
 let rec fold f term accu =
   match term with
-(*  | RowCons (_, hd, tl) ->
-    f hd (f tl accu)
-  | RowUniform content ->
-    f content accu*)
+  (*  | RowCons (_, hd, tl) ->
+      f hd (f tl accu)
+      | RowUniform content ->
+      f content accu*)
   | App (l, r) ->
     f r (f l accu)
   | Var v ->
@@ -150,10 +125,10 @@ let rec fold f term accu =
 
 let rec fold2 f term term' accu =
   match term, term' with
- (* | RowCons (_, hd, tl), RowCons (_, hd', tl') ->
-    f hd hd' (f tl tl' accu)
-  | RowUniform content, RowUniform content' ->
-    f content content' accu*)
+  (* | RowCons (_, hd, tl), RowCons (_, hd', tl') ->
+     f hd hd' (f tl tl' accu)
+     | RowUniform content, RowUniform content' ->
+     f content content' accu*)
   | App (l, r), App (l', r') ->
     f r r' (f l l' accu)
   | Var v, Var v' ->

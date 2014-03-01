@@ -50,13 +50,13 @@ let builtin_env =
                       TyApp (undefined_position, TName "unit", []))])
   |]
 
-let get_infix (i, _, _,_,_) =
+let get_infix (i, _, _, _, _) =
   i
 
-let get_assoc (_, a, _,_,_) =
+let get_assoc (_, a, _, _, _) =
   a
 
-let get_priority (_, _, p,_,_) =
+let get_priority (_, _, p, _, _) =
   p
 
 let as_symbol name =
@@ -64,7 +64,7 @@ let as_symbol name =
 
 let init_builtin_env variable =
   Array.fold_left
-    (fun acu (o, (_,_,_,arity, ds)) ->
+    (fun acu (o, (_, _, _, arity, ds)) ->
        (o, (arity,
             TVariable (variable ?name:(Some o) ()),
             ds
@@ -72,23 +72,20 @@ let init_builtin_env variable =
        ) :: acu)
     [] builtin_env
 
-let is_builtin op =
-  true
-
 let infix op =
   try
     get_infix (snd builtin_env.(op))
-  with Not_found -> false
+  with Invalid_argument "index out of bounds" -> false
 
 let priority op =
   try
     get_priority (snd builtin_env.(op))
-  with Not_found -> max_int
+  with Invalid_argument "index out of bounds" -> max_int
 
 let associativity op =
   try
     get_assoc (snd builtin_env.(op))
-  with Not_found -> NonAssoc
+  with Invalid_argument "index out of bounds" -> NonAssoc
 
 type 'a environment = tname -> 'a arterm
 
@@ -107,27 +104,24 @@ let arrow tenv t u =
   let v = symbol tenv (TName "->") in
   TTerm (App (TTerm (App (v, t)), u))
 
-let n_arrows tenv ts u =
-  List.fold_left (fun acu x -> arrow tenv acu x) u ts
+let n_arrows tenv =
+  List.fold_left (fun acu x -> arrow tenv acu x)
 
-let result_type tenv t =
+let result_type tenv =
   let a = symbol tenv (TName "->") in
-  let rec chop n t =
-    if n = 0 then t
-    else
-      match t with
-      | TTerm (App (TTerm (App (v, t)), u)) when v = a -> chop (n-1) u
-      | u -> assert (n <= 0); u
+  let rec result_type = function
+    | TTerm (App (TTerm (App (v, t)), u)) when v = a -> result_type u
+    | u -> u
   in
-  chop (-1) t
+  result_type
 
-let arg_types tenv t =
+let arg_types tenv =
   let a = symbol tenv (TName "->") in
-  let rec chop acu = function
-    | TTerm (App (TTerm (App (v, t)), u)) when v = a -> chop (t :: acu) u
-    | x -> acu
+  let rec arg_types = function
+    | TTerm (App (TTerm (App (v, t)), u)) when v = a -> t :: arg_types u
+    | x -> []
   in
-  List.rev (chop [] t)
+  arg_types
 
 let tycon_args t =
   let rec chop acu = function

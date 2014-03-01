@@ -20,15 +20,15 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** Environment who maps keys whose type is ['a] to values of type ['b]. *)
+(** Environment which maps keys whose type is ['a] to values of type ['b]. *)
 type ('a, 'b) t
 
 (** [lookup env k] returns the value associated to [k]
     or raises [Not_found]. *)
 val lookup : ('a, 'b) t -> 'a -> 'b
 
-(** [lookup_image env p] returns a binding [(k, v)] such
-    that [p v] or raises [Not_found]. *)
+(** [lookup_image env p] finds a binding [(k, v)] such that [p v = Some i]
+    and returns that value [i], or raises [Not_found]. *)
 val lookup_image : ('a, 'b) t -> ('b -> 'c option) -> 'c
 
 (** [filter env pred] returns the set of values that verify [pred]. *)
