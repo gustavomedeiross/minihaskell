@@ -35,7 +35,8 @@ module IdSet = Set.Make (struct
     let compare = compare
   end)
 
-module RowDomain = BasicSetEquations.Make (struct
+(* Row algebra blablabla
+   module RowDomain = BasicSetEquations.Make (struct
 
     include IdSet
 
@@ -48,7 +49,8 @@ module RowDomain = BasicSetEquations.Make (struct
       with Not_found ->
         ""
 
-  end)
+   end)
+*)
 
 type variable =
   descriptor UnionFind.point
@@ -62,7 +64,9 @@ and descriptor =
 
 and term =
   | App of variable * variable
-  | Row of RowDomain.term
+  (* Row algebra blablabla
+     | Row of RowDomain.term
+  *)
 
 type t = variable
 
@@ -86,7 +90,6 @@ let iter_term f = function
     App (t1, t2) ->
     f t1;
     f t2
-  | _ -> ()
 
 let iter f v = iter_term f (unSome (structure v))
 
@@ -127,8 +130,10 @@ let rec mkconstructor tenv arity =
   if arity = 0 then star else
     mkarrow star (mkconstructor tenv (arity - 1))
 
-let row d =
-  term_handler (Row d)
+(* Row algebra blablabla
+   let row d =
+   term_handler (Row d)
+*)
 
 let is_star env k =
   UnionFind.equivalent k star
@@ -144,14 +149,15 @@ let rec kind_arity env v =
     else
       assert false
   | Some t ->
-    (match t with
-     | App (s, k) when s = arrow_sym -> 1 + kind_arity env k
-     | App (k, _) -> kind_arity env k
-     | _ -> 0)
+    match t with
+    | App (s, k) when s = arrow_sym -> 1 + kind_arity env k
+    | App (k, _) -> kind_arity env k
 
 let rec print_term = function
   | App (v1, v2) -> String.concat "" [ "(" ; print v1 ; "," ; print v2 ; ")" ]
-  | Row v -> "Row("^ RowDomain.print v ^ ")"
+(* Row algebra blablabla
+   | Row v -> "Row("^ RowDomain.print v ^ ")"
+*)
 
 and print v =
   match (UnionFind.find v).structure with
@@ -160,7 +166,8 @@ and print v =
 
 and name v =
   match (UnionFind.find v).name with
-    TName name -> name
+  | TName name -> name
+  | CName _ -> assert false
 
 let is_constant v = (UnionFind.find v).constant
 
@@ -183,9 +190,8 @@ let assign pos k1 k2 =
 let occur_check v1 v2 =
   let rec variables acu v =
     match (structure v) with
-    | None -> if not (List.memq v acu) then v::acu else acu
+    | None -> if not (List.memq v acu) then v :: acu else acu
     | Some (App (v1, v2)) -> variables (variables acu v1) v2
-    | _ -> acu
   in
   let vars1 = variables [] v1
   and vars2 = variables [] v2
@@ -219,15 +225,17 @@ let rec unify pos k1 k2 =
       unify pos t1 t1';
       unify pos t2 t2'
 
+      (*
     | Some (Row d1), Some (Row d2) ->
       RowDomain.unify d1 d2
 
     | _ -> assert false)
+      *)
+  )
 
 let rec infer env = function
   | TyVar (p, id) ->
     intern_kind env KStar
-
 
   | TyApp (p, tc, ts) ->
     let k = variable () in
