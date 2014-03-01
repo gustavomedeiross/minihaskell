@@ -30,12 +30,12 @@ open Types
 open InferenceExceptions
 open Misc
 
-module IdSet = Set.Make (struct
+(* Row algebra blablabla
+   module IdSet = Set.Make (struct
     type t = string
     let compare = compare
-  end)
+   end)
 
-(* Row algebra blablabla
    module RowDomain = BasicSetEquations.Make (struct
 
     include IdSet
@@ -104,12 +104,6 @@ let term_handler t =
     constant = false
   }
 
-let times = "__x"
-let arrow = "__=>"
-let star = "__*"
-
-let count = ref 0
-
 let symbol tenv i =
   (fst tenv) i
 
@@ -145,9 +139,8 @@ let rec kind_arity env v =
   let arrow_sym = symbol env arrow in
   match (UnionFind.find v).structure with
   | None ->
-    if is_star env v then 0
-    else
-      assert false
+    assert (is_star env v);
+    0
   | Some t ->
     match t with
     | App (s, k) when s = arrow_sym -> 1 + kind_arity env k
