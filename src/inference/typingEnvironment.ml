@@ -39,7 +39,7 @@ open MultiEquation
 (** Use a basic implementation. *)
 open Env
 
-(** [typing_info] denotes information collected during the user-defined
+(** [type_info] denotes information collected during the user-defined
     type constructor analysis. *)
 
 (** The following information is stored for each type constructor:
@@ -68,8 +68,8 @@ let as_type_variable (_, v, _) =
   v
 
 (** The following information is stored for each datatype constructor:
-    - its type variables ;
     - its arity ;
+    - its type variables ;
     - its type. *)
 type data_constructor = int * variable list * crterm
 
@@ -94,7 +94,9 @@ let add_type_variable env t (k, v) =
 
 let add_type_variables var_env env =
   { env with type_info =
-               List.fold_left (fun env (x, k) -> Env.add env x k) env.type_info var_env }
+               List.fold_left
+                 (fun env (x, k) -> Env.add env x k)
+                 env.type_info var_env }
 
 let add_type_constructor env t x =
   { env with type_info = Env.add env.type_info t x }
@@ -108,7 +110,7 @@ let lookup_typcon ?pos env t =
   try
     as_type_constructor (Env.lookup env.type_info t)
   with Not_found ->
-    raise (UnboundTypeIdentifier ((pos_or_undef pos), t))
+    raise (UnboundTypeIdentifier (pos_or_undef pos, t))
 
 (** [find_typcon env t] looks for typing information related to
     the type constructor [t] in [env]. *)
@@ -121,7 +123,7 @@ let lookup_type_variable ?pos env k =
   try
     TVariable (as_type_variable (Env.lookup env.type_info k))
   with Not_found ->
-    raise (UnboundTypeVariable ((pos_or_undef pos), k))
+    raise (UnboundTypeVariable (pos_or_undef pos, k))
 
 (* The kind inferencer wants a view on the environment that
    concerns only the kinds. *)
@@ -197,7 +199,7 @@ let lookup_datacon ?pos env k =
   try
     Env.lookup env.data_constructor k
   with Not_found ->
-    raise (UnboundDataConstructor ((pos_or_undef pos), k))
+    raise (UnboundDataConstructor (pos_or_undef pos, k))
 
 let rigid_args rt =
   List.fold_left (fun acu ->
@@ -236,7 +238,7 @@ let rec find_algebraic_datatypes env k =
          | _ -> false)
   in
   match ts with
-  | [ (_,_, r) ] -> !r
+  | [ (_, _, r) ] -> !r
   | _ -> assert false
 
 (** [fresh_vars kind pos env vars] allocates fresh variables from a

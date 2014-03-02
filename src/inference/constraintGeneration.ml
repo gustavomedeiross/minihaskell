@@ -38,9 +38,13 @@ open IAST
 
 (** {2 Inference} *)
 
+(** Constraint contexts. *)
+type context =
+  (crterm, variable) type_constraint -> (crterm, variable) type_constraint
+
 let ctx0 = fun c -> c
 
-let ( @@ ) ctx1 ctx2 = fun c -> ctx1 (ctx2 c)
+let (@@) ctx1 ctx2 = fun c -> ctx1 (ctx2 c)
 
 let fold env f =
   List.fold_left (fun (env, ctx) x ->
@@ -174,10 +178,6 @@ and infer_pat_fragment tenv p t =
         }
   in
   infpat t p
-
-(** Constraint contexts. *)
-type context =
-  (crterm, variable) type_constraint -> (crterm, variable) type_constraint
 
 let header_of_binding pos tenv (Name x, ty) t =
   (match ty with

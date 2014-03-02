@@ -57,8 +57,7 @@ val variables_of_typ : Types.t -> Misc.StringSet.t
 
 (** [arrow env x1 x2] builds the internal representation of the
     type [x1 -> x2]. *)
-val arrow :
-  environment -> variable arterm -> variable arterm -> variable arterm
+val arrow : environment -> variable arterm -> variable arterm -> variable arterm
 
 (** [arity (t1 -> ... -> tn)] returns [n - 1]. *)
 val arity : Types.t -> int
@@ -69,7 +68,7 @@ val tycon : environment -> tname -> variable arterm list -> variable arterm
 (** [intern env ty] converts [ty] into its internal representation. *)
 val intern : position -> environment -> Types.t -> crterm
 
-(** [internal_let_env env fqs rqs] internalizes the flexible variables
+(** [intern_let_env env fqs rqs] internalizes the flexible variables
     [fqs] and the rigid variables [rqs] into [env]. *)
 val intern_let_env : position -> environment -> tname list -> tname list ->
   variable list * variable list * environment
