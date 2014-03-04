@@ -264,9 +264,8 @@ let infer_typedef tenv (TypeDefs (pos, tds)) =
           fun c ->
             CLet ([Scheme (pos, [ivar], [], [], c, StringMap.empty)], CTrue pos)
          )
-
     )
-    (tenv, fun c -> c)
+    (tenv, ctx0)
     tds
 
 (** [infer_vdef pos tenv (pos, qs, p, e)] returns the constraint
@@ -561,7 +560,7 @@ let rec infer_program env p =
   ctx (CDump undefined_position)
 
 and block env = function
-  | BClassDefinition ct -> infer_class env ct
+  | BClassDefinition tc -> infer_class env tc
   | BTypeDefinitions ts -> infer_typedef env ts
   | BInstanceDefinitions is -> fold env infer_instance is
   | BDefinition d -> infer_binding env d
