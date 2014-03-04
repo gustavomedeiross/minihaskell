@@ -200,7 +200,7 @@ struct
     if not (equivalent node1 node2) then
       match normalize node1, normalize node2, node1, node2 with
       | Variable forbidden1, _, node1, node2
-      |         _, Variable forbidden1, node2, node1 ->
+      | _, Variable forbidden1, node2, node1 ->
         impose forbidden1 node2;
         check node1 node2;
         union node1 node2
@@ -209,7 +209,7 @@ struct
           raise Error;
         union node1 node2
       | Constant s1, DisjointSum (s2, tail2), node1, node2
-      |         DisjointSum (s2, tail2), Constant s1, node2, node1 ->
+      | DisjointSum (s2, tail2), Constant s1, node2, node1 ->
         if not (subset s2 s1) then
           raise Error;
         unify tail2 (constant (Set.diff s1 s2));

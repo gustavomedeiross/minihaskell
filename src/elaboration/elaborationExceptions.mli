@@ -104,6 +104,14 @@ exception LabelDoesNotBelong of position * lname * tname * tname
     is applied to an incorrect number of types. *)
 exception InvalidRecordInstantiation of position
 
+(** [InvalidRecordConstruction] is raised when a record is not built
+    using the right labels. *)
+exception InvalidRecordConstruction of position
+
+(** [OverloadedSymbolCannotBeBound] is raised when an overloaded
+    symbol is introduced by a let. *)
+exception OverloadedSymbolCannotBeBound of Positions.position * name
+
 (** [VariableIsAMethodName] is raised when an identifier is both used
     as a method name and a variable *)
 exception VariableIsAMethodName of position * name

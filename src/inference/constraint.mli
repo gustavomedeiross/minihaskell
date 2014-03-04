@@ -69,7 +69,7 @@ and ('crterm, 'variable) canonical_constraint =
     ones. *)
 type variable = MultiEquation.variable
 
-(** The types in contraints are implemented using the internal data structure
+(** The types in constraints are implemented using the internal data structure
     defined in {!InferenceTypes}. The same data structure is also used in
     {!MultiEquation}. *)
 type crterm = variable InferenceTypes.arterm
@@ -102,7 +102,7 @@ val ex : ?pos:position -> variable list -> tconstraint -> tconstraint
     general. *)
 val fl: ?pos:position -> variable list -> tconstraint -> tconstraint
 
-(** [x <? t] is a conjunction constraint. *)
+(** [x <? t] is an instance constraint. *)
 val (<?): sname -> crterm -> position -> tconstraint
 
 (** [c1 ^ c2] is a conjunction constraint. *)

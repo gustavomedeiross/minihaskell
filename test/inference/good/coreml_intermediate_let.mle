@@ -1,0 +1,5 @@
+let external (v_print_newline : unit -> unit) = "Pervasives.print_newline"
+type t_t = {l_x : int}
+let
+(v_f : t_t -> int) =
+  let (v_void : unit) = v_print_newline[] () in fun (v_r : t_t) -> v_r[] .l_x

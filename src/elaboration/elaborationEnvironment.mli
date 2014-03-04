@@ -85,3 +85,6 @@ val lookup_dictionary : t -> tname -> Types.t
   -> name   
 
 val is_method : lname -> t -> bool 
+
+(** [labels_of rtcon e] returns all the labels of the record [rtcon]. *)
+val labels_of : tname -> t -> lname list

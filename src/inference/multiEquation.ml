@@ -271,18 +271,6 @@ let chopi rank term =
   } in
   chop dummy term
 
-(** [variable()] creates a new variable, whose rank is [none]. *)
-let variable kind ?name ?structure ?pos () =
-  UnionFind.fresh {
-    structure = structure;
-    rank = IntRank.none;
-    mark = Mark.none;
-    kind = kind;
-    name = name;
-    pos = pos;
-    var = None
-  }
-
 let explode t =
   (* use of [chopi] is OK here, as this function is
      used only during pretty-printing *)
@@ -312,7 +300,7 @@ let inhabitants p =
 let number p =
   p.number
 
-(** [variable()] returns a new variable. *)
+(** [variable()] returns a new variable, whose rank is [none]. *)
 let variable kind ?name ?structure ?pos () =
   let structure =
     match structure with
@@ -321,7 +309,15 @@ let variable kind ?name ?structure ?pos () =
       Some (Var v)
     | None -> None
   in
-  variable kind ?name:name ?structure:structure ?pos:pos ()
+  UnionFind.fresh {
+    structure = structure;
+    rank = IntRank.none;
+    mark = Mark.none;
+    kind = kind;
+    name = name;
+    pos = pos;
+    var = None
+  }
 
 (** [variable_list xs] allocates a fresh variable for every element in the
     list [xs], and returns both a list of these variables and an association

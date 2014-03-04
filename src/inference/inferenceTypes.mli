@@ -35,11 +35,15 @@
 
 open Name
 
+(*
 (** The universe of row labels. This is an ordered, printable
     abstract type [t]. The ordering is used during unification, see
     {!Unifier}. The ability to print row labels is used during
     pretty printing. *)
 module RowLabel : sig
+  (** This module maintains a global mapping from identifiers to
+      abstract ``labels'', which are internally represented as
+      integers, and back. *)
 
   type t
 
@@ -48,18 +52,29 @@ module RowLabel : sig
       positive integer if [x] is greater than [y]. *)
   val compare: t -> t -> int
 
-  val export: t -> lname
+  (** [import s] associates a unique label with the identifier [s],
+      possibly extending the global mapping if [s] was never encountered
+      so far. Thus, if [s] and [t] are equal strings, possibly allocated
+      in different memory locations, [import s] and [import t] return
+      the same label. The identifier [s] is recorded and may be later
+      recovered via [export]. *)
   val import: lname -> t
 
+  (** [export i] provides access to the inverse of the global mapping,
+      that is, associates a unique identifier with every label. The
+      identifier associated with a label is the one originally supplied
+      to [import]. *)
+  val export: t -> lname
 end
+*)
 
 (** {3 Type as tree} *)
 
 (** Terms whose parameters are of type ['a]. This data structure
     represents a tree whose depth is exactly equal to 1. *)
 type 'a term =
-(*  | RowCons of RowLabel.t * 'a * 'a
-  | RowUniform of 'a*)
+  (*  | RowCons of RowLabel.t * 'a * 'a
+      | RowUniform of 'a*)
   | App of 'a * 'a
   | Var of 'a
 
