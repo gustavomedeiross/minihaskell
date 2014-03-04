@@ -33,7 +33,7 @@ exception UnboundClass of tname
 (** [equivalent [b1;..;bN] k t [(k_1,t_1);...;(k_N,t_N)]] registers
     a rule of the form (E). *)
 let equivalent l k t lc = 
-  environnement_equi := Globeq.add (k,t) (l,lc) (!environnement_equi) 
+  environnement_equi := Globeq.add (k,t) lc (!environnement_equi) 
 
 (** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
     decomposes [c] into an equivalent constraint [c' =
