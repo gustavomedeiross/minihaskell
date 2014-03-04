@@ -572,11 +572,28 @@ let infer_class tenv c =
     (tenv, ctx0)
     (TypeDef (c.class_position,
               KArrow (KStar, KStar),
-              c.class_name,
+              mk_cname c.class_name,
               DRecordType ([c.class_parameter], c.class_members)))
 
-let infer_instance tenv ti =
-  (* Student! This is your job! *)
+let infer_instance tenv ({ instance_position = pos } as ti) =
+  (* An instance definition
+   * [instance K_1 'a_1, ..., K_n 'a_n => K ('a_1, ..., 'a_n) cons { ... }]
+   * introduces an equivalence
+   * K_1 'a_1, ..., K_n 'a_n <=> K ('a_1, ..., 'a_n) cons *)
+  let vs, rtenv =
+    fresh_rigid_vars pos
+      tenv
+      ti.instance_parameters
+  in
+  let k = ti.instance_class_name in
+  let t = match typcon_variable ?pos:(Some pos) tenv ti.instance_index with
+    | TVariable v -> v
+    | TTerm _ -> assert false in
+  let ps =
+    List.map
+      (fun (ClassPredicate (k, v)) -> k, proj2_3 (List.assoc v rtenv))
+      ti.instance_typing_context in
+  ConstraintSimplifier.equivalent vs k t ps;
   (tenv, fun c -> c)
 
 (** [infer e] determines whether the expression [e] is well-typed

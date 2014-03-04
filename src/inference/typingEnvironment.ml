@@ -149,8 +149,8 @@ let fold_type_info f init env =
 let typcon_kind env t =
   proj1_3 (lookup_typcon env t)
 
-let typcon_variable env t =
-  TVariable (proj2_3 (lookup_typcon env t))
+let typcon_variable ?pos env t =
+  TVariable (proj2_3 (lookup_typcon ?pos:pos env t))
 
 let as_fun tenv name =
   match find_typcon tenv name with

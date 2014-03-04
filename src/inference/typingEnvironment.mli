@@ -85,7 +85,8 @@ val lookup_type_variable :
 val typcon_kind : environment -> tname -> KindInferencer.t
 
 (** Accessor the unification variable of a type. *)
-val typcon_variable : environment -> tname -> variable InferenceTypes.arterm
+val typcon_variable : ?pos:Positions.position
+  -> environment -> tname -> variable InferenceTypes.arterm
 
 (** [as_fun env] provides a view of [env] as function from names to
     variable. This is used to abstract the environment when it is
