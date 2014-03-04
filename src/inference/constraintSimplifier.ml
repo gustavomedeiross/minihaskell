@@ -17,6 +17,8 @@ let environnement_equi = ref Globeq.empty
 (** [Unsat] is raised if a canonical constraint C ≡ false. *)
 exception Unsat
 
+
+
 (** [OverlappingInstances] is raised if two rules of kind (E) overlap. *)
 exception OverlappingInstances of tname * variable
 
@@ -28,27 +30,30 @@ exception MultipleClassDefinitions of tname
     constraint while it is undefined. *)
 exception UnboundClass of tname
 
+
+
 (** Student! This is your job! You must implement the following functions: *)
 
 (** [equivalent [b1;..;bN] k t [(k_1,t_1);...;(k_N,t_N)]] registers
     a rule of the form (E). *)
 let equivalent l k t lc = 
-  environnement_equi := Globeq.add (k,t) lc (!environnement_equi) 
+  environnement_equi := Globeq.add (k,t) (l,lc) (!environnement_equi) 
 
 (** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
     decomposes [c] into an equivalent constraint [c' =
     [(k'_1,v_1);...;(k'_M,v_M)]], introducing the variables
     [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
     is equivalent to [false]. *)
-(*TODO raise Unsat and add variables*)
+(*TODO raise Unsat *)
 let canonicalize pos pool k =
+  let rec nup final = function
+    | [] -> final
+    | t::q -> if List.mem t final 
+      then nup final q 
+      else nup (t::final) q in
+
   let refine_on_variables constr_on_var =   
     let rec refine_on_one_variable l =
-      let rec nup final = function
-        | [] -> final
-        | t::q -> if List.mem t final 
-          then nup final q 
-          else nup (t::final) q in
       let l = nup [] l in (*Eliminate duplicates*)
       let rec delete_superclasses final = function
         | [] -> final
@@ -79,7 +84,7 @@ let canonicalize pos pool k =
     let nb_appli = ref 0 in
     let l =  List.map 
         (fun x ->
-           try  let a = Globeq.find x (!environnement_equi) in
+           try  let (v,a) = Globeq.find x (!environnement_equi) in
              incr nb_appli;
              a
            with Not_found -> [x]
@@ -89,6 +94,11 @@ let canonicalize pos pool k =
     | (0,l)->List.flatten l
     | _,l -> expand_all (List.flatten l) in 
   let on_var = expand_all k in 
+  let var = nup [] (List.flatten (List.map 
+                            (fun x-> fst(Globeq.find x (!environnement_equi)))
+                            on_var))
+  in 
+  List.iter (fun x->register pool x) var; 
   refine_on_variables on_var
 
 
