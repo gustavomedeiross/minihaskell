@@ -192,7 +192,7 @@ let fresh_record_name =
 (** [intern_data_constructor adt_name env_info dcon_info] returns
     env_info augmented with the data constructor's typing information
     It also checks if its definition is legal. *)
-let intern_data_constructor pos (TName adt_name) env_info dcon_info =
+let intern_data_constructor (TName adt_name) env_info dcon_info =
   let (tenv, acu, lrqs, let_env) = env_info
   and (pos, DName dname, qs, typ) = dcon_info in
   let rqs, rtenv = fresh_unnamed_rigid_vars pos tenv qs in
@@ -209,83 +209,80 @@ let intern_data_constructor pos (TName adt_name) env_info dcon_info =
    (rqs @ lrqs),
    StringMap.add dname (ityp, pos) let_env)
 
-let infer_typedef tenv (TypeDefs (pos, tds)) =
-  let bind_new_tycon pos name tenv kind =
-    (* Insert the type constructor into the environment. *)
-    let ikind = KindInferencer.intern_kind (as_kind_env tenv) kind
-    and ids_def = ref Abstract
-    and ivar = variable ~name:name Constant () in
-    let c = fun c' ->
-      CLet ([Scheme (pos, [ivar], [], [], c', StringMap.empty)],
-            CTrue pos)
-    in
-    (ids_def, add_type_constructor tenv name (ikind, ivar, ids_def), c)
+let bind_new_tycon pos name tenv kind =
+  (* Insert the type constructor into the environment. *)
+  let ikind = KindInferencer.intern_kind (as_kind_env tenv) kind
+  and ids_def = ref Abstract
+  and ivar = variable ~name:name Constant () in
+  let c = fun c' ->
+    CLet ([Scheme (pos, [ivar], [], [], c', StringMap.empty)],
+          CTrue pos)
   in
+  (ids_def, add_type_constructor tenv name (ikind, ivar, ids_def), c)
 
-  List.fold_left
-    (fun (tenv, c) -> function
-       | TypeDef (pos', kind, name, DRecordType (ts, rts)) ->
-         let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
-         let rqs, rtenv = fresh_unnamed_rigid_vars pos tenv ts in
-         let tenv' = add_type_variables rtenv tenv in
-         let tyvs = List.map (fun v -> TyVar (pos', v)) ts in
-         let rty =
-           InternalizeTypes.intern pos' tenv' (TyApp (pos', name, tyvs))
-         in
-         let intern_label_type (pos, l, ty) =
-           (l, InternalizeTypes.intern pos' tenv' ty)
-         in
-         ids_def := Product (rqs, rty, List.map intern_label_type rts);
-         (tenv, c)
+let infer_typedef_single (tenv, c) = function
+  | TypeDef (pos', kind, name, DRecordType (ts, rts)) ->
+    let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
+    let rqs, rtenv = fresh_unnamed_rigid_vars pos' tenv ts in
+    let tenv' = add_type_variables rtenv tenv in
+    let tyvs = List.map (fun v -> TyVar (pos', v)) ts in
+    let rty =
+      InternalizeTypes.intern pos' tenv' (TyApp (pos', name, tyvs))
+    in
+    let intern_label_type (pos, l, ty) =
+      (l, InternalizeTypes.intern pos' tenv' ty)
+    in
+    ids_def := Product (rqs, rty, List.map intern_label_type rts);
+    (tenv, c)
 
-       | TypeDef (pos', kind, name, DAlgebraic ds) ->
-         let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
-         let (tenv, ids, rqs, let_env) =
-           List.fold_left
-             (intern_data_constructor pos name)
-             (tenv, [], [], StringMap.empty)
-             ds
-         in
-         ids_def := Sum ids;
-         let c = fun c' ->
-           c (CLet ([Scheme (pos', rqs, [], [],
-                             CTrue pos',
-                             let_env)],
-                    c'))
-         in
-         (tenv, c)
+  | TypeDef (pos', kind, name, DAlgebraic ds) ->
+    let ids_def, tenv, c = bind_new_tycon pos' name tenv kind in
+    let (tenv, ids, rqs, let_env) =
+      List.fold_left
+        (intern_data_constructor name)
+        (tenv, [], [], StringMap.empty)
+        ds
+    in
+    ids_def := Sum ids;
+    let c = fun c' ->
+      c (CLet ([Scheme (pos', rqs, [], [],
+                        CTrue pos',
+                        let_env)],
+               c'))
+    in
+    (tenv, c)
 
-       | ExternalType (pos, ts, name, _) ->
-         let kind = kind_of_arity (List.length ts) in
-         let ikind = KindInferencer.intern_kind (as_kind_env tenv) kind in
-         let ivar = variable ~name Constant () in
-         let tenv = add_type_constructor tenv name (ikind, ivar, ref Abstract) in
-         (tenv,
-          fun c ->
-            CLet ([Scheme (pos, [ivar], [], [], c, StringMap.empty)], CTrue pos)
-         )
+  | ExternalType (pos, ts, name, _) ->
+    let kind = kind_of_arity (List.length ts) in
+    let ikind = KindInferencer.intern_kind (as_kind_env tenv) kind in
+    let ivar = variable ~name Constant () in
+    let tenv = add_type_constructor tenv name (ikind, ivar, ref Abstract) in
+    (tenv,
+     fun c ->
+       CLet ([Scheme (pos, [ivar], [], [], c, StringMap.empty)], CTrue pos)
     )
-    (tenv, ctx0)
-    tds
+
+let infer_typedef tenv (TypeDefs (pos, tds)) =
+  List.fold_left infer_typedef_single (tenv, ctx0) tds
 
 (** [infer_vdef pos tenv (pos, qs, p, e)] returns the constraint
     related to a value definition. *)
 let rec infer_vdef pos tenv (ValueDef (pos, qs, cs, b, e)) =
   let rec is_value_form = function
-  | EVar _
-  | ELambda _
-  | EPrimitive _ ->
-    true
-  | EDCon (_, _, _, es) ->
-    List.for_all is_value_form es
-  | ERecordCon (_, _, _, rbs) ->
-    List.for_all (fun (RecordBinding (_, e)) -> is_value_form e) rbs
-  | EExists (_, _, t)
-  | ETypeConstraint (_, t, _)
-  | EForall (_, _, t) ->
-    is_value_form t
-  | _ ->
-    false
+    | EVar _
+    | ELambda _
+    | EPrimitive _ ->
+      true
+    | EDCon (_, _, _, es) ->
+      List.for_all is_value_form es
+    | ERecordCon (_, _, _, rbs) ->
+      List.for_all (fun (RecordBinding (_, e)) -> is_value_form e) rbs
+    | EExists (_, _, t)
+    | ETypeConstraint (_, t, _)
+    | EForall (_, _, t) ->
+      is_value_form t
+    | _ ->
+      false
   in
   if is_value_form e then
     let x = variable Flexible () in
@@ -295,8 +292,8 @@ let rec infer_vdef pos tenv (ValueDef (pos, qs, cs, b, e)) =
     let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' cs in
     let c, h = header_of_binding pos tenv' b tx in
     ([], Scheme (pos, rqs, x :: xs,
-            gs, c ^ conj cs ^ infer_expr tenv' e tx,
-            h))
+                 gs, c ^ conj cs ^ infer_expr tenv' e tx,
+                 h))
   else
     let x = variable Flexible () in
     let tx = TVariable x in
@@ -315,63 +312,63 @@ let rec infer_vdef pos tenv (ValueDef (pos, qs, cs, b, e)) =
     constraints if it binds values. *)
 and infer_binding tenv b =
   match b with
-    | ExternalValue (pos, ts, b, _) ->
-      let x = variable Flexible () in
-      let tx = TVariable x in
-      let rqs, rtenv = fresh_rigid_vars pos tenv ts in
-      let tenv' = add_type_variables rtenv tenv in
-      let c, h = header_of_binding pos tenv' b tx in
-      let scheme = Scheme (pos, rqs, [x], [], c, h) in
-      tenv, (fun c -> CLet ([scheme], c))
+  | ExternalValue (pos, ts, b, _) ->
+    let x = variable Flexible () in
+    let tx = TVariable x in
+    let rqs, rtenv = fresh_rigid_vars pos tenv ts in
+    let tenv' = add_type_variables rtenv tenv in
+    let c, h = header_of_binding pos tenv' b tx in
+    let scheme = Scheme (pos, rqs, [x], [], c, h) in
+    tenv, (fun c -> CLet ([scheme], c))
 
-    | BindValue (pos, vdefs) ->
-      let xs, schemes = List.(split (map (infer_vdef pos tenv) vdefs)) in
-      tenv, (fun c -> ex (List.flatten xs) (CLet (schemes, c)))
+  | BindValue (pos, vdefs) ->
+    let xs, schemes = List.(split (map (infer_vdef pos tenv) vdefs)) in
+    tenv, (fun c -> ex (List.flatten xs) (CLet (schemes, c)))
 
-    | BindRecValue (pos, vdefs) ->
+  | BindRecValue (pos, vdefs) ->
 
-        (* The constraint context generated for
-           [let rec forall X1 . x1 : T1 = e1
-           and forall X2 . x2 = e2] is
+    (* The constraint context generated for
+       [let rec forall X1 . x1 : T1 = e1
+       and forall X2 . x2 = e2] is
 
-           let forall X1 (x1 : T1) in
-           let forall [X2] Z2 [
-           let x2 : Z2 in [ e2 : Z2 ]
-           ] ( x2 : Z2) in (
-           forall X1.[ e1 : T1 ] ^
-           [...]
-           )
+       let forall X1 (x1 : T1) in
+       let forall [X2] Z2 [
+       let x2 : Z2 in [ e2 : Z2 ]
+       ] ( x2 : Z2) in (
+       forall X1.[ e1 : T1 ] ^
+       [...]
+       )
 
-           In other words, we first assume that x1 has type scheme
-           forall X1.T1.
-           Then, we typecheck the recursive definition x2 = e2, making sure
-           that the type variable X2 remains rigid, and generalize its type.
-           This yields a type scheme for x2, which is then used to check
-           that e1 actually has type scheme forall X1.T1.
+       In other words, we first assume that x1 has type scheme
+       forall X1.T1.
+       Then, we typecheck the recursive definition x2 = e2, making sure
+       that the type variable X2 remains rigid, and generalize its type.
+       This yields a type scheme for x2, which is then used to check
+       that e1 actually has type scheme forall X1.T1.
 
-           In the above example, there are only one explicitly typed and one
-           implicitly typed value definitions.
+       In the above example, there are only one explicitly typed and one
+       implicitly typed value definitions.
 
-           In the general case, there are multiple explicitly and implicitly
-           typed definitions, but the principle remains the same. We generate
-           a context of the form
+       In the general case, there are multiple explicitly and implicitly
+       typed definitions, but the principle remains the same. We generate
+       a context of the form
 
-           let schemes1 in
+       let schemes1 in
 
-           let forall [rqs2] fqs2 [
-           let h2 in c2
-           ] h2 in (
-           c1 ^
-           [...]
-           )
+       let forall [rqs2] fqs2 [
+       let h2 in c2
+       ] h2 in (
+       c1 ^
+       [...]
+       )
 
-        *)
+    *)
 
-      let schemes1, rqs2, fqs2, cs2, h2, c2, c1 =
-        List.fold_left
-          (fun
-            (schemes1, rqs2, fqs2, cs2, h2, c2, c1)
-            (ValueDef (pos, qs, cs, b, e)) ->
+    let schemes1, rqs2, fqs2, cs2, h2, c2, c1 =
+      List.fold_left
+        (fun
+          (schemes1, rqs2, fqs2, cs2, h2, c2, c1)
+          (ValueDef (pos, qs, cs, b, e)) ->
 
           (* Allocate variables for the quantifiers in the list
              [qs], augment the type environment accordingly. *)
@@ -565,10 +562,18 @@ and infer_label pos tenv ltys (RecordBinding (l, exp), t) =
     raise (IncompatibleLabel (pos, l))
 
 
-let infer_class tenv tc =
-  (* Student! This is your job! *)
-  (tenv, fun c -> c)
-
+let infer_class tenv c =
+  (* A class definition [class K_1 'a, ..., K_n 'a => K 'a { ... }]
+   * introduces an implication K 'a => K_1 'a /\ ... /\ K_n 'a *)
+  ConstraintSimplifier.add_implication c.class_name c.superclasses;
+  (* We rely on the record type inference logic to complete the function
+    * TODO: Check correctness of this implementation *)
+  infer_typedef_single
+    (tenv, ctx0)
+    (TypeDef (c.class_position,
+              KArrow (KStar, KStar),
+              c.class_name,
+              DRecordType ([c.class_parameter], c.class_members)))
 
 let infer_instance tenv ti =
   (* Student! This is your job! *)
@@ -589,7 +594,7 @@ let rec infer_program env p =
   ctx (CDump undefined_position)
 
 and block env = function
-  | BClassDefinition tc -> infer_class env tc
+  | BClassDefinition c -> infer_class env c
   | BTypeDefinitions ts -> infer_typedef env ts
   | BInstanceDefinitions is -> fold env infer_instance is
   | BDefinition d -> infer_binding env d
@@ -604,7 +609,7 @@ let init_env () =
     let (env, acu, lrqs, let_env) as r =
       List.fold_left
         (fun acu (d, rqs, ty) ->
-           intern_data_constructor undefined_position adt_name acu
+           intern_data_constructor adt_name acu
              (undefined_position, d, rqs, ty)
         ) acu ds
     in
