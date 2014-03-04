@@ -33,14 +33,14 @@ exception UnboundClass of tname
 (** [equivalent [b1;..;bN] k t [(k_1,t_1);...;(k_N,t_N)]] registers
     a rule of the form (E). *)
 let equivalent l k t lc = 
-  environnement_equi := Globeq.add (k,t) lc (!environnement_equi) 
+  environnement_equi := Globeq.add (k,t) (l,lc) (!environnement_equi) 
 
 (** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
     decomposes [c] into an equivalent constraint [c' =
     [(k'_1,v_1);...;(k'_M,v_M)]], introducing the variables
     [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
     is equivalent to [false]. *)
-
+(*TODO raise Unsat and add variables*)
 let canonicalize pos pool k =
   let refine_on_variables constr_on_var =   
     let rec refine_on_one_variable l =
@@ -75,7 +75,8 @@ let canonicalize pos pool k =
         @(refine_constraints list_recursivecall)
     in
     refine_constraints constr_on_var in
-  let expand k =let nb_appli = ref 0 in
+  let expand k =
+    let nb_appli = ref 0 in
     let l =  List.map 
         (fun x ->
            try  let a = Globeq.find x (!environnement_equi) in
