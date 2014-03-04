@@ -271,78 +271,107 @@ let infer_typedef tenv (TypeDefs (pos, tds)) =
 (** [infer_vdef pos tenv (pos, qs, p, e)] returns the constraint
     related to a value definition. *)
 let rec infer_vdef pos tenv (ValueDef (pos, qs, cs, b, e)) =
-  let x = variable Flexible () in
-  let tx = TVariable x in
-  let rqs, rtenv = fresh_rigid_vars pos tenv qs in
-  let tenv' = add_type_variables rtenv tenv in
-  let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' cs in
-  let c, h = header_of_binding pos tenv' b tx in
-  Scheme (pos, rqs, x :: xs,
-          gs, c ^ conj cs ^ infer_expr tenv' e tx,
-          h)
+  let rec is_value_form = function
+  | EVar _
+  | ELambda _
+  | EPrimitive _ ->
+    true
+  | EDCon (_, _, _, es) ->
+    List.for_all is_value_form es
+  | ERecordCon (_, _, _, rbs) ->
+    List.for_all (fun (RecordBinding (_, e)) -> is_value_form e) rbs
+  | EExists (_, _, t)
+  | ETypeConstraint (_, t, _)
+  | EForall (_, _, t) ->
+    is_value_form t
+  | _ ->
+    false
+  in
+  if is_value_form e then
+    let x = variable Flexible () in
+    let tx = TVariable x in
+    let rqs, rtenv = fresh_rigid_vars pos tenv qs in
+    let tenv' = add_type_variables rtenv tenv in
+    let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' cs in
+    let c, h = header_of_binding pos tenv' b tx in
+    ([], Scheme (pos, rqs, x :: xs,
+            gs, c ^ conj cs ^ infer_expr tenv' e tx,
+            h))
+  else
+    let x = variable Flexible () in
+    let tx = TVariable x in
+    let rqs, rtenv = fresh_rigid_vars pos tenv qs in
+    let tenv' = add_type_variables rtenv tenv in
+    let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' cs in
+    let c, h = header_of_binding pos tenv' b tx in
+    ([x],
+     Scheme (pos, rqs, xs,
+             gs, c ^ conj cs ^ infer_expr tenv' e tx,
+             h))
+
 
 (** [infer_binding tenv b] examines a binding [b], updates the
     typing environment if it binds new types or generates
     constraints if it binds values. *)
 and infer_binding tenv b =
   match b with
-  | ExternalValue (pos, ts, b, _) ->
-    let x = variable Flexible () in
-    let tx = TVariable x in
-    let rqs, rtenv = fresh_rigid_vars pos tenv ts in
-    let tenv' = add_type_variables rtenv tenv in
-    let c, h = header_of_binding pos tenv' b tx in
-    let scheme = Scheme (pos, rqs, [x], [], c, h) in
-    tenv, (fun c -> CLet ([scheme], c))
+    | ExternalValue (pos, ts, b, _) ->
+      let x = variable Flexible () in
+      let tx = TVariable x in
+      let rqs, rtenv = fresh_rigid_vars pos tenv ts in
+      let tenv' = add_type_variables rtenv tenv in
+      let c, h = header_of_binding pos tenv' b tx in
+      let scheme = Scheme (pos, rqs, [x], [], c, h) in
+      tenv, (fun c -> CLet ([scheme], c))
 
-  | BindValue (pos, vdefs) ->
-    let schemes = List.map (infer_vdef pos tenv) vdefs in
-    tenv, (fun c -> CLet (schemes, c))
+    | BindValue (pos, vdefs) ->
+      let xs, schemes = List.(split (map (infer_vdef pos tenv) vdefs)) in
+      tenv, (fun c -> ex (List.flatten xs) (CLet (schemes, c)))
 
-  | BindRecValue (pos, vdefs) ->
+    | BindRecValue (pos, vdefs) ->
 
-    (* The constraint context generated for
-       [let rec forall X1 . x1 : T1 = e1
-       and forall X2 . x2 = e2] is
+        (* The constraint context generated for
+           [let rec forall X1 . x1 : T1 = e1
+           and forall X2 . x2 = e2] is
 
-       let forall X1 (x1 : T1) in
-       let forall [X2] Z2 [
-       let x2 : Z2 in [ e2 : Z2 ]
-       ] ( x2 : Z2) in (
-       forall X1.[ e1 : T1 ] ^
-       [...]
-       )
+           let forall X1 (x1 : T1) in
+           let forall [X2] Z2 [
+           let x2 : Z2 in [ e2 : Z2 ]
+           ] ( x2 : Z2) in (
+           forall X1.[ e1 : T1 ] ^
+           [...]
+           )
 
-       In other words, we first assume that x1 has type scheme
-       forall X1.T1.
-       Then, we typecheck the recursive definition x2 = e2, making sure
-       that the type variable X2 remains rigid, and generalize its type.
-       This yields a type scheme for x2, which is then used to check
-       that e1 actually has type scheme forall X1.T1.
+           In other words, we first assume that x1 has type scheme
+           forall X1.T1.
+           Then, we typecheck the recursive definition x2 = e2, making sure
+           that the type variable X2 remains rigid, and generalize its type.
+           This yields a type scheme for x2, which is then used to check
+           that e1 actually has type scheme forall X1.T1.
 
-       In the above example, there are only one explicitly typed and one
-       implicitly typed value definitions.
+           In the above example, there are only one explicitly typed and one
+           implicitly typed value definitions.
 
-       In the general case, there are multiple explicitly and implicitly
-       typed definitions, but the principle remains the same. We generate
-       a context of the form
+           In the general case, there are multiple explicitly and implicitly
+           typed definitions, but the principle remains the same. We generate
+           a context of the form
 
-       let schemes1 in
+           let schemes1 in
 
-       let forall [rqs2] fqs2 [
-       let h2 in c2
-       ] h2 in (
-       c1 ^
-       [...]
-       )
+           let forall [rqs2] fqs2 [
+           let h2 in c2
+           ] h2 in (
+           c1 ^
+           [...]
+           )
 
-    *)
+        *)
 
-    let schemes1, rqs2, fqs2, cs2, h2, c2, c1 =
-      List.fold_left
-        (fun
-          (schemes1, rqs2, fqs2, cs2, h2, c2, c1)
-          (ValueDef (pos, qs, cs, b, e)) ->
+      let schemes1, rqs2, fqs2, cs2, h2, c2, c1 =
+        List.fold_left
+          (fun
+            (schemes1, rqs2, fqs2, cs2, h2, c2, c1)
+            (ValueDef (pos, qs, cs, b, e)) ->
 
           (* Allocate variables for the quantifiers in the list
              [qs], augment the type environment accordingly. *)

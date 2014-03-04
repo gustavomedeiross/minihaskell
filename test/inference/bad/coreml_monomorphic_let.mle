@@ -1,0 +1,3 @@
+let ['a] (v_id : 'a -> 'a) = ['a] fun (v_x : 'a) -> v_x[]
+let (v_id2 : int -> int) = v_id[int -> int] v_id[int]
+let (v_main : int) = v_id2[] 0
