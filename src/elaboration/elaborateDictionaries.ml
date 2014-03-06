@@ -255,7 +255,6 @@ and is_abstraction = function
  * later (7.4)"
  * *)
 
-(* TODO: Superclasses are not dealt with correctly *)
 (* Type well-formedness is taken care of by type-checking the elaborated
  * dictionary type declaration. In particular, it will catch unbound type
  * variables (a type class definition only binds one variable) *)
