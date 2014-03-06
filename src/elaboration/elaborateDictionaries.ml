@@ -256,7 +256,9 @@ and is_abstraction = function
  * *)
 
 (* TODO: Superclasses are not dealt with correctly *)
-(* TODO Check wf type of methods *)
+(* Type well-formedness is taken care of by type-checking the elaborated
+ * dictionary type declaration. In particular, it will catch unbound type
+ * variables (a type class definition only binds one variable) *)
 and elaborate_class c env =
   let { class_name     = CName name as k;
         class_position = pos; } = c in

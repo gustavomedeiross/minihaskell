@@ -115,12 +115,6 @@ let rec check_free_variables name parameter (pos, _, t) =
     let freeT = free t in
     if not (TS.mem parameter freeT) then
       raise (AmbiguousTypeclass (pos, name));
-    begin
-      try
-        let tv = TS.choose (TS.remove parameter freeT) in
-        raise (UnboundTypeVariable (pos, tv))
-      with Not_found -> ()
-    end
   | _ -> assert false
 
 (** [add_methods p env member] registers [member] as a method of the class
