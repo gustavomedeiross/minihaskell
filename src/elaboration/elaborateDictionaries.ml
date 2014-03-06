@@ -32,19 +32,9 @@ and block env = function
     block env (BTypeDefinitions single_record)
 
   | BInstanceDefinitions is ->
+    let env = List.fold_right add_name (names_is is) env in
     let dict, env = elaborate_instances env is in
     ([BDefinition dict], env)
-    (*
-    let is' = List.map (function
-        | { instance_class_name = TName s } as i ->
-          (i, IName (s, fresh ()))
-        | _ -> assert false)
-        is in
-    let env = List.fold_left bind_instance env is' in
-    check_instance_definitions env is;
-    let dictionaries = elaborate_instance env is' in
-    block env (BDefinition dictionaries)
-    *)
 
 (* Return an expression whose value is the dictionary of type (K ty),
  * may raise NotAnInstance
@@ -121,7 +111,6 @@ and try_proj_superclass env q k k' = function
  *     fun (fresh_name_L : 'b _l) -> { ... }
  * *)
 
-(* TODO: Collect variable names from member definitions *)
 and elaborate_instances env is =
   let is = (* Associate a fresh name to every instance *)
     List.map
@@ -237,17 +226,17 @@ and elaborate_methods env' env c i ity =
         instance_class_name = k   ;
         instance_members    = ms  } = i in
 
-  let elaborate_method (_, lname, ty) =
+  let elaborate_method (_, m, ty) =
     try
       let RecordBinding (_, e) =
-        List.find (fun (RecordBinding (lname', _)) -> lname' = lname) ms in
+        List.find (fun (RecordBinding (m', _)) -> m' = m) ms in
       let ty = substitute [c.class_parameter, ity] ty in
       let env = if is_abstraction e then env' else env in
       let e = eforall pos [] e in
       let e, ty' = expression env e in
       check_equal_types pos ty ty';
-      RecordBinding (lname, e)
-    with Not_found -> raise (LackingMethod (pos, k, lname)) in
+      RecordBinding (m, e)
+    with Not_found -> raise (LackingMethod (pos, k, m)) in
 
   let members = List.map elaborate_method c.class_members in
   (* Make sure all methods are present once exactly
@@ -259,42 +248,12 @@ and is_abstraction = function
   | ELambda _ -> true
   | _ -> false
 
-(*****)
-
-(* TODO: The following is to be used as a reference for elaborate_instance(s)
- * Code for type-checking, to be integrated with elaboration
- * *)
-
-(*
+(* TODO: extension ?
  * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
  * contexts and class declarations, and to types of the form K (G a) in
  * instances are for simplicity. Generalizations are possible and discussed
  * later (7.4)"
  * *)
-
-(*
-and check_method env pos ts ps s k (RecordBinding (l, e)) = match l with
-  | KName _ -> assert false
-  | LName l ->
-    let xty = lookup_method pos k (LName l) in
-    let xty = substitute [k.class_parameter, s] xty in
-    ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
-*)
-
-(*
-and check_instance_definitions env = function
-  | [] -> ()
-  | { instance_position       = pos;
-      instance_parameters     = ts;
-      instance_typing_context = ps; } as i :: t ->
-    let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-    List.iter
-      (check_method env pos ts ps
-         (cons_type i.instance_index ts)
-         (lookup_class pos i.instance_class_name env))
-      i.instance_members
-      *)
-(*****)
 
 (* TODO: Superclasses are not dealt with correctly *)
 (* TODO Check wf type of methods *)
@@ -753,6 +712,10 @@ and cons_type hd vars =
          hd,
          List.map (fun x -> TyVar (undefined_position, x)) vars)
 
+and names_is is = List.fold_left names_i [] is
+
+and names_i acc i = List.fold_left vn_recordbinding acc i.instance_members
+
 and names_vb acc = function
   | BindValue (_, vs)
   | BindRecValue (_, vs)              ->
@@ -763,6 +726,9 @@ and names_vb acc = function
 
 and names_vdef acc (ValueDef (pos, _, _, (x, _), e)) =
   names_e ((pos, x) :: acc) e
+
+and vn_recordbinding acc (RecordBinding (_, e)) =
+  names_e acc e
 
 and names_e acc = function
   | EVar _
@@ -797,7 +763,6 @@ and names_e acc = function
     in List.fold_left vn_branch acc bs
 
   | ERecordCon (_, _, _, rbs) ->
-    let vn_recordbinding acc (RecordBinding (_, e)) = names_e acc e in
     List.fold_left vn_recordbinding acc rbs
 
 and names_pattern acc = function
