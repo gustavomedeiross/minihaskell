@@ -179,13 +179,6 @@ let initial =
     empty 
     PreludeTypes.types
 
-(*
-let lookup_method pos k x =
-  try
-    let (_, _, t) = List.find (fun (_, y, _) -> x = y) k.class_members in
-    t
-  with Not_found -> raise (NotAMethodOf (pos, x, k.class_name))
-*)
 
 let bind_instance env (t, num) =
   try
