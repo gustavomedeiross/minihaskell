@@ -489,7 +489,6 @@ and expression env = function
     (** We syntactically forbids empty records. *)
     assert false
 
-  (* TODO: It seems incomplete record definitions are not detected (verify) *)
   | ERecordCon (pos, n, i, rbs) ->
     let rbstys = List.map (record_binding env) rbs in
     let rec check others rty = function
