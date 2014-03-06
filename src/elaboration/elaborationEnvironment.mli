@@ -75,6 +75,8 @@ val lookup_label : position -> lname -> t -> tnames * Types.t * tname
  * this is to distinguish methods from let-bound variables *)
 val add_name : t -> position * name -> t
 
+(** [bind_instance env (i, name)] associates the instance definition 
+ * [i] to a dictionary value bound to [name] *)
 val bind_instance : t -> instance_definition * name -> t
 
 val lookup_instances : t -> tname -> (instance_definition * name) list

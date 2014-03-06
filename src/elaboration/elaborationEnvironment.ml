@@ -55,11 +55,11 @@ let lookup pos x env =
 
 let lookup_dictionary env c ty =
   match ty with
-  |TyVar(_,n) | TyApp(_,n,_) -> let insts = List.assoc n env.instances in 
-    let (_,name) = List.find 
+  |TyVar(_,n) | TyApp(_,n,_) -> let insts = List.assoc n env.instances in
+    let (_,name) = List.find
         (fun (x,y)-> x.instance_class_name = c)
         insts in
-    name 
+    name
 
 
 let bind_scheme pos x ts pred ty env =
@@ -176,7 +176,7 @@ let initial =
   let primitive_type t k = TypeDef (undefined_position, k, t, DAlgebraic []) in
   List.fold_left
     (fun env (t, k) -> bind_type t k (primitive_type t k) env)
-    empty 
+    empty
     PreludeTypes.types
 
 
@@ -184,7 +184,7 @@ let bind_instance env (t, num) =
   try
     let listinstance = List.assoc t.instance_index env.instances in
     if List.exists
-        (fun (x, _) -> x.instance_class_name = t.instance_class_name )
+        (fun (x, _) -> x.instance_class_name = t.instance_class_name)
         listinstance
     then raise (OverlappingInstances (t.instance_position,
                                       t.instance_class_name))
