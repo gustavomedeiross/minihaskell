@@ -402,39 +402,10 @@ and type_application pos env x tys =
     substitute (List.combine ts tys) ty
   with Invalid_argument _ -> raise (InvalidTypeApplication pos)
 
-(*If an identifier is a method or overloaded we elaborate *)
-and evar pos env x tys =
-  let tys' = List.map (elab_wf_type env KStar) tys in
-  let (ts, ps, (_, ty)) = lookup pos x env in
-  let assoc, ty = try
-      let assoc = List.combine ts tys in
-      assoc, substitute assoc ty
-    with Invalid_argument _ -> raise (InvalidTypeApplication pos) in
-  (* Not 'assert false' so that typechecking can be done on an elaborated
-   * program again *)
-  let elab (ClassPredicate (k, var)) =
-    let t = List.assoc var assoc in
-    elaborate_dictionary pos env k t in
-  match as_method x env with
-  | None -> (* x is not a method *)
-    let dict = List.map elab ps in
-    let x' = elab_name x in
-    let e' =
-      List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x', tys')) dict
-    in
-    (e', ty)
-  | Some m -> (* x is a method *)
-    (* its lname was already elaborated by as_method *)
-    match ps with
-    | [p] ->
-      let dico = elab p in
-      (ERecordAccess (pos, dico, m), ty)
-    | _ -> assert false (* Methods have exactly one constraint*)
-
 (** [expression env e] returns a pair [e', ty] of the result of elaboration
  * on [e] and the type of [e] (in [env]) *)
 and expression env = function
-  | EVar (pos, x, tys) -> evar pos env x tys
+  | EVar (pos, x, tys) -> eVar pos env x tys
 
   | ELambda (pos, (x, aty), e') ->
     let x' = elab_name x in
@@ -521,52 +492,83 @@ and expression env = function
     let l' = elab_lname l in
     (ERecordAccess (pos, e, l'), ty)
 
-  | ERecordCon (pos, n, i, rbs) ->
-    (** We syntactically forbid empty records. *)
-    assert (rbs <> []);
-    let i' = List.map (elab_wf_type env KStar) i in
-    let rec check others rty = function
-      | [] ->
-        begin match rty with
-          | Some (_, TyApp (_, rtcon, _)) ->
-            let labels = labels_of rtcon env in
-            if List.(length labels <> length others) then
-              raise (InvalidRecordConstruction pos)
-          | _ -> assert false (** Because we forbid empty record. *)
-        end;
-        List.rev others, rty
-      | RecordBinding(l, _) as rb :: ls ->
-        let RecordBinding (l', _) as rb', ty = record_binding env rb in
-
-        if List.exists (fun (RecordBinding (l', _)) -> l = l') others then
-          raise (MultipleLabels (pos, l));
-
-        let ts, lty, rtcon = lookup_label pos l env in
-        let s, rty =
-          match rty with
-          | None ->
-            let rty = TyApp (pos, rtcon, i') in
-            let s =
-              try
-                List.combine ts i
-              with Invalid_argument _ -> raise (InvalidRecordInstantiation pos)
-            in
-            (s, rty)
-          | Some (s, rty) ->
-            (s, rty)
-        in
-        check_equal_types pos ty (Types.substitute s lty);
-        check (rb' :: others) (Some (s, rty)) ls
-    in
-    let ls, rty =
-      match check [] None rbs with
-      | _, None           -> assert false
-      | ls, Some (_, rty) -> ls, rty
-    in
-    (ERecordCon (pos, n, i, ls), rty)
+  | ERecordCon (pos, n, i, rbs) -> eRecordCon env pos n i rbs
 
   | EPrimitive (pos, p) as e ->
     (e, primitive pos p)
+
+and eVar pos env x tys =
+  let tys' = List.map (elab_wf_type env KStar) tys in
+  let (ts, ps, (_, ty)) = lookup pos x env in
+  let assoc, ty = try
+      let assoc = List.combine ts tys in
+      assoc, substitute assoc ty
+    with Invalid_argument _ -> raise (InvalidTypeApplication pos) in
+  (* Not 'assert false' so that typechecking can be done on an elaborated
+   * program again *)
+  let elab (ClassPredicate (k, var)) =
+    let t = List.assoc var assoc in
+    elaborate_dictionary pos env k t in
+  (*If an identifier is a method or overloaded we elaborate *)
+  match as_method x env with
+  | None -> (* x is not a method *)
+    let dict = List.map elab ps in
+    let x' = elab_name x in
+    let e' =
+      List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x', tys')) dict
+    in
+    (e', ty)
+  | Some m -> (* x is a method *)
+    (* its lname was already elaborated by as_method *)
+    match ps with
+    | [p] ->
+      let dico = elab p in
+      (ERecordAccess (pos, dico, m), ty)
+    | _ -> assert false (* Methods have exactly one constraint*)
+
+and eRecordCon env pos n i rbs =
+  (** We syntactically forbid empty records. *)
+  assert (rbs <> []);
+  let i' = List.map (elab_wf_type env KStar) i in
+  let rec check others rty = function
+    | [] ->
+      begin match rty with
+        | Some (_, TyApp (_, rtcon, _)) ->
+          let labels = labels_of rtcon env in
+          if List.(length labels <> length others) then
+            raise (InvalidRecordConstruction pos)
+        | _ -> assert false (** Because we forbid empty record. *)
+      end;
+      List.rev others, rty
+    | RecordBinding(l, _) as rb :: ls ->
+      let RecordBinding (l', _) as rb', ty = record_binding env rb in
+
+      if List.exists (fun (RecordBinding (l', _)) -> l = l') others then
+        raise (MultipleLabels (pos, l));
+
+      let ts, lty, rtcon = lookup_label pos l env in
+      let s, rty =
+        match rty with
+        | None ->
+          let rty = TyApp (pos, rtcon, i') in
+          let s =
+            try
+              List.combine ts i
+            with Invalid_argument _ -> raise (InvalidRecordInstantiation pos)
+          in
+          (s, rty)
+        | Some (s, rty) ->
+          (s, rty)
+      in
+      check_equal_types pos ty (Types.substitute s lty);
+      check (rb' :: others) (Some (s, rty)) ls
+  in
+  let ls, rty =
+    match check [] None rbs with
+    | _, None           -> assert false
+    | ls, Some (_, rty) -> ls, rty
+  in
+  (ERecordCon (pos, n, i, ls), rty)
 
 and primitive pos = function
   | PIntegerConstant _ -> TyApp (pos, TName "int",  [])
