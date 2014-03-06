@@ -156,7 +156,7 @@ and instance_definition env' (defs, env) (i, name) =
   (* Add the local context *)
   let add_local_context env =
     let env = introduce_type_parameters env ts in
-    add_predicates' ps' env in
+    add_predicates ps' env in
   let env'_ = add_local_context env' in
   let env_ = add_local_context env in
 
@@ -701,7 +701,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
 
   let ps', local_dict_variables = dict_variables pos env ps in
   let env' = introduce_type_parameters env ts in
-  let env' = add_predicates' ps' env' in
+  let env' = add_predicates ps' env' in
 
   check_wf_type env' KStar xty;
 

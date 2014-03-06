@@ -173,7 +173,7 @@ let lookup_instances env c =
     List.assoc c env.instances
   with Not_found -> []
 
-let add_predicates' ps env =
+let add_predicates ps env =
   { env with instances = ps @ env.instances }
 
 let new_subdict_names assocs env =
@@ -200,14 +200,4 @@ let as_method x env = match x with
     then Some m
     else None
   | _ -> None
-
-(* Obsolete code *)
-
-let lookup_dictionary env c ty =
-  match ty with
-  |TyVar(_,n) | TyApp(_,n,_) -> let insts = List.assoc n env.instances in
-    let (_,name) = List.find
-        (fun (x,y)-> x.instance_class_name = c)
-        insts in
-    name
 

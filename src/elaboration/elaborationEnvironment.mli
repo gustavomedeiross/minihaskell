@@ -90,7 +90,7 @@ val lookup_instances : t -> tname -> (instance_definition * name) list
 (** [add_predicates ps env] adds class predicates to the environment.
  * [ps] (association list) maps *type variables* to classes they are assumed
  * to belong to *)
-val add_predicates' : (tname * (instance_definition * name) list) list -> t -> t
+val add_predicates : (tname * (instance_definition * name) list) list -> t -> t
 
 (** [as_method name env] checks whether [name] is a method name,
  * in which case it returns it as a label *)
@@ -109,7 +109,4 @@ val new_subdict_names : ((cname * cname) * lname) list -> t -> t
 (** [get_subdict_name env s k] recovers the subdictionary associated to the
  * superclass-class pair [s, k] by [new_cubdict_name] *)
 val get_subdict_name : t -> cname -> cname -> lname
-
-(** obsolete *)
-val lookup_dictionary : t -> cname -> Types.t -> name
 
