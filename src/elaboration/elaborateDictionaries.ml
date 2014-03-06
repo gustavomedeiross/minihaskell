@@ -66,14 +66,15 @@ and d_ovar_inst env i name ts =
   let f_dict = EVar (undefined_position, name, ts) in
   List.fold_left (dict_application env) f_dict predicates
 
-(* Apply a dictionary abstraction f_dict to (k ty) dictionary
- * [dict_application env f_dict (k, ty)] = {f_dict (k ty)} *)
-and dict_application env f_dict (k, ty) =
+(* Apply a dictionary abstraction (h_dict : k 'a -> (...)) to (k ty) dictionary
+ * [dict_application env h_dict (k, ty)] = 'h_dict (k ty)' *)
+and dict_application env h_dict (k, ty) =
   let dict = elaborate_dictionary' env k ty in
-  EApp (undefined_position, f_dict, dict)
+  EApp (undefined_position, h_dict, dict)
 
 (* Rule D-PROJ/D-VAR, seeking to obtain (k ty) by sub-dictionary projections
- * (when ty is a type variable) on some existing instance *)
+ * (when ty is a type variable) starting from one of the instances in the
+ * list argument *)
 and try_d_proj env k ty = function
   | [] -> raise Not_found
   | (i, name) :: is ->
@@ -86,12 +87,15 @@ and try_d_proj env k ty = function
     with
     | Not_found -> try_d_proj env k ty is
 
+(* Given a dictionary term q of type (_ k'), use projections to obtain
+ * a dictionary of type (_ k) *)
 and d_proj env q k k' =
   if k = k'
   then q
   else let ks = (lookup_class undefined_position k' env).superclasses in
     try_proj_superclass env q k k' ks
 
+(* Try projecting successively on every superclass of k' *)
 and try_proj_superclass env q k k' = function
   | [] -> raise Not_found
   | k'' :: ks ->
