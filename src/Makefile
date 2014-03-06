@@ -1,5 +1,6 @@
 GENERATED = parsing/parser.ml parsing/lexer.ml
 
+INTERFACE = name
 MODULES =					\
   common/positions				\
   common/errors					\
@@ -8,7 +9,7 @@ MODULES =					\
   common/basicSetEquations			\
   common/misc					\
   common/mark					\
-  name types AST IAST XAST			\
+  nameString types AST IAST XAST			\
   preludeTypes\
   parsing/tokens				\
   parsing/parser				\
@@ -64,7 +65,7 @@ all: pprint $(EXECUTABLE)
 pprint:
 	$(MAKE) -C $(PPRINT)
 
-$(EXECUTABLE): $(MODULES:%=%.cmo)
+$(EXECUTABLE): $(INTERFACE:%=%.cmi) $(MODULES:%=%.cmo)
 	$(OCAMLC) $(BFLAGS) -o $(EXECUTABLE) $(BLIBS) $(MODULES:%=%.cmo)
 
 $(EXECUTABLE).opt: $(MODULES:%=%.cmx)

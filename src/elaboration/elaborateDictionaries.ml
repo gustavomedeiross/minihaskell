@@ -1,5 +1,6 @@
 open String
 open Name
+open NameString
 open XAST
 open Types
 open Positions
@@ -8,15 +9,6 @@ open ElaborationExceptions
 open ElaborationEnvironment
 
 let string_of_type ty      = ASTio.(XAST.(to_string pprint_ml_type ty))
-
-let fresh =
-  let a = ref 0 in
-  (fun () -> incr a;
-    !a)
-
-let fresh_iname = function
-  | TName s -> IName (s, fresh ())
-  | CName _ -> assert false
 
 let rec program p = handle_error List.(fun () ->
     flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p)))
@@ -306,14 +298,6 @@ and check_instance_definitions env = function
 (*****)
 
 (* TODO: Superclasses are not dealt with correctly *)
-and mk_kname = function
-  | (TName a, TName b) -> KName(a,b)
-  | _ -> assert(false)
-
-and mk_cname = function
-  | TName a -> CName a
-  | _ -> assert(false)
-
 (* TODO Check wf type of methods *)
 and elaborate_class c env =
   let superclass =
