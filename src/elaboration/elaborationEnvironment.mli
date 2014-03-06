@@ -91,11 +91,12 @@ val as_method : name -> t -> lname option
 (** [labels_of rtcon env] returns all the labels of the record [rtcon]. *)
 val labels_of : tname -> t -> lname list
 
-(* [new_subdict_name env s k] adds and returns a fresh record label name
- * denoting an elaborated subdictionary. This is necessary to avoid
- * name collisions which would arise if we simply concatenate [s] and [k]
- * "Pi" + "Ka_Chu" <-> "Pi_Ka" + "Chu" *)
-val new_subdict_name : t -> cname -> cname -> t * lname
+(** [new_subdict_name assocs env] adds association pairs to the environment
+ * that map pairs [superclass, class] to a subdictionary name.
+ * This is necessary to avoid name collisions which would arise if
+ * we simply concatenated [s] and [k].
+ * "Pi" + "KaChu" <-> "PiKa" + "Chu" *)
+val new_subdict_names : ((cname * cname) * lname) list -> t -> t
 
 (* [get_subdict_name env s k] recovers the subdictionary associated to the
  * superclass-class pair [s, k] by [new_cubdict_name] *)

@@ -16,9 +16,16 @@ type t = {
   subdicts      : ((cname * cname) * lname) list;
 }
 
-let empty = { values = []; types = []; classes = []; labels = [];
-              method_names = []; names = []; v_constraints = [];
-              instances = []; subdicts = []}
+let empty =
+  { values        = [];
+    types         = [];
+    classes       = [];
+    labels        = [];
+    method_names  = [];
+    names         = [];
+    v_constraints = [];
+    instances     = [];
+    subdicts      = []; }
 
 let values env = env.values
 
@@ -27,6 +34,9 @@ let add_name env (pos, name) = match name with
     if List.mem (MName s) env.method_names
     then raise (VariableIsAMethodName (pos, Name s))
     else { env with names = Name s :: env.names }
+  (* An AST output by the parser does not contain any *Name' constructor,
+   *  but not failing extends the domain of the typechecker
+   *  so that it is the identity on elaborated AST's *)
   | Name' _
   | IName' _ -> env
 
@@ -47,10 +57,10 @@ let add_methods c env (pos, l, ty) = match l with
 
 let as_method x env = match x with
   | Name s ->
-      let m = MName s in
-      if List.mem m env.method_names
-      then Some m
-      else None
+    let m = MName s in
+    if List.mem m env.method_names
+    then Some m
+    else None
   | _ -> None
 
 let lookup pos x env =
@@ -247,9 +257,8 @@ let rec is_instance_of pos t k env = match t with
         i.instance_typing_context;
     with Not_found -> raise (NotAnInstance (pos, k, t))
 
-let new_subdict_name env k1 k2 =
-  let kname = fresh_kname k1 k2 in
-  { env with subdicts = ((k1, k2), kname) :: env.subdicts }, kname
+let new_subdict_names assocs env =
+  { env with subdicts = assocs @ env.subdicts }
 
 (* Will not fail *)
 let get_subdict_name env k1 k2 = List.assoc (k1, k2) env.subdicts

@@ -302,18 +302,22 @@ and check_instance_definitions env = function
 and elaborate_class c env =
   let { class_name     = CName name as k;
         class_position = pos; } = c in
-  let env, superclass =
-    List.fold_right
-      (fun sk (env, ms) ->
-         let env, kname = new_subdict_name env sk k in
-         env,
+  let subdicts =
+    List.map
+      (fun sk ->
+         let kname = fresh_kname sk k in
+         sk,
          (pos,
           kname,
           TyApp (pos,
                  mk_cname sk,
-                 [TyVar (pos, c.class_parameter)])) :: ms)
+                 [TyVar (pos, c.class_parameter)])))
       c.superclasses
-      (env, [])
+  in
+  let env =
+    let assocs =
+      List.map (fun (sk, (_, kname, _)) -> ((sk, k), kname)) subdicts in
+    new_subdict_names assocs env
   in
   env,
   TypeDefs
@@ -323,7 +327,7 @@ and elaborate_class c env =
          KArrow (KStar, KStar),
          QName' name,
          DRecordType ([c.class_parameter],
-                      c.class_members @ superclass))])
+                      c.class_members @ List.map snd subdicts))])
 
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
