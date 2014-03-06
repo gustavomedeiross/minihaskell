@@ -19,7 +19,7 @@ and block env = function
 
   | BDefinition d ->
     let names = names_vb [] d in
-    let env = List.fold_left add_name env names in
+    let env = List.fold_right add_name names env in
     let d, env = value_binding env d in
     ([BDefinition d], env)
 

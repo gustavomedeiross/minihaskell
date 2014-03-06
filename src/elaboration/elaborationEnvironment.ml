@@ -17,50 +17,22 @@ type t = {
 }
 
 let empty =
-  { values        = [];
-    types         = [];
-    classes       = [];
-    labels        = [];
-    method_names  = [];
-    names         = [];
-    v_constraints = [];
-    instances     = [];
-    subdicts      = []; }
+  { values        = [] ;
+    types         = [] ;
+    classes       = [] ;
+    labels        = [] ;
+    method_names  = [] ;
+    names         = [] ;
+    v_constraints = [] ;
+    instances     = [] ;
+    subdicts      = [] }
 
 let values env = env.values
-
-let add_name env (pos, name) = match name with
-  | Name s ->
-    if List.mem (MName s) env.method_names
-    then raise (VariableIsAMethodName (pos, Name s))
-    else { env with names = Name s :: env.names }
-  (* An AST output by the parser does not contain any *Name' constructor,
-   *  but not failing extends the domain of the typechecker
-   *  so that it is the identity on elaborated AST's *)
-  | Name' _
-  | IName' _ -> env
-
-let as_method x env = match x with
-  | Name s ->
-    let m = MName s in
-    if List.mem m env.method_names
-    then Some m
-    else None
-  | _ -> None
 
 let lookup pos x env =
   try
     List.find (fun (_, _, (x', _)) -> x = x') env.values
   with Not_found -> raise (UnboundIdentifier (pos, x))
-
-let lookup_dictionary env c ty =
-  match ty with
-  |TyVar(_,n) | TyApp(_,n,_) -> let insts = List.assoc n env.instances in
-    let (_,name) = List.find
-        (fun (x,y)-> x.instance_class_name = c)
-        insts in
-    name
-
 
 let bind_scheme pos x ts pred ty env =
   { env with values = (ts, pred, (x, ty)) :: env.values}
@@ -83,6 +55,34 @@ let lookup_type_kind pos t env =
 let lookup_type_definition pos t env =
   snd (lookup_type pos t env)
 
+let bind_type_variable t env =
+  bind_type t KStar (TypeDef (undefined_position, KStar, t, DAlgebraic [])) env
+
+let labels_of rtcon env =
+  let p (_, (_, _, rtcon')) = rtcon = rtcon' in
+  List.(fst (split (filter p env.labels)))
+
+let lookup_label pos l env =
+  try
+    List.assoc l env.labels
+  with Not_found -> raise (UnboundLabel (pos, l))
+
+let bind_label pos l ts ty rtcon env =
+  try
+    ignore (lookup_label pos l env);
+    raise (LabelAlreadyTaken (pos, l))
+  with UnboundLabel _ ->
+    { env with labels = (l, (ts, ty, rtcon)) :: env.labels }
+
+let initial =
+  let primitive_type t k = TypeDef (undefined_position, k, t, DAlgebraic []) in
+  List.fold_left
+    (fun env (t, k) -> bind_type t k (primitive_type t k) env)
+    empty
+    PreludeTypes.types
+
+
+(* Type classes *)
 
 let lookup_class pos k env =
   try
@@ -152,33 +152,7 @@ let bind_class k c env =
     let env = List.fold_left (add_methods (ClassPredicate (k, tv))) env ms in
     { env with classes = (k, c) :: env.classes }
 
-
-let bind_type_variable t env =
-  bind_type t KStar (TypeDef (undefined_position, KStar, t, DAlgebraic [])) env
-
-let labels_of rtcon env =
-  let p (_, (_, _, rtcon')) = rtcon = rtcon' in
-  List.(fst (split (filter p env.labels)))
-
-let lookup_label pos l env =
-  try
-    List.assoc l env.labels
-  with Not_found -> raise (UnboundLabel (pos, l))
-
-let bind_label pos l ts ty rtcon env =
-  try
-    ignore (lookup_label pos l env);
-    raise (LabelAlreadyTaken (pos, l))
-  with UnboundLabel _ ->
-    { env with labels = (l, (ts, ty, rtcon)) :: env.labels }
-
-let initial =
-  let primitive_type t k = TypeDef (undefined_position, k, t, DAlgebraic []) in
-  List.fold_left
-    (fun env (t, k) -> bind_type t k (primitive_type t k) env)
-    empty
-    PreludeTypes.types
-
+(* Instances *)
 
 let bind_instance env (t, num) =
   try
@@ -187,10 +161,10 @@ let bind_instance env (t, num) =
         (fun (x, _) -> x.instance_class_name = t.instance_class_name)
         listinstance
     then raise (OverlappingInstances (t.instance_position,
-                                      t.instance_class_name))
-    else let instances = List.remove_assoc t.instance_index env.instances in
-      { env with instances = (t.instance_index, (t,num) :: listinstance)
-                             :: instances }
+                                      t.instance_class_name));
+    let instances = List.remove_assoc t.instance_index env.instances in
+    { env with instances = (t.instance_index, (t,num) :: listinstance)
+                           :: instances }
   with Not_found -> { env with instances = (t.instance_index, [t,num])
                                            :: env.instances}
 
@@ -198,6 +172,58 @@ let lookup_instances env c =
   try
     List.assoc c env.instances
   with Not_found -> []
+
+let add_predicates' ps env =
+  { env with instances = ps @ env.instances }
+
+let new_subdict_names assocs env =
+  { env with subdicts = assocs @ env.subdicts }
+
+(* Will not fail *)
+let get_subdict_name env k1 k2 = List.assoc (k1, k2) env.subdicts
+
+let add_name (pos, name) env = match name with
+  | Name s ->
+    if List.mem (MName s) env.method_names
+    then raise (VariableIsAMethodName (pos, Name s))
+    else { env with names = Name s :: env.names }
+  (* An AST output by the parser does not contain any *Name' constructor,
+   *  but not failing extends the domain of the typechecker
+   *  so that it is the identity on elaborated AST's *)
+  | Name' _
+  | IName' _ -> env
+
+let as_method x env = match x with
+  | Name s ->
+    let m = MName s in
+    if List.mem m env.method_names
+    then Some m
+    else None
+  | _ -> None
+
+let lookup_constraints tv env =
+  try
+    List.assoc tv env.v_constraints
+  with Not_found -> assert false
+
+(* Obsolete code *)
+
+let add_unconstrained_tv ts env ps =
+  List.fold_left
+    (fun x l ->
+       if List.exists (fun (ClassPredicate(k,v)) -> v = l) ps
+       then x
+       else { x with v_constraints = (l, []) :: x.v_constraints })
+    env
+    ts
+
+let lookup_dictionary env c ty =
+  match ty with
+  |TyVar(_,n) | TyApp(_,n,_) -> let insts = List.assoc n env.instances in
+    let (_,name) = List.find
+        (fun (x,y)-> x.instance_class_name = c)
+        insts in
+    name
 
 let add_predicates cstr env pos =
   let rec regroup acc = function
@@ -220,25 +246,6 @@ let add_predicates cstr env pos =
   if all_canonical
   then { env with v_constraints = constr @ env.v_constraints }
   else raise (NotCanonicalConstraint pos)
-
-let add_predicates' ps env =
-  { env with instances = ps @ env.instances }
-
-let add_unconstrained_tv ts env ps =
-  List.fold_left
-    (fun x l ->
-       if List.exists (fun (ClassPredicate(k,v)) -> v = l) ps
-       then x
-       else { x with v_constraints = (l, []) :: x.v_constraints })
-    env
-    ts
-
-
-let lookup_constraints tv env =
-  try
-    List.assoc tv env.v_constraints
-  with Not_found -> assert false
-
 let rec is_instance_of pos t k env = match t with
   | TyVar (_, v) ->
     let cs = lookup_constraints v env in
@@ -255,8 +262,3 @@ let rec is_instance_of pos t k env = match t with
         i.instance_typing_context;
     with Not_found -> raise (NotAnInstance (pos, k, t))
 
-let new_subdict_names assocs env =
-  { env with subdicts = assocs @ env.subdicts }
-
-(* Will not fail *)
-let get_subdict_name env k1 k2 = List.assoc (k1, k2) env.subdicts
