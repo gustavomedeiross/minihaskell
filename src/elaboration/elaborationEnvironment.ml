@@ -133,16 +133,16 @@ let add_methods (ClassPredicate (k, tv) as p) env (pos, m, ty) = match m with
     if List.mem m env.method_names then raise (MultipleMethods (pos, m));
     if List.mem name env.names then raise (VariableIsAMethodName (pos, name));
     let m_binding = [tv], [p], (name, ty) in
-    { env with method_names = m :: env.method_names;
-               values = m_binding :: env.values }
+    { env with method_names = m         :: env.method_names;
+               values       = m_binding :: env.values }
   | _ -> assert false
 
 let bind_class k c env =
-  let { class_position  = pos;
-        class_parameter = tv;
-        superclasses    = sks;
-        class_name      = k;
-        class_members   = ms } = c in
+  let { class_position  = pos ;
+        class_parameter = tv  ;
+        superclasses    = sks ;
+        class_name      = k   ;
+        class_members   = ms  } = c in
   try
     ignore (lookup_class pos k env);
     raise (AlreadyDefinedClass (pos, k))
