@@ -122,7 +122,6 @@ and try_proj_superclass env q k k' = function
  * *)
 
 (* TODO: Collect variable names from member definitions *)
-(* TODO: Conflict between record fields and method names ? *)
 and elaborate_instances env is =
   let is = (* Associate a fresh name to every instance *)
     List.map
@@ -142,9 +141,9 @@ and elaborate_instances env is =
  *    (h in [1])
  * *)
 and instance_definition env' (defs, env) (i, name) =
-  let { instance_position       = pos;
-        instance_parameters     = ts;
-        instance_typing_context = ps; } = i in
+  let { instance_position       = pos ;
+        instance_parameters     = ts  ;
+        instance_typing_context = ps  } = i in
 
   (* The constraints are elaborated into a lambda abstraction,
    * this creates one dictionary variable per constraint *)
@@ -156,7 +155,7 @@ and instance_definition env' (defs, env) (i, name) =
 
   (* Add the local context *)
   let add_local_context env =
-    let env = introduce_type_parameters env ts [] pos in
+    let env = introduce_type_parameters env ts in
     add_predicates' ps' env in
   let env'_ = add_local_context env' in
   let env_ = add_local_context env in
@@ -211,12 +210,12 @@ and map_add key v = function
 
 and dict_variable (ClassPredicate (k, v)) =
   let i =
-    { instance_position = undefined_position;
-      instance_parameters     = [];
-      instance_typing_context = [];
-      instance_class_name     = k;
-      instance_index          = v; (* is a variable here *)
-      instance_members        = []; } in
+    { instance_position = undefined_position ;
+      instance_parameters     = []           ;
+      instance_typing_context = []           ;
+      instance_class_name     = k            ;
+      instance_index          = v            ; (* here a variable *)
+      instance_members        = []           } in
   let name = fresh_iname k in
   (i, name, cons_type (mk_cname k) [v])
 
@@ -234,9 +233,9 @@ and sub_dictionaries pos env c itype =
   List.map record_binding c.superclasses
 
 and elaborate_methods env' env c i ity =
-  let { instance_position   = pos;
-        instance_class_name = k;
-        instance_members    = ms; } = i in
+  let { instance_position   = pos ;
+        instance_class_name = k   ;
+        instance_members    = ms  } = i in
 
   let elaborate_method (_, lname, ty) =
     try
@@ -360,34 +359,11 @@ and algebraic_dataconstructor env (pos, DName k, ts, kty) =
   check_wf_scheme env ts kty pos;
   bind_scheme pos (Name k) ts [] kty env
 
-(* TODO 'introduce_type_parameters'
- *  revert back to the old version, commented out *)
-(* The reason is that a class predicate K 'a can be added to env as
- * an "instance of K at type 'a"
- * - 'add_predicates' and 'add_unconstrained_tv' (ElaborationEnvironment)
- *   are to be considered obsolete
- * - the relevant operations are not part of the role of this function anymore
-*)
-
-(*
 and introduce_type_parameters env ts =
   List.fold_left (fun env t -> bind_type_variable t env) env ts
-*)
-
-(* We currently keep this implementation,
- * which 'value_binding' relies on for type-checking *)
-and introduce_type_parameters env ts ps pos =
-  List.iter
-    (fun (ClassPredicate(a,b)) ->
-       if not (List.mem b ts) then raise (InvalidOverloading pos))
-    ps;
-  let env = List.fold_left (fun env t -> bind_type_variable t env) env ts in
-  let env = add_predicates ps env pos in
-  let env = add_unconstrained_tv ts env ps in
-  env
 
 and check_wf_scheme env ts ty pos =
-  check_wf_type (introduce_type_parameters env ts [] pos) KStar ty
+  check_wf_type (introduce_type_parameters env ts) KStar ty
 
 and check_wf_type env xkind = function
   | TyVar (pos, t) ->
@@ -484,14 +460,11 @@ and expression env = function
         (EApp (pos, a, b), oty)
     end
 
-
   (*If we have constraints, value_binding behaves differently*)
   | EBinding (pos, vb, e) ->
     let vb, env = value_binding env vb in
     let e, ty = expression env e in
     (EBinding (pos, vb, e), ty)
-
-
 
   | EForall (pos, tvs, e) ->
     (** Because type abstractions are removed by [value_binding]. *)
@@ -718,52 +691,26 @@ and eforall pos ts e =
   | _, _ ->
     raise (InvalidNumberOfTypeAbstraction pos)
 
-(*TODO: elaborate ps into an abstraction*)
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
-  (*x name, xty binding*)
-
-  let env' = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-
-  check_wf_type env' KStar xty;
   List.iter
-    (fun (ClassPredicate (c, v)) ->
-       if not (TS.mem v (free xty)) then
+    (fun (ClassPredicate (_, v)) ->
+       if not (TS.mem v (free xty) && (* Unreachable constraint *)
+               List.mem v ts) then (* Variable must have just been bound *)
          raise (InvalidOverloading pos))
     ps;
-  let env' = List.fold_left
-      (fun env x ->
-         match x with
-         | ClassPredicate(cl,ty)->
-           let name = fresh_iname cl in
-           let env = bind_instance env
-               (*TODO cacher*)
-               ({
-                 instance_position       =pos;
-                 instance_parameters     = [];
-                 instance_typing_context = [];
-                 instance_class_name     = cl;
-                 instance_index          = ty;
-                 instance_members        = [];}
-               ,name)
-           in
-           env)
-      env'
-      (List.rev ps)
-  in
+
+  let ps', local_dict_variables = dict_variables pos env ps in
+  let env' = introduce_type_parameters env ts in
+  let env' = add_predicates' ps' env' in
+
+  check_wf_type env' KStar xty;
+
   if is_value_form e then begin
     let e = eforall pos ts e in
     let e, ty = expression env' e in
     check_equal_types pos xty ty;
-    let (e,ty') = List.fold_left
-        (fun (e,ty) x ->
-           match x with
-           | ClassPredicate(cl,t)->
-             let name = lookup_dictionary env' cl (TyVar(pos,t))  in
-             abstract (name,TyApp(pos,mk_cname cl ,[TyVar(pos,t)])) (e,ty)) (*Change ty with the name*)
-        (e,ty)
-        (List.rev ps)
-    in
-    let b = (x,ty') in
+    let e, ty' = List.fold_right abstract local_dict_variables (e, ty) in
+    let b = (x, ty') in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
 
@@ -774,13 +721,12 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e = eforall pos [] e in
       let e, ty = expression env' e in
       check_equal_types pos xty ty;
-      let b = (x,ty) in
+      let b = (x, ty) in
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
   bind_scheme pos x ts ps ty env
-
 
 and is_value_form = function
   | EVar _

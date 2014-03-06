@@ -15,7 +15,6 @@ type t = {
   subdicts      : ((cname * cname) * lname) list;
   method_names  : StringSet.t;
   names         : StringSet.t;
-  v_constraints : (tname * cname list) list; (* Obsolete *)
 }
 
 let empty =
@@ -23,7 +22,6 @@ let empty =
     types         = []              ;
     classes       = []              ;
     labels        = []              ;
-    v_constraints = []              ;
     instances     = []              ;
     subdicts      = []              ;
     method_names  = StringSet.empty ;
@@ -203,21 +201,7 @@ let as_method x env = match x with
     else None
   | _ -> None
 
-let lookup_constraints tv env =
-  try
-    List.assoc tv env.v_constraints
-  with Not_found -> assert false
-
 (* Obsolete code *)
-
-let add_unconstrained_tv ts env ps =
-  List.fold_left
-    (fun x l ->
-       if List.exists (fun (ClassPredicate(k,v)) -> v = l) ps
-       then x
-       else { x with v_constraints = (l, []) :: x.v_constraints })
-    env
-    ts
 
 let lookup_dictionary env c ty =
   match ty with
@@ -226,41 +210,4 @@ let lookup_dictionary env c ty =
         (fun (x,y)-> x.instance_class_name = c)
         insts in
     name
-
-let add_predicates cstr env pos =
-  let rec regroup acc = function
-    | [] -> acc
-    | ClassPredicate (cn, tn) :: q ->
-      try
-        let old_class = List.assoc tn acc in
-        let new_class = cn :: old_class in
-        let acc       = List.remove_assoc tn acc in
-        regroup ((tn, new_class) :: acc) q
-      with Not_found -> regroup ((tn, [cn]) :: acc) q in
-  let is_canonical (cs : cname list) =
-    List.for_all
-      (fun name ->
-         not (List.exists (fun y -> y = name || is_superclass pos y name env)
-                (List.filter (fun x -> not (x == name)) cs)))
-      cs in
-  let constr = regroup [] cstr in
-  let all_canonical = List.for_all (fun (_, b) -> is_canonical b) constr in
-  if all_canonical
-  then { env with v_constraints = constr @ env.v_constraints }
-  else raise (NotCanonicalConstraint pos)
-let rec is_instance_of pos t k env = match t with
-  | TyVar (_, v) ->
-    let cs = lookup_constraints v env in
-    if not (List.exists (fun k' -> k = k' || is_superclass pos k' k env) cs)
-    then raise (NotAnInstance (pos, k, t))
-  | TyApp (_, g, ts) ->
-    try
-      let is = List.assoc g env.instances in
-      let (i, _) = List.find (fun (i, _) -> i.instance_class_name = k) is in
-      let assoc = List.combine i.instance_parameters ts in
-      List.iter
-        (fun (ClassPredicate (k, v)) ->
-           is_instance_of pos (List.assoc v assoc) k env)
-        i.instance_typing_context;
-    with Not_found -> raise (NotAnInstance (pos, k, t))
 

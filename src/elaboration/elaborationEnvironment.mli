@@ -111,8 +111,5 @@ val new_subdict_names : ((cname * cname) * lname) list -> t -> t
 val get_subdict_name : t -> cname -> cname -> lname
 
 (** obsolete *)
-val add_predicates : Types.class_predicates -> t -> position -> t
-val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t
-
 val lookup_dictionary : t -> cname -> Types.t -> name
 
