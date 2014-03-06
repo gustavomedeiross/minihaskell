@@ -153,6 +153,7 @@ and instance_definition env' (defs, env) (i, name) =
   let c = lookup_class pos i.instance_class_name env in
   let cname = mk_cname i.instance_class_name in
   let itype = cons_type i.instance_index ts in
+  let itype' = cons_type (elab_tname i.instance_index) ts in
 
   (* Add the local context *)
   let add_local_context env =
@@ -168,12 +169,12 @@ and instance_definition env' (defs, env) (i, name) =
    * so a direct sub-dictionary should be available *)
   let sub_dict = sub_dictionaries pos env_ c itype in
   let methods = elaborate_methods env'_ env_ c i itype in
-  let record = ERecordCon (pos, name, [itype], sub_dict @ methods) in
+  let record = ERecordCon (pos, name, [itype'], sub_dict @ methods) in
 
   let env = bind_instance env (i, name) in
   let inst_body, inst_type =
     List.fold_right abstract local_dict_variables
-      (record, TyApp (undefined_position, cname, [itype])) in
+      (record, TyApp (undefined_position, cname, [itype'])) in
   let inst_body = EForall (pos, ts, inst_body) in
   let def =
     ValueDef (pos, ts, [], (name, inst_type), inst_body) in
