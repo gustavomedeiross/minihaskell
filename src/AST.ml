@@ -17,8 +17,8 @@ module Make (P : Types.TypingSyntax) = struct
   and class_definition = {
     class_position  : position;
     class_parameter : tname;
-    superclasses    : tname list;
-    class_name      : tname;
+    superclasses    : cname list;
+    class_name      : cname;
     class_members   : (position * lname * mltype) list;
   }
 
@@ -26,7 +26,7 @@ module Make (P : Types.TypingSyntax) = struct
     instance_position       : position;
     instance_parameters     : tname list;
     instance_typing_context : class_predicate list;
-    instance_class_name     : tname;
+    instance_class_name     : cname;
     instance_index          : tname;
     instance_members        : record_binding list;
   }

@@ -9,7 +9,7 @@ exception UnboundIdentifier of position * name
 exception UnboundTypeVariable of position * tname
 
 (** [UnboundClass] is raised if a class identifier is unbound. *)
-exception UnboundClass of position * tname
+exception UnboundClass of position * cname
 
 (** [UnboundLabel] is raised if a label is unbound. *)
 exception UnboundLabel of position * lname
@@ -19,7 +19,7 @@ exception UnboundLabel of position * lname
 exception MultipleLabels of position * lname
 
 (** [AlreadyDefinedClass] is raised if a class is defined twice. *)
-exception AlreadyDefinedClass of position * tname
+exception AlreadyDefinedClass of position * cname
 
 (** [InvalidTypeApplication] is raised if an incorrect number of
     types is applied to a polymorphic term. *)
@@ -76,11 +76,11 @@ exception InvalidNumberOfTypeAbstraction of position
 
 (** [TheseTwoClassesMustNotBeInTheSameContext] is raised when
     two class predicates prevent a typing context to be canonical. *)
-exception TheseTwoClassesMustNotBeInTheSameContext of position * tname * tname
+exception TheseTwoClassesMustNotBeInTheSameContext of position * cname * cname
 
 (** [OverlappingInstances] is raised when two instances' indices share
     the same head symbol. *)
-exception OverlappingInstances of position * tname
+exception OverlappingInstances of position * cname
 
 (** [OnlyLetsCanIntroduceTypeAbstraction] is raised when a type abstraction
     is used deep in a term, when it should only appear immediatly under
@@ -117,24 +117,24 @@ exception OverloadedSymbolCannotBeBound of Positions.position * name
 exception VariableIsAMethodName of position * name
 
 (**salf-describing *)
-exception TooFreeTypeVariableTypeclass of position * tname
+exception TooFreeTypeVariableTypeclass of position * cname
 
 (* Raised when the parameter of the typeclass is not used in the
    definition*)
-exception AmbiguousTypeclass of position * tname
+exception AmbiguousTypeclass of position * cname
 
 (** [NotAMethodOf] is raised when an instance declaration
     implements a method that is not part of the class *)
-exception NotAMethodOf of position * lname * tname
+exception NotAMethodOf of position * lname * cname
 
 exception NotCanonicalConstraint of position
 
 exception MultipleMethods of position * lname
 
-exception LackingMethod of position * tname * lname
+exception LackingMethod of position * cname * lname
 
-exception TooManyMethods of position * tname
+exception TooManyMethods of position * cname
 
-exception NotAnInstance of position * tname * Types.t
+exception NotAnInstance of position * cname * Types.t
 
 exception NotImplemented of position * string

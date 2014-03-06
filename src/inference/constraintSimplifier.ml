@@ -3,8 +3,8 @@ open MultiEquation
 open Name
 
 
-module Glob = Map.Make(struct type t = tname let compare = compare end )
-module Globeq = Map.Make(struct type t = tname*variable let compare = compare end)
+module Glob = Map.Make(struct type t = cname let compare = compare end )
+module Globeq = Map.Make(struct type t = cname*variable let compare = compare end)
 
 (** [environnement] contains a map from [tname] to [tname list]:
     the (E') rules *)

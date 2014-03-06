@@ -39,7 +39,7 @@ exception Inconsistency
 
 type tconstraint = Constraint.tconstraint
 
-type canonical_constraint =  (tname * variable) list
+type canonical_constraint =  (cname * variable) list
 
 let rtrue = []
 let rconj c = List.flatten c

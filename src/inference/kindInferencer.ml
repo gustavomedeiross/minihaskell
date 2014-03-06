@@ -160,7 +160,6 @@ and print v =
 and name v =
   match (UnionFind.find v).name with
   | TName name -> name
-  | CName _ -> assert false
 
 let is_constant v = (UnionFind.find v).constant
 

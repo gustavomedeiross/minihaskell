@@ -1,3 +1,0 @@
-let external ['a] (v_read : unit -> 'a) = "fun () -> input_value stdin"
-let external ['a] (v_write : 'a -> unit) = "fun x -> output_value stdout x"
-let (v_echo : unit -> unit) = fun (v_x : unit) -> v_write['a] (v_read['a] ())

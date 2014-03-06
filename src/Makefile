@@ -1,6 +1,6 @@
 GENERATED = parsing/parser.ml parsing/lexer.ml
 
-INTERFACE = name
+INTERFACE =
 MODULES =					\
   common/positions				\
   common/errors					\
@@ -9,7 +9,7 @@ MODULES =					\
   common/basicSetEquations			\
   common/misc					\
   common/mark					\
-  nameString types AST IAST XAST			\
+  name types AST IAST XAST			\
   preludeTypes\
   parsing/tokens				\
   parsing/parser				\
@@ -90,11 +90,12 @@ test: $(EXECUTABLE)
 	cd ../test && ./test
 
 clean:
-	rm -f $(EXECUTABLE) $(EXECUTABLE).opt parsing/parser.ml parsing/lexer.ml *.cm[iox] **/*.cm[iox] **/*.o *.annot **/*.annot
+	rm -f $(EXECUTABLE) $(EXECUTABLE).opt parsing/parser.ml parsing/lexer.ml \
+		*.cm[iox] **/*.cm[iox] **/*.o *.annot **/*.annot
 
 .depend: $(GENERATED) Makefile
 	$(OCAMLDEP) $(SRC_INCLUDES) $(patsubst %, %.ml, $(MODULES)) \
-		$(patsubst %, %.mli, $(MODULES)) $(GENERATED) > .depend
+		$(patsubst %, %.mli, $(MODULES) $(INTERFACES)) $(GENERATED) > .depend
 
 depend:
 	rm -f .depend

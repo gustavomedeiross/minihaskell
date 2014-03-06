@@ -45,14 +45,14 @@ val bind_type : tname -> Types.kind -> type_definition -> t -> t
 val bind_type_variable : tname -> t -> t
 
 (** [lookup_class pos c e] returns the class_definition of [c] in [e]. *)
-val lookup_class : position -> tname -> t -> class_definition
+val lookup_class : position -> cname -> t -> class_definition
 
 (** [is_superclass pos k1 k2 e] returns [true] if [k2] is a superclass of
     [k1] in [e]. *)
-val is_superclass : position -> tname -> tname -> t -> bool
+val is_superclass : position -> cname -> cname -> t -> bool
 
 (** [bind_class c cdef e] associates a class_definition [cdef] to [c] in [e]. *)
-val bind_class : tname -> class_definition -> t -> t
+val bind_class : cname -> class_definition -> t -> t
 
 (** [bind_label pos l ts lty rtycon e] associates the type parameters [ts],
     the type [lty] and the record type constructor [rtycon] to the label [l]
@@ -79,12 +79,24 @@ val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t
 
 (** [is_instance_of pos t k e] raises an exception if t is not an
     instance of k in e *)
-val is_instance_of : position -> Types.t -> tname -> t -> unit
+val is_instance_of : position -> Types.t -> cname -> t -> unit
 
-val lookup_dictionary : t -> tname -> Types.t 
+val lookup_dictionary : t -> cname -> Types.t 
   -> name   
 
-val is_method : lname -> t -> bool 
+(* [as_method name env] checks whether [name] is a method name,
+ * in which case it returns it as a label *)
+val as_method : name -> t -> lname option
 
-(** [labels_of rtcon e] returns all the labels of the record [rtcon]. *)
+(** [labels_of rtcon env] returns all the labels of the record [rtcon]. *)
 val labels_of : tname -> t -> lname list
+
+(* [new_subdict_name env s k] adds and returns a fresh record label name
+ * denoting an elaborated subdictionary. This is necessary to avoid
+ * name collisions which would arise if we simply concatenate [s] and [k]
+ * "Pi" + "Ka_Chu" <-> "Pi_Ka" + "Chu" *)
+val new_subdict_name : t -> cname -> cname -> t * lname
+
+(* [get_subdict_name env s k] recovers the subdictionary associated to the
+ * superclass-class pair [s, k] by [new_cubdict_name] *)
+val get_subdict_name : t -> cname -> cname -> lname

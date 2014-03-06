@@ -7,46 +7,51 @@ open ElaborationExceptions
 type t = {
   values        : (tnames * class_predicates * binding) list;
   types         : (tname * (Types.kind * type_definition)) list;
-  classes       : (tname * class_definition) list;
+  classes       : (cname * class_definition) list;
   labels        : (lname * (tnames * Types.t * tname)) list;
-  v_constraints : (tname * tname list) list;
+  v_constraints : (tname * cname list) list;
   instances     : (tname * (instance_definition * name) list) list;
   method_names  : lname list;
   names         : name list;
+  subdicts      : ((cname * cname) * lname) list;
 }
-
-let name_of_lname = function 
-  | LName s -> Name s
-  | KName _ -> assert false
 
 let empty = { values = []; types = []; classes = []; labels = [];
               method_names = []; names = []; v_constraints = [];
-              instances = []}
+              instances = []; subdicts = []}
 
 let values env = env.values
 
 let add_name env (pos, name) = match name with
-  | IName _ -> env
   | Name s ->
-    if List.mem (LName s) env.method_names
+    if List.mem (MName s) env.method_names
     then raise (VariableIsAMethodName (pos, Name s))
     else { env with names = Name s :: env.names }
+  | Name' _
+  | IName' _ -> env
 
 let add_methods c env (pos, l, ty) = match l with
-  | KName _ -> assert false
-  | LName s ->
-    if List.mem (LName s) env.method_names then
-      raise (MultipleMethods (pos, LName s))
-    else if List.mem (Name s) env.names then
-      raise (VariableIsAMethodName (pos, Name s))
+  | MName s as m ->
+    let name = Name s in
+    if List.mem m env.method_names then
+      raise (MultipleMethods (pos, m))
+    else if List.mem name env.names then
+      raise (VariableIsAMethodName (pos, name))
     else
-      { env with method_names = (LName s) :: env.method_names;
+      { env with method_names = m :: env.method_names;
                  values = ([c.class_parameter],
                            [ClassPredicate (c.class_name, c.class_parameter)],
-                           (Name s,ty))
+                           (name, ty))
                           :: env.values}
+  | _ -> assert false
 
-let is_method x env = List.mem x (env.method_names)
+let as_method x env = match x with
+  | Name s ->
+      let m = MName s in
+      if List.mem m env.method_names
+      then Some m
+      else None
+  | _ -> None
 
 let lookup pos x env =
   try
@@ -111,13 +116,13 @@ let assert_independent pos sc env =
 (* Parameter is the singleton of the free variable of the class *)
 let rec check_free_variables name parameter (pos, _, t) =
   match parameter with
-  | CName _ -> assert false
-  | TName s -> 
+  | TName s ->
     let freeT = free t in
     if not (TS.mem parameter freeT) then
       raise (AmbiguousTypeclass (pos, name))
     else if not (TS.is_empty (TS.remove parameter freeT)) then
       raise (TooFreeTypeVariableTypeclass (pos, name))
+  | _ -> assert false
 
 let bind_class k c env =
   try
@@ -189,17 +194,17 @@ let lookup_instances env c =
 let add_predicates cstr env pos =
   let rec regroup acc = function
     | [] -> acc
-    | ClassPredicate (cn,tn) :: q ->
+    | ClassPredicate (cn, tn) :: q ->
       try
         let old_class = List.assoc tn acc in
         let new_class = cn :: old_class in
         let acc       = List.remove_assoc tn acc in
         regroup ((tn, new_class) :: acc) q
       with Not_found -> regroup ((tn, [cn]) :: acc) q in
-  let is_canonical (cs : tname list) =
+  let is_canonical (cs : cname list) =
     List.for_all
       (fun name ->
-         not (List.exists (fun y-> y = name || is_superclass pos y name env)
+         not (List.exists (fun y -> y = name || is_superclass pos y name env)
                 (List.filter (fun x -> not (x == name)) cs)))
       cs in
   let constr = regroup [] cstr in
@@ -242,3 +247,9 @@ let rec is_instance_of pos t k env = match t with
         i.instance_typing_context;
     with Not_found -> raise (NotAnInstance (pos, k, t))
 
+let new_subdict_name env k1 k2 =
+  let kname = fresh_kname k1 k2 in
+  { env with subdicts = ((k1, k2), kname) :: env.subdicts }, kname
+
+(* Will not fail *)
+let get_subdict_name env k1 k2 = List.assoc (k1, k2) env.subdicts

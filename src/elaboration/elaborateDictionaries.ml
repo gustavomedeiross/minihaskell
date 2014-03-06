@@ -1,6 +1,5 @@
 open String
 open Name
-open NameString
 open XAST
 open Types
 open Positions
@@ -29,7 +28,7 @@ and block env = function
 
   | BClassDefinition c ->
     let env    = bind_class c.class_name c env in
-    let single_record = elaborate_class c env in
+    let env, single_record = elaborate_class c env in
     block env (BTypeDefinitions single_record)
 
   | BInstanceDefinitions is ->
@@ -107,7 +106,8 @@ and try_proj_superclass env q k k' = function
   | [] -> raise Not_found
   | k'' :: ks ->
     try
-      let q = ERecordAccess (undefined_position, q, mk_kname (k'', k')) in
+      let kname = get_subdict_name env k'' k' in
+      let q = ERecordAccess (undefined_position, q, kname) in
       d_proj env q k k''
     with Not_found -> try_proj_superclass env q k k' ks
 
@@ -229,7 +229,7 @@ and abstract (x, t) (e, ty) =
 and sub_dictionaries pos env c itype =
   let record_binding k' =
     RecordBinding (
-      mk_kname (k', c.class_name),
+      get_subdict_name env k' c.class_name,
       elaborate_dictionary pos env k' itype) in
   List.map record_binding c.superclasses
 
@@ -300,28 +300,30 @@ and check_instance_definitions env = function
 (* TODO: Superclasses are not dealt with correctly *)
 (* TODO Check wf type of methods *)
 and elaborate_class c env =
-  let superclass =
-    List.map
-      (fun sup ->
-         let s = lookup_class c.class_position sup env in
-         (s.class_position,
-          mk_kname (s.class_name,c.class_name),
-          TyApp(s.class_position,
-                mk_cname s.class_name,
-                [TyVar(c.class_position, c.class_parameter)])))
+  let { class_name     = CName name as k;
+        class_position = pos; } = c in
+  let env, superclass =
+    List.fold_right
+      (fun sk (env, ms) ->
+         let env, kname = new_subdict_name env sk k in
+         env,
+         (pos,
+          kname,
+          TyApp (pos,
+                 mk_cname sk,
+                 [TyVar (pos, c.class_parameter)])) :: ms)
       c.superclasses
+      (env, [])
   in
-  match c.class_name with
-  | TName name ->
-    TypeDefs
-      (c.class_position,
-       [TypeDef
-          (c.class_position,
-           KArrow (KStar,KStar),
-           CName name,
-           DRecordType ([c.class_parameter],
-                        c.class_members@superclass))])
-  | CName name -> assert false (*By construction*)
+  env,
+  TypeDefs
+    (pos,
+     [TypeDef
+        (pos,
+         KArrow (KStar, KStar),
+         QName' name,
+         DRecordType ([c.class_parameter],
+                      c.class_members @ superclass))])
 
 and type_definitions env (TypeDefs (_, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
@@ -442,24 +444,21 @@ and evar pos env x tys =
       let assoc = List.combine ts tys in
       assoc, substitute assoc ty
     with Invalid_argument _ -> raise (InvalidTypeApplication pos) in
-  let lx = match x with
-    | IName _ -> LName "" (* The next check would be false anyway *)
-    | Name s -> LName s in
   (* Not 'assert false' so that typechecking can be done on an elaborated
    * program again *)
   let elab (ClassPredicate (k, var)) =
     let t = List.assoc var assoc in
     elaborate_dictionary pos env k t in
-  if is_method lx env
-  then
+  match as_method x env with
+  | None ->
+    let dict = List.map elab ps in
+    List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x, tys)) dict, ty
+  | Some m ->
     match ps with
     | [p] ->
       let dico = elab p in
-      ERecordAccess (pos, dico, lx), ty
+      ERecordAccess (pos, dico, m), ty
     | _ -> assert false (* Methods have exactly one constraint*)
-  else
-    let dict = List.map elab ps in
-    List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x, tys)) dict, ty
 
 and expression env = function
   | EVar (pos, x, tys) -> evar pos env x tys
@@ -733,7 +732,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
          | ClassPredicate(cl,ty)->
            let name = fresh_iname cl in
            let env = bind_instance env
-(*TODO cacher*)
+               (*TODO cacher*)
                ({
                  instance_position       =pos;
                  instance_parameters     = [];
@@ -760,7 +759,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
         (e,ty)
         (List.rev ps)
     in
-  let b = (x,ty') in
+    let b = (x,ty') in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
 

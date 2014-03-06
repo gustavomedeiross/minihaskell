@@ -29,7 +29,7 @@ exception UnboundClass of tname
 (** [equivalent [b1;..;bN] k t [(k_1,t_1);...;(k_N,t_N)]] registers
     a rule of the form (E). *)
 val equivalent
-  : variable list -> tname -> variable -> (tname * variable) list -> unit
+  : variable list -> cname -> variable -> (cname * variable) list -> unit
 
 (** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
     decomposes [c] into an equivalent constraint [c' =
@@ -37,18 +37,18 @@ val equivalent
     [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
     is equivalent to [false]. *)
 val canonicalize
-  : position -> pool -> (tname * variable) list -> (tname * variable) list
+  : position -> pool -> (cname * variable) list -> (cname * variable) list
 
 (** [add_implication k [k_1;...;k_N]] registers a rule of the form
     (E'). *)
 val add_implication
-  : tname -> tname list -> unit
+  : cname -> cname list -> unit
 
 (** [entails C1 C2] returns true is the canonical constraint [C1] implies
     the canonical constraint [C2]. *)
 val entails
-  : (tname * variable) list -> (tname * variable) list -> bool
+  : (cname * variable) list -> (cname * variable) list -> bool
 
 (** [contains k1 k2] *)
 val contains
-  : tname -> tname -> bool
+  : cname -> cname -> bool
