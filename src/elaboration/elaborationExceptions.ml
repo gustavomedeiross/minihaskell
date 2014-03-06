@@ -35,7 +35,6 @@ exception InvalidRecordConstruction of position
 
 exception VariableIsAMethodName of position * name
 exception AmbiguousTypeclass of position * cname
-exception TooFreeTypeVariableTypeclass of position * cname
 exception NotAMethodOf of position * lname * cname
 exception MultipleMethods of position * lname
 exception LackingMethod of position * cname * lname

@@ -116,9 +116,6 @@ exception OverloadedSymbolCannotBeBound of Positions.position * name
     as a method name and a variable *)
 exception VariableIsAMethodName of position * name
 
-(**salf-describing *)
-exception TooFreeTypeVariableTypeclass of position * cname
-
 (* Raised when the parameter of the typeclass is not used in the
    definition*)
 exception AmbiguousTypeclass of position * cname

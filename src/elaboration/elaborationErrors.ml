@@ -126,10 +126,6 @@ let handle_error f =
     fatal' pos (Printf.sprintf "  The parameter of the type class `%s' doesn't \
                                 occur in the definition." l)
 
-  | TooFreeTypeVariableTypeclass(pos, CName l) ->
-    fatal' pos (Printf.sprintf "  Only the class parameter should appear free \
-                                in typeclass `%s'." l)
-
   | NotAMethodOf (pos, MName m, CName k) ->
     fatal' pos (Printf.sprintf "  `%s' is not a method of class `%s'." m k)
 

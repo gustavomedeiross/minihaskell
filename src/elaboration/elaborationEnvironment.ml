@@ -40,21 +40,6 @@ let add_name env (pos, name) = match name with
   | Name' _
   | IName' _ -> env
 
-let add_methods c env (pos, l, ty) = match l with
-  | MName s as m ->
-    let name = Name s in
-    if List.mem m env.method_names then
-      raise (MultipleMethods (pos, m))
-    else if List.mem name env.names then
-      raise (VariableIsAMethodName (pos, name))
-    else
-      { env with method_names = m :: env.method_names;
-                 values = ([c.class_parameter],
-                           [ClassPredicate (c.class_name, c.class_parameter)],
-                           (name, ty))
-                          :: env.values}
-  | _ -> assert false
-
 let as_method x env = match x with
   | Name s ->
     let m = MName s in
@@ -119,32 +104,52 @@ let unrelated pos env k1 k2 =
      is_superclass pos k2 k1 env
   then raise (TheseTwoClassesMustNotBeInTheSameContext (pos, k1, k2))
 
-let assert_independent pos sc env =
+let check_independent pos sc env =
   ignore (List.fold_left
             (fun acc k -> List.iter (unrelated pos env k) acc; k :: acc) [] sc)
 
-(* Parameter is the singleton of the free variable of the class *)
+(* Parameter is the only free variable in types of class members *)
 let rec check_free_variables name parameter (pos, _, t) =
   match parameter with
   | TName s ->
     let freeT = free t in
     if not (TS.mem parameter freeT) then
-      raise (AmbiguousTypeclass (pos, name))
-    else if not (TS.is_empty (TS.remove parameter freeT)) then
-      raise (TooFreeTypeVariableTypeclass (pos, name))
+      raise (AmbiguousTypeclass (pos, name));
+    begin
+      try
+        let tv = TS.choose (TS.remove parameter freeT) in
+        raise (UnboundTypeVariable (pos, tv))
+      with Not_found -> ()
+    end
+  | _ -> assert false
+
+(** [add_methods p env member] registers [member] as a method of the class
+ *  of name [k], where [p = ClassPredicate (k, _)],
+ *  making [member] both visible like a variable (with constraint p)
+ *  and excluding it from being let-bound *)
+let add_methods (ClassPredicate (k, tv) as p) env (pos, m, ty) = match m with
+  | MName s ->
+    let name = Name s in
+    if List.mem m env.method_names then raise (MultipleMethods (pos, m));
+    if List.mem name env.names then raise (VariableIsAMethodName (pos, name));
+    let m_binding = [tv], [p], (name, ty) in
+    { env with method_names = m :: env.method_names;
+               values = m_binding :: env.values }
   | _ -> assert false
 
 let bind_class k c env =
+  let { class_position  = pos;
+        class_parameter = tv;
+        superclasses    = sks;
+        class_name      = k;
+        class_members   = ms } = c in
   try
-    let pos = c.class_position in
     ignore (lookup_class pos k env);
     raise (AlreadyDefinedClass (pos, k))
   with UnboundClass _ ->
-    assert_independent c.class_position c.superclasses env;
-    List.iter
-      (check_free_variables c.class_name c.class_parameter)
-      c.class_members;
-    let env = List.fold_left (add_methods c) env c.class_members in
+    check_independent pos sks env;
+    List.iter (check_free_variables k tv) ms;
+    let env = List.fold_left (add_methods (ClassPredicate (k, tv))) env ms in
     { env with classes = (k, c) :: env.classes }
 
 

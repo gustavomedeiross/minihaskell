@@ -51,7 +51,15 @@ val lookup_class : position -> cname -> t -> class_definition
     [k1] in [e]. *)
 val is_superclass : position -> cname -> cname -> t -> bool
 
-(** [bind_class c cdef e] associates a class_definition [cdef] to [c] in [e]. *)
+(** [bind_class c cdef e] associates a class_definition [cdef] to [c] in [e].
+ * Some checks may raise the following exceptions:
+   * [AlreadyDefinedClass]
+   * [TheseTwoClassesMustNotBeInTheSameContext] (independence constraint)
+   * [UnboundTypeVariable] (only the class parameter can be free in method types)
+   * [AmbiguousTypeclass] (it has to appear in every method)
+   * [MultipleMethods]
+   * [VariableIsAMethodName]
+   *)
 val bind_class : cname -> class_definition -> t -> t
 
 (** [bind_label pos l ts lty rtycon e] associates the type parameters [ts],
@@ -63,8 +71,8 @@ val bind_label : position -> lname -> tnames -> Types.t -> tname -> t -> t
     the record type constructor of the label [l] in [e]. *)
 val lookup_label : position -> lname -> t -> tnames * Types.t * tname
 
-(*val lookup_method : position -> class_definition -> lname -> Types.t*)
-
+(** [add_name env (pos, name)] registers [name] as a variable name,
+ * this is to distinguish methods from let-bound variables *)
 val add_name : t -> position * name -> t
 
 val bind_instance : t -> instance_definition * name -> t
@@ -84,7 +92,7 @@ val is_instance_of : position -> Types.t -> cname -> t -> unit
 val lookup_dictionary : t -> cname -> Types.t 
   -> name   
 
-(* [as_method name env] checks whether [name] is a method name,
+(** [as_method name env] checks whether [name] is a method name,
  * in which case it returns it as a label *)
 val as_method : name -> t -> lname option
 
