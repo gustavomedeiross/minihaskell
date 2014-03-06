@@ -706,6 +706,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   let env' = introduce_type_parameters env ts in
   let env' = add_predicates ps' env' in
 
+  let x' = elab_name x in
   let xty' = elab_wf_type env' KStar xty in
 
   if is_value_form e then begin
@@ -713,7 +714,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
     let e, ty = expression env' e in
     check_equal_types pos xty ty;
     let e, ty' = List.fold_right abstract local_dict_variables (e, xty') in
-    let b = (x, ty') in
+    let b = (x', ty') in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
 
@@ -724,7 +725,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e = eforall pos [] e in
       let e, ty = expression env' e in
       check_equal_types pos xty ty;
-      let b = (x, xty') in
+      let b = (x', xty') in
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
