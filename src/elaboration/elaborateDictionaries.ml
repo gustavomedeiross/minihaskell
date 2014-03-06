@@ -227,11 +227,11 @@ and abstract (x, t) (e, ty) =
   TyApp (undefined_position, TName "->", [t; ty])
 
 and sub_dictionaries pos env c itype =
-  let record_binding k' =
+  let mk_record_binding k' =
     RecordBinding (
       get_subdict_name env k' c.class_name,
       elaborate_dictionary pos env k' itype) in
-  List.map record_binding c.superclasses
+  List.map mk_record_binding c.superclasses
 
 and elaborate_methods env' env c i ity =
   let { instance_position   = pos ;
@@ -247,13 +247,15 @@ and elaborate_methods env' env c i ity =
       let e = eforall pos [] e in
       let e, ty' = expression env e in
       check_equal_types pos ty ty';
-      RecordBinding (m, e)
+      let m' = elab_lname m in
+      RecordBinding (m', e)
     with Not_found -> raise (LackingMethod (pos, k, m)) in
 
-  let members = List.map elaborate_method c.class_members in
   (* Make sure all methods are present once exactly
    * and no inexistent method has been introduced *)
-  if List.length members <> List.length ms then raise (TooManyMethods (pos, k));
+  if List.length c.class_members <> List.length ms
+  then raise (TooManyMethods (pos, k));
+  let members = List.map elaborate_method c.class_members in
   members
 
 and is_abstraction = function
@@ -271,8 +273,8 @@ and is_abstraction = function
  * dictionary type declaration. In particular, it will catch unbound type
  * variables (a type class definition only binds one variable) *)
 and elaborate_class c env =
-  let { class_name     = CName name as k;
-        class_position = pos; } = c in
+  let { class_name     = CName name as k ;
+        class_position = pos             } = c in
   let subdicts =
     List.map
       (fun sk ->
@@ -290,6 +292,8 @@ and elaborate_class c env =
       List.map (fun (sk, (_, kname, _)) -> ((sk, k), kname)) subdicts in
     new_subdict_names assocs env
   in
+  (* member names (MName _) will be elaborated to (MName' _)
+   * during elaboration of types *)
   env,
   TypeDefs
     (pos,
@@ -366,17 +370,6 @@ and check_equivalent_kind pos k1 k2 =
 
   | _ -> raise (IncompatibleKinds (pos, k1, k2))
 
-and env_of_bindings env = function
-  | BindValue (_, vs)
-  | BindRecValue (_, vs) ->
-    List.fold_left
-      (fun env (ValueDef (pos, ts, pred, (x, ty), _)) ->
-         bind_scheme pos x ts pred ty env)
-      env vs
-
-  | ExternalValue (pos, ts, (x, ty), _) ->
-    bind_scheme pos x ts [] ty env
-
 and check_equal_types pos ty1 ty2 =
   if not (equivalent ty1 ty2)
   then raise (IncompatibleTypes (pos, ty1, ty2))
@@ -402,14 +395,15 @@ and evar pos env x tys =
     let t = List.assoc var assoc in
     elaborate_dictionary pos env k t in
   match as_method x env with
-  | None ->
+  | None -> (* x is not a method *)
     let dict = List.map elab ps in
     List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x, tys)) dict, ty
-  | Some m ->
+  | Some m -> (* x is a method *)
+    (* its lname was already elaborated by as_method *)
     match ps with
     | [p] ->
       let dico = elab p in
-      ERecordAccess (pos, dico, m), ty
+      (ERecordAccess (pos, dico, m), ty)
     | _ -> assert false (* Methods have exactly one constraint*)
 
 and expression env = function
@@ -438,7 +432,7 @@ and expression env = function
     let e, ty = expression env e in
     (EBinding (pos, vb, e), ty)
 
-  | EForall (pos, tvs, e) ->
+  | EForall (pos, _, _) ->
     (** Because type abstractions are removed by [value_binding]. *)
     raise (OnlyLetsCanIntroduceTypeAbstraction pos)
 
@@ -453,7 +447,7 @@ and expression env = function
 
   | EDCon (pos, DName x, tys, es) ->
     let ty = type_application pos env (Name x) tys in
-    let (itys, oty) = destruct_ntyarrow ty in
+    let itys, oty = destruct_ntyarrow ty in
     if List.(length itys <> length es) then
       raise (InvalidDataConstructorApplication pos)
     else
@@ -467,10 +461,9 @@ and expression env = function
       (EDCon (pos, DName x, tys, es), oty)
 
   | EMatch (pos, s, bs) ->
-    let (s, sty) = expression env s in
+    let s, sty = expression env s in
     let bstys = List.map (branch env sty) bs in
-    let bs = fst (List.split bstys) in
-    let tys = snd (List.split bstys) in
+    let bs, tys = List.split bstys in
     let ty = List.hd tys in
     List.iter (check_equal_types pos ty) (List.tl tys);
     (EMatch (pos, s, bs), ty)
@@ -497,51 +490,50 @@ and expression env = function
     in
     (ERecordAccess (pos, e, l), ty)
 
-  | ERecordCon (pos, n, i, []) ->
-    (** We syntactically forbids empty records. *)
-    assert false
-
   | ERecordCon (pos, n, i, rbs) ->
-    let rbstys = List.map (record_binding env) rbs in
+    (** We syntactically forbid empty records. *)
+    assert (rbs <> []);
     let rec check others rty = function
       | [] ->
         begin match rty with
           | Some (_, TyApp (_, rtcon, _)) ->
             let labels = labels_of rtcon env in
-            if (List.length labels <> List.length others) then
+            if List.(length labels <> length others) then
               raise (InvalidRecordConstruction pos)
           | _ -> assert false (** Because we forbid empty record. *)
         end;
         List.rev others, rty
-      | (RecordBinding (l, e), ty) :: ls ->
+      | RecordBinding(l, _) as rb :: ls ->
+        let RecordBinding (l', _) as rb', ty = record_binding env rb in
+
         if List.exists (fun (RecordBinding (l', _)) -> l = l') others then
           raise (MultipleLabels (pos, l));
 
-        let (ts, lty, rtcon) = lookup_label pos l env in
-        let (s, rty) =
+        let ts, lty, rtcon = lookup_label pos l env in
+        let s, rty =
           match rty with
           | None ->
             let rty = TyApp (pos, rtcon, i) in
             let s =
               try
                 List.combine ts i
-              with _ -> raise (InvalidRecordInstantiation pos)
+              with Invalid_argument _ -> raise (InvalidRecordInstantiation pos)
             in
             (s, rty)
           | Some (s, rty) ->
             (s, rty)
         in
         check_equal_types pos ty (Types.substitute s lty);
-        check (RecordBinding (l, e) :: others) (Some (s, rty)) ls
+        check (rb' :: others) (Some (s, rty)) ls
     in
-    let (ls, rty) = check [] None rbstys in
-    let rty = match rty with
-      | None -> assert false
-      | Some (_, rty) -> rty
+    let ls, rty =
+      match check [] None rbs with
+      | _, None           -> assert false
+      | ls, Some (_, rty) -> ls, rty
     in
     (ERecordCon (pos, n, i, ls), rty)
 
-  | ((EPrimitive (pos, p)) as e) ->
+  | EPrimitive (pos, p) as e ->
     (e, primitive pos p)
 
 and primitive pos = function
@@ -552,7 +544,7 @@ and primitive pos = function
 and branch env sty (Branch (pos, p, e)) =
   let denv = pattern env sty p in
   let env = concat pos env denv in
-  let (e, ty) = expression env e in
+  let e, ty = expression env e in
   (Branch (pos, p, e), ty)
 
 and concat pos env1 env2 =
@@ -560,8 +552,9 @@ and concat pos env1 env2 =
     (fun env (_, _, (x, ty)) -> bind_simple pos x ty env)
     env1 (values env2)
 
-and linear_bind pos env (ts, _, (x, ty)) =
-  assert (ts = []); (** Because patterns only bind monomorphic values. *)
+and linear_bind pos env (ts, ps, (x, ty)) =
+  (** Because patterns only bind monomorphic values. *)
+  assert (ts = [] && ps = []);
   try
     ignore (lookup pos x env);
     raise (NonLinearPattern pos)
@@ -622,23 +615,27 @@ and pattern env xty = function
     List.(iter (check_same_denv pos denv) (tl denvs));
     denv
 
+(* [record_binding] elaborates the lname [l] and the expression [e],
+ * also returning the type [ty] of [e] *)
 and record_binding env (RecordBinding (l, e)) =
   let e, ty = expression env e in
-  (RecordBinding (l, e), ty)
+  let l' = elab_lname l in
+  (RecordBinding (l', e), ty)
 
 and value_binding env = function
   | BindValue (pos, vs) ->
-    let (vs, env) = Misc.list_foldmap value_definition env vs in
+    let vs, env = Misc.list_foldmap value_definition env vs in
     (BindValue (pos, vs), env)
 
   | BindRecValue (pos, vs) ->
     let env = List.fold_left value_declaration env vs in
-    let (vs, env) = Misc.list_foldmap value_definition env vs in
+    let vs, env = Misc.list_foldmap value_definition env vs in
     (BindRecValue (pos, vs), env)
 
-  | ExternalValue (pos, ts, ((x, ty) as b), os) ->
+    check_wf_type env KStar ty;
     let env = bind_scheme pos x ts [] ty env in
-    (ExternalValue (pos, ts, b, os), env)
+    let x' = elab_name x in
+    (ExternalValue (pos, ts, (x', ty), os), env)
 
 and eforall pos ts e =
   match ts, e with

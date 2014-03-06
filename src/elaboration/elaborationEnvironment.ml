@@ -189,9 +189,8 @@ let add_name (pos, name) env = match name with
 
 let as_method x env = match x with
   | Name s ->
-    let m = MName s in
     if StringSet.mem s env.method_names
-    then Some m
+    then Some (MName' s)
     else None
   | _ -> None
 

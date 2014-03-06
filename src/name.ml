@@ -45,17 +45,29 @@ let fresh_kname (CName s) (CName k) =
   incr g;
   KName' (s, k, !g)
 
-let mk_cname = function
-  | CName a -> QName' a
+let builtin_type = ["->"; "int"; "char"; "unit"]
 
-let builtin = ["->"; "int"; "char"; "unit"]
+let is_builtin_type s = List.mem s builtin_type
 
-let is_builtin s = List.mem s builtin
+(* Name elaboration *)
+let elab_name = function
+  | Name s -> Name' s
+  | Name' _ | IName' _ as name -> name
+
+let elab_dname = fun x -> x
+
+let elab_lname = function
+  | LName l -> LName' l
+  | MName m -> MName' m
+  | LName' _ | MName' _ | KName' _ as lname -> lname
 
 let elab_tname = function
-  | TName s as t when s.[0] = '\'' || is_builtin s -> t
+  | TName s as t when s.[0] = '\'' || is_builtin_type s -> t
   | TName s -> TName' s
   | t -> t
+
+let mk_cname = function
+  | CName a -> QName' a
 
 let of_name = function
   | Name s        -> s

@@ -29,10 +29,10 @@ let handle_error f =
                   "  Class `%s' is unbound."
                   x)
 
-  | UnboundLabel (pos, LName x) ->
+  | UnboundLabel (pos, l) ->
     fatal' pos (Printf.sprintf
                   "  Label `%s' is unbound."
-                  x)
+                  (of_lname l))
 
   | OverlappingInstances (pos, CName s) ->
     fatal' pos (Printf.sprintf

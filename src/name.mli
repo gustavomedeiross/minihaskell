@@ -31,8 +31,11 @@ val reset : unit -> unit
 val fresh_iname : cname -> name
 val fresh_kname : cname -> cname -> lname
 
-val mk_cname : cname -> tname
+val elab_name : name -> name
+val elab_dname : dname -> dname (* Identity for now *)
+val elab_lname : lname -> lname
 val elab_tname : tname -> tname
+val mk_cname : cname -> tname
 
 val of_name  :  name -> string
 val of_dname : dname -> string
