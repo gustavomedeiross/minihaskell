@@ -32,6 +32,10 @@ and block env = function
     let env, single_record = elaborate_class c env in
     block env (BTypeDefinitions single_record)
 
+  (* Instance elaboration cannot be simply reduced to elaboration of terms,
+   * as opposed to class definitions. The reason is that contrary to a
+   * regular record, methods may be elaborated in different contexts
+   * depending on whether they are lambda abstractions or not. *)
   | BInstanceDefinitions is ->
     let env = List.fold_right add_name (names_is is) env in
     let dict, env = elaborate_instances env is in
