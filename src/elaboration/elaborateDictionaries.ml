@@ -1,4 +1,5 @@
 open String
+open Misc
 open Name
 open XAST
 open Types
@@ -36,10 +37,8 @@ and block env = function
     let dict, env = elaborate_instances env is in
     ([BDefinition dict], env)
 
-(* Return an expression whose value is the dictionary of type (K ty),
- * may raise NotAnInstance
- * - TODO: The current search has exponential complexity
- * Some memoization may alleviate this *)
+(* Return an expression whose value is the dictionary of type (K ty).
+ * Exception: NotAnInstance *)
 and elaborate_dictionary pos env k ty =
   try
     elaborate_dictionary' env k ty
@@ -48,7 +47,7 @@ and elaborate_dictionary pos env k ty =
 and elaborate_dictionary' env k = function
   | TyVar (pos, v) as ty ->
     let is = lookup_instances env v in
-    try_d_proj env k ty is
+    try_d_proj env StringSet.empty k ty is
   | TyApp (pos, c, ts) ->
     let is = lookup_instances env c in
     let i, name =
@@ -66,44 +65,53 @@ and d_ovar_inst env i name ts =
   let f_dict = EVar (undefined_position, name, ts) in
   List.fold_left (dict_application env) f_dict predicates
 
-(* Apply a dictionary abstraction (h_dict : k 'a -> (...)) to (k ty) dictionary
- * [dict_application env h_dict (k, ty)] = 'h_dict (k ty)' *)
-and dict_application env h_dict (k, ty) =
+(* Apply a dictionary abstraction (f_dict : k 'a -> (...)) to (k ty) dictionary
+ * [dict_application env f_dict (k, ty)] = 'f_dict (k ty)' *)
+and dict_application env f_dict (k, ty) =
   let dict = elaborate_dictionary' env k ty in
-  EApp (undefined_position, h_dict, dict)
+  EApp (undefined_position, f_dict, dict)
 
 (* Rule D-PROJ/D-VAR, seeking to obtain (k ty) by sub-dictionary projections
  * (when ty is a type variable) starting from one of the instances in the
- * list argument *)
-and try_d_proj env k ty = function
+ * list argument. The accumulator [acc] memorizes classes which have already
+ * been visited, ensuring every class is tried at most once *)
+and try_d_proj env acc k ty = function
   | [] -> raise Not_found
   | (i, name) :: is ->
-    try
+    match
       d_proj
         env
+        acc
         (EVar (undefined_position, name, [ty]))
         k
         i.instance_class_name
     with
-    | Not_found -> try_d_proj env k ty is
+    | _, Some q -> q
+    | acc, None -> try_d_proj env acc k ty is
 
 (* Given a dictionary term q of type (_ k'), use projections to obtain
  * a dictionary of type (_ k) *)
-and d_proj env q k k' =
+and d_proj env acc q k (CName s as k') =
   if k = k'
-  then q
-  else let ks = (lookup_class undefined_position k' env).superclasses in
-    try_proj_superclass env q k k' ks
+  then acc, Some q
+  else if StringSet.mem s acc (* This class has already been visited before *)
+  then acc, None
+  else
+    let acc = StringSet.add s acc in
+    let ks = (lookup_class undefined_position k' env).superclasses in
+    try_proj_superclass env acc q k k' ks
 
 (* Try projecting successively on every superclass of k' *)
-and try_proj_superclass env q k k' = function
-  | [] -> raise Not_found
+and try_proj_superclass env acc q k k' = function
+  | [] -> acc, None
   | k'' :: ks ->
-    try
+    match
       let kname = get_subdict_name env k'' k' in
       let q = ERecordAccess (undefined_position, q, kname) in
-      d_proj env q k k''
-    with Not_found -> try_proj_superclass env q k k' ks
+      d_proj env acc q k k''
+    with
+    | acc, None -> try_proj_superclass env acc q k k' ks
+    | found -> found
 
 (* Instance elaboration
  *
