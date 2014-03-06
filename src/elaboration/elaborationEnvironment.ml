@@ -4,28 +4,30 @@ open XAST
 open Types
 open ElaborationExceptions
 
+module StringSet = Misc.StringSet
+
 type t = {
   values        : (tnames * class_predicates * binding) list;
   types         : (tname * (Types.kind * type_definition)) list;
   classes       : (cname * class_definition) list;
   labels        : (lname * (tnames * Types.t * tname)) list;
-  v_constraints : (tname * cname list) list;
   instances     : (tname * (instance_definition * name) list) list;
-  method_names  : lname list;
-  names         : name list;
   subdicts      : ((cname * cname) * lname) list;
+  method_names  : StringSet.t;
+  names         : StringSet.t;
+  v_constraints : (tname * cname list) list; (* Obsolete *)
 }
 
 let empty =
-  { values        = [] ;
-    types         = [] ;
-    classes       = [] ;
-    labels        = [] ;
-    method_names  = [] ;
-    names         = [] ;
-    v_constraints = [] ;
-    instances     = [] ;
-    subdicts      = [] }
+  { values        = []              ;
+    types         = []              ;
+    classes       = []              ;
+    labels        = []              ;
+    v_constraints = []              ;
+    instances     = []              ;
+    subdicts      = []              ;
+    method_names  = StringSet.empty ;
+    names         = StringSet.empty }
 
 let values env = env.values
 
@@ -130,10 +132,10 @@ let rec check_free_variables name parameter (pos, _, t) =
 let add_methods (ClassPredicate (k, tv) as p) env (pos, m, ty) = match m with
   | MName s ->
     let name = Name s in
-    if List.mem m env.method_names then raise (MultipleMethods (pos, m));
-    if List.mem name env.names then raise (VariableIsAMethodName (pos, name));
+    if StringSet.mem s env.method_names then raise (MultipleMethods (pos, m));
+    if StringSet.mem s env.names then raise (VariableIsAMethodName (pos, name));
     let m_binding = [tv], [p], (name, ty) in
-    { env with method_names = m         :: env.method_names;
+    { env with method_names = StringSet.add s env.method_names;
                values       = m_binding :: env.values }
   | _ -> assert false
 
@@ -184,9 +186,9 @@ let get_subdict_name env k1 k2 = List.assoc (k1, k2) env.subdicts
 
 let add_name (pos, name) env = match name with
   | Name s ->
-    if List.mem (MName s) env.method_names
-    then raise (VariableIsAMethodName (pos, Name s))
-    else { env with names = Name s :: env.names }
+    if StringSet.mem s env.method_names
+    then raise (VariableIsAMethodName (pos, name))
+    else { env with names = StringSet.add s env.names }
   (* An AST output by the parser does not contain any *Name' constructor,
    *  but not failing extends the domain of the typechecker
    *  so that it is the identity on elaborated AST's *)
@@ -196,7 +198,7 @@ let add_name (pos, name) env = match name with
 let as_method x env = match x with
   | Name s ->
     let m = MName s in
-    if List.mem m env.method_names
+    if StringSet.mem s env.method_names
     then Some m
     else None
   | _ -> None
