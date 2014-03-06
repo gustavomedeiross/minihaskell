@@ -93,7 +93,7 @@ val lookup_instances : t -> tname -> (instance_definition * name) list
 val add_predicates : (tname * (instance_definition * name) list) list -> t -> t
 
 (** [as_method name env] checks whether [name] is a method name,
- * in which case it returns it as an label (an elaborated one, i.e. MName' _) *)
+ * in which case it returns it as an label (an elaborated one, i.e. MName' _ *)
 val as_method : name -> t -> lname option
 
 (** [labels_of rtcon env] returns all the labels of the record [rtcon]. *)

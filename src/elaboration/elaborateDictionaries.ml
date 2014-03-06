@@ -15,7 +15,7 @@ let rec program p = handle_error List.(fun () ->
 
 and block env = function
   | BTypeDefinitions ts ->
-    let env = type_definitions env ts in
+    let ts, env = type_definitions env ts in
     ([BTypeDefinitions ts], env)
 
   | BDefinition d ->
@@ -304,9 +304,10 @@ and elaborate_class c env =
          DRecordType ([c.class_parameter],
                       c.class_members @ List.map snd subdicts))])
 
-and type_definitions env (TypeDefs (_, tdefs)) =
+and type_definitions env (TypeDefs (pos, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
-  List.fold_left type_definition env tdefs
+  let tdefs, env = List.fold_left type_definition ([], env) tdefs in
+  TypeDefs (pos, tdefs), env
 
 and env_of_type_definition env = function
   | (TypeDef (pos, kind, t, _)) as tdef ->
@@ -315,48 +316,63 @@ and env_of_type_definition env = function
   | (ExternalType (p, ts, t, os)) as tdef ->
     bind_type t (kind_of_arity (List.length ts)) tdef env
 
-and type_definition env = function
-  | TypeDef (pos, _, t, dt) -> datatype_definition t env dt
-  | ExternalType (p, ts, t, os) -> env
+and type_definition (tdefs, env) = function
+  | TypeDef (pos, ts, t, dt) ->
+    let t' = elab_tname t in
+    let dt', env = datatype_definition t env dt in
+    TypeDef (pos, ts, t', dt') :: tdefs, env
+  | ExternalType (p, ts, t, os) ->
+    ExternalType (p, ts, elab_tname t, os) :: tdefs, env
 
 and datatype_definition t env = function
   | DAlgebraic ds ->
-    List.fold_left algebraic_dataconstructor env ds
+    let ds', env = List.fold_left algebraic_dataconstructor ([], env) ds in
+    DAlgebraic (List.rev ds'), env
 
   | DRecordType (ts, ltys) ->
-    List.fold_left (label_type ts t) env ltys
+    let env' = List.fold_left (fun env x -> bind_type_variable x env) env ts in
+    let ltys', env = List.fold_left (label_type ts env' t) ([], env) ltys in
+    DRecordType (ts, List.rev ltys'), env
 
-and label_type ts rtcon env (pos, l, ty) =
-  let env' = List.fold_left (fun env x -> bind_type_variable x env) env ts in
-  check_wf_type env' KStar ty;
-  bind_label pos l ts ty rtcon env
+and label_type ts env' rtcon (ltys, env) (pos, l, ty) =
+  let l' = elab_lname l in
+  let ty' = elab_wf_type env' KStar ty in
+  (pos, l', ty') :: ltys, bind_label pos l ts ty rtcon env
 
-and algebraic_dataconstructor env (pos, DName k, ts, kty) =
-  check_wf_scheme env ts kty pos;
-  bind_scheme pos (Name k) ts [] kty env
+and algebraic_dataconstructor (ds, env) (pos, (DName k as d), ts, kty) =
+  let kty' = elab_wf_scheme env ts kty pos in
+  let d' = elab_dname d in
+  (pos, d', ts, kty') :: ds, bind_scheme pos (Name k) ts [] kty env
 
 and introduce_type_parameters env ts =
   List.fold_left (fun env t -> bind_type_variable t env) env ts
 
-and check_wf_scheme env ts ty pos =
-  check_wf_type (introduce_type_parameters env ts) KStar ty
+and elab_wf_scheme env ts ty pos =
+  elab_wf_type (introduce_type_parameters env ts) KStar ty
 
-and check_wf_type env xkind = function
-  | TyVar (pos, t) ->
+(** [elab_wf_type env xkind ty] checks that [ty] is well-formed (in [env]) with
+ * type [xkind], and converts all identifiers to their elaborated version *)
+and elab_wf_type env xkind = function
+  | TyVar (pos, t) as ty ->
     let tkind = lookup_type_kind pos t env in
-    check_equivalent_kind pos xkind tkind
+    check_equivalent_kind pos xkind tkind;
+    ty
 
   | TyApp (pos, t, tys) ->
     let kt = lookup_type_kind pos t env in
-    check_type_constructor_application pos env kt tys
+    let t' = elab_tname t in
+    let tys' = check_type_constructor_application pos env kt tys in
+    TyApp (pos, t', tys');
+
 
 and check_type_constructor_application pos env k tys =
   match tys, k with
-  | [], KStar -> ()
+  | [], KStar -> []
 
   | ty :: tys, KArrow (k, ks) ->
-    check_wf_type env k ty;
-    check_type_constructor_application pos env ks tys
+    let ty' = elab_wf_type env k ty in
+    let tys' = check_type_constructor_application pos env ks tys in
+    ty' :: tys'
 
   | _ -> raise (IllKindedType pos)
 
@@ -375,7 +391,7 @@ and check_equal_types pos ty1 ty2 =
   then raise (IncompatibleTypes (pos, ty1, ty2))
 
 and type_application pos env x tys =
-  List.iter (check_wf_type env KStar) tys;
+  ignore (List.map (elab_wf_type env KStar) tys);
   let (ts, ps, (_, ty)) = lookup pos x env in
   try
     substitute (List.combine ts tys) ty
@@ -383,7 +399,7 @@ and type_application pos env x tys =
 
 (*If an identifier is a method or overloaded we elaborate *)
 and evar pos env x tys =
-  List.iter (check_wf_type env KStar) tys;
+  let tys' = List.map (elab_wf_type env KStar) tys in
   let (ts, ps, (_, ty)) = lookup pos x env in
   let assoc, ty = try
       let assoc = List.combine ts tys in
@@ -397,7 +413,11 @@ and evar pos env x tys =
   match as_method x env with
   | None -> (* x is not a method *)
     let dict = List.map elab ps in
-    List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x, tys)) dict, ty
+    let x' = elab_name x in
+    let e' =
+      List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x', tys')) dict
+    in
+    (e', ty)
   | Some m -> (* x is a method *)
     (* its lname was already elaborated by as_method *)
     match ps with
@@ -406,14 +426,17 @@ and evar pos env x tys =
       (ERecordAccess (pos, dico, m), ty)
     | _ -> assert false (* Methods have exactly one constraint*)
 
+(** [expression env e] returns a pair [e', ty] of the result of elaboration
+ * on [e] and the type of [e] (in [env]) *)
 and expression env = function
   | EVar (pos, x, tys) -> evar pos env x tys
 
-  | ELambda (pos, ((x, aty) as b), e') ->
-    check_wf_type env KStar aty;
+  | ELambda (pos, (x, aty), e') ->
+    let x' = elab_name x in
+    let aty' = elab_wf_type env KStar aty in
     let env = bind_simple pos x aty env in
     let (e, ty) = expression env e' in
-    (ELambda (pos, b, e), ntyarrow pos [aty] ty)
+    (ELambda (pos, (x', aty'), e), ntyarrow pos [aty] ty)
 
   | EApp (pos, a, b) ->
     let a, a_ty = expression env a in
@@ -445,12 +468,14 @@ and expression env = function
     (** Because we are explicitly typed, flexible type variables are useless. *)
     expression env e
 
-  | EDCon (pos, DName x, tys, es) ->
+  | EDCon (pos, (DName x as d), tys, es) ->
+    let tys' = List.map (elab_wf_type env KStar) tys in
     let ty = type_application pos env (Name x) tys in
     let itys, oty = destruct_ntyarrow ty in
     if List.(length itys <> length es) then
       raise (InvalidDataConstructorApplication pos)
     else
+      let d' = elab_dname d in
       let es =
         List.map2 (fun e xty ->
             let (e, ty) = expression env e in
@@ -458,7 +483,7 @@ and expression env = function
             e
           ) es itys
       in
-      (EDCon (pos, DName x, tys, es), oty)
+      (EDCon (pos, d', tys', es), oty)
 
   | EMatch (pos, s, bs) ->
     let s, sty = expression env s in
@@ -488,11 +513,13 @@ and expression env = function
       | _ ->
         raise (RecordExpected (pos, ty))
     in
-    (ERecordAccess (pos, e, l), ty)
+    let l' = elab_lname l in
+    (ERecordAccess (pos, e, l'), ty)
 
   | ERecordCon (pos, n, i, rbs) ->
     (** We syntactically forbid empty records. *)
     assert (rbs <> []);
+    let i' = List.map (elab_wf_type env KStar) i in
     let rec check others rty = function
       | [] ->
         begin match rty with
@@ -513,7 +540,7 @@ and expression env = function
         let s, rty =
           match rty with
           | None ->
-            let rty = TyApp (pos, rtcon, i) in
+            let rty = TyApp (pos, rtcon, i') in
             let s =
               try
                 List.combine ts i
@@ -542,7 +569,7 @@ and primitive pos = function
   | PCharConstant _    -> TyApp (pos, TName "char", [])
 
 and branch env sty (Branch (pos, p, e)) =
-  let denv = pattern env sty p in
+  let p, denv = pattern env sty p in
   let env = concat pos env denv in
   let e, ty = expression env e in
   (Branch (pos, p, e), ty)
@@ -576,44 +603,51 @@ and check_same_denv pos denv1 denv2 =
 
 and pattern env xty = function
   | PVar (pos, name) ->
-    bind_simple pos name xty ElaborationEnvironment.empty
+    let p = PVar (pos, elab_name name) in
+    let denv = bind_simple pos name xty ElaborationEnvironment.empty in
+    (p, denv)
 
-  | PWildcard _ ->
-    ElaborationEnvironment.empty
+  | PWildcard pos ->
+    (PWildcard pos, ElaborationEnvironment.empty)
 
   | PAlias (pos, name, p) ->
-    linear_bind pos (pattern env xty p) ([], [],  (name, xty))
+    let p, env = pattern env xty p in
+    (p, linear_bind pos env ([], [],  (name, xty)))
 
   | PTypeConstraint (pos, p, pty) ->
     check_equal_types pos pty xty;
     pattern env xty p
 
-  | PPrimitive (pos, p) ->
-    check_equal_types pos (primitive pos p) xty;
-    ElaborationEnvironment.empty
+  | PPrimitive (pos, prim) as p ->
+    check_equal_types pos (primitive pos prim) xty;
+    (p, ElaborationEnvironment.empty)
 
-  | PData (pos, (DName x), tys, ps) ->
+  | PData (pos, (DName x as d), tys, ps) ->
+    let tys' = List.map (elab_wf_type env KStar) tys in
     let kty = type_application pos env (Name x) tys in
     let itys, oty = destruct_ntyarrow kty in
     if List.(length itys <> length ps) then
-      raise (InvalidDataConstructorApplication pos)
-    else
-      let denvs = List.map2 (pattern env) itys ps in (
-        check_equal_types pos oty xty;
-        List.fold_left (join pos) ElaborationEnvironment.empty denvs
-      )
+      raise (InvalidDataConstructorApplication pos);
+    let psdenvs = List.map2 (pattern env) itys ps in
+    let ps, denvs = List.split psdenvs in
+    check_equal_types pos oty xty;
+    let d' = elab_dname d in
+    let p = PData (pos, d', tys', ps) in
+    let denv = List.fold_left (join pos) ElaborationEnvironment.empty denvs in
+    (p, denv)
 
   | PAnd (pos, ps) ->
-    List.fold_left
-      (join pos)
-      ElaborationEnvironment.empty
-      (List.map (pattern env xty) ps)
+    let psdenvs = List.map (pattern env xty) ps in
+    let ps, denvs = List.split psdenvs in
+    let denv = List.fold_left (join pos) ElaborationEnvironment.empty denvs in
+    (PAnd (pos, ps), denv)
 
   | POr (pos, ps) ->
-    let denvs = List.map (pattern env xty) ps in
+    let psdenvs = List.map (pattern env xty) ps in
+    let ps, denvs = List.split psdenvs in
     let denv = List.hd denvs in
     List.(iter (check_same_denv pos denv) (tl denvs));
-    denv
+    (POr (pos, ps), denv)
 
 (* [record_binding] elaborates the lname [l] and the expression [e],
  * also returning the type [ty] of [e] *)
@@ -632,10 +666,11 @@ and value_binding env = function
     let vs, env = Misc.list_foldmap value_definition env vs in
     (BindRecValue (pos, vs), env)
 
-    check_wf_type env KStar ty;
+  | ExternalValue (pos, ts, (x, ty), os) ->
+    let ty' = elab_wf_type env KStar ty in
     let env = bind_scheme pos x ts [] ty env in
     let x' = elab_name x in
-    (ExternalValue (pos, ts, (x', ty), os), env)
+    (ExternalValue (pos, ts, (x', ty'), os), env)
 
 and eforall pos ts e =
   match ts, e with
@@ -671,13 +706,13 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
   let env' = introduce_type_parameters env ts in
   let env' = add_predicates ps' env' in
 
-  check_wf_type env' KStar xty;
+  let xty' = elab_wf_type env' KStar xty in
 
   if is_value_form e then begin
     let e = eforall pos ts e in
     let e, ty = expression env' e in
     check_equal_types pos xty ty;
-    let e, ty' = List.fold_right abstract local_dict_variables (e, ty) in
+    let e, ty' = List.fold_right abstract local_dict_variables (e, xty') in
     let b = (x, ty') in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
@@ -689,7 +724,7 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e = eforall pos [] e in
       let e, ty = expression env' e in
       check_equal_types pos xty ty;
-      let b = (x, ty) in
+      let b = (x, xty') in
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
