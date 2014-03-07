@@ -25,3 +25,5 @@ Compile the executable `joujou`:
 `joujou` infers types (on implicitly typed programs),
 type-checks and elaborates *MH* programs into *OCaml* programs,
 producing a file with the extension `.ml`.
+
+Samples of *MH* can be found in `test/`.
