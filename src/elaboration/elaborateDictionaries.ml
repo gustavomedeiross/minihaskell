@@ -396,10 +396,16 @@ and check_equal_types pos ty1 ty2 =
   then raise (IncompatibleTypes (pos, ty1, ty2))
 
 and type_application pos env x tys =
-  ignore (List.map (elab_wf_type env KStar) tys);
-  let (ts, ps, (_, ty)) = lookup pos x env in
+  let tys' = List.map (elab_wf_type env KStar) tys in
+  let ts, ps, (_, ty) = lookup pos x env in
   try
-    substitute (List.combine ts tys) ty
+    let assoc = List.combine ts tys in
+    let elab (ClassPredicate (k, var)) =
+      let t = List.assoc var assoc in
+      elaborate_dictionary pos env k t in
+    let qs = List.map elab ps in
+    let ty = substitute assoc ty in
+    tys', qs, ty
   with Invalid_argument _ -> raise (InvalidTypeApplication pos)
 
 (** [expression env e] returns a pair [e', ty] of the result of elaboration
@@ -411,7 +417,7 @@ and expression env = function
     let x' = elab_name x in
     let aty' = elab_wf_type env KStar aty in
     let env = bind_simple pos x aty env in
-    let (e, ty) = expression env e' in
+    let e, ty = expression env e' in
     (ELambda (pos, (x', aty'), e), ntyarrow pos [aty] ty)
 
   | EApp (pos, a, b) ->
@@ -445,8 +451,8 @@ and expression env = function
     expression env e
 
   | EDCon (pos, (DName x as d), tys, es) ->
-    let tys' = List.map (elab_wf_type env KStar) tys in
-    let ty = type_application pos env (Name x) tys in
+    let tys', qs, ty = type_application pos env (Name x) tys in
+    assert (qs = []); (* Type constructors cannot have class predicates *)
     let itys, oty = destruct_ntyarrow ty in
     if List.(length itys <> length es) then
       raise (InvalidDataConstructorApplication pos)
@@ -454,7 +460,7 @@ and expression env = function
       let d' = elab_dname d in
       let es =
         List.map2 (fun e xty ->
-            let (e, ty) = expression env e in
+            let e, ty = expression env e in
             check_equal_types pos ty xty;
             e
           ) es itys
@@ -471,7 +477,7 @@ and expression env = function
 
   | ERecordAccess (pos, e, l) ->
     let e, ty = expression env e in
-    let (ts, lty, rtcon) = lookup_label pos l env in
+    let ts, lty, rtcon = lookup_label pos l env in
     let ty =
       match ty with
       | TyApp (_, r, args) ->
@@ -498,32 +504,20 @@ and expression env = function
     (e, primitive pos p)
 
 and eVar pos env x tys =
-  let tys' = List.map (elab_wf_type env KStar) tys in
-  let (ts, ps, (_, ty)) = lookup pos x env in
-  let assoc, ty = try
-      let assoc = List.combine ts tys in
-      assoc, substitute assoc ty
-    with Invalid_argument _ -> raise (InvalidTypeApplication pos) in
-  (* Not 'assert false' so that typechecking can be done on an elaborated
-   * program again *)
-  let elab (ClassPredicate (k, var)) =
-    let t = List.assoc var assoc in
-    elaborate_dictionary pos env k t in
-  (*If an identifier is a method or overloaded we elaborate *)
+  let tys', qs, ty = type_application pos env x tys in
+  (* If an identifier is a method or overloaded we elaborate *)
   match as_method x env with
   | None -> (* x is not a method *)
-    let dict = List.map elab ps in
     let x' = elab_name x in
     let e' =
-      List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x', tys')) dict
+      List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x', tys')) qs
     in
     (e', ty)
   | Some m -> (* x is a method *)
     (* its lname was already elaborated by as_method *)
-    match ps with
-    | [p] ->
-      let dico = elab p in
-      (ERecordAccess (pos, dico, m), ty)
+    match qs with
+    | [q] ->
+      (ERecordAccess (pos, q, m), ty)
     | _ -> assert false (* Methods have exactly one constraint*)
 
 and eRecordCon env pos n i rbs =
@@ -602,7 +596,7 @@ and check_same_denv pos denv1 denv2 =
   List.iter (fun (ts, _, (x, ty)) ->
       assert (ts = []); (** Because patterns only bind monomorphic values. *)
       try
-        let (_, _, (_, ty')) = lookup pos x denv2 in
+        let _, _, (_, ty') = lookup pos x denv2 in
         check_equal_types pos ty ty'
       with _ ->
         raise (PatternsMustBindSameVariables pos))
@@ -630,8 +624,8 @@ and pattern env xty = function
     (p, ElaborationEnvironment.empty)
 
   | PData (pos, (DName x as d), tys, ps) ->
-    let tys' = List.map (elab_wf_type env KStar) tys in
-    let kty = type_application pos env (Name x) tys in
+    let tys', qs, kty = type_application pos env (Name x) tys in
+    assert (qs = []); (* Type constructors cannot have class predicates *)
     let itys, oty = destruct_ntyarrow kty in
     if List.(length itys <> length ps) then
       raise (InvalidDataConstructorApplication pos);
