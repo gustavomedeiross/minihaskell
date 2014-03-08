@@ -279,22 +279,22 @@ and is_abstraction = function
  * variables (a type class definition only binds one variable) *)
 and elaborate_class c env =
   let { class_name     = CName name as k ;
+        superclasses   = scs             ;
         class_position = pos             } = c in
   let subdicts =
     List.map
       (fun sk ->
          let kname = fresh_kname sk k in
-         sk,
          (pos,
           kname,
           TyApp (pos,
                  mk_cname sk,
                  [TyVar (pos, c.class_parameter)])))
-      c.superclasses
+      scs
   in
   let env =
     let assocs =
-      List.map (fun (sk, (_, kname, _)) -> ((sk, k), kname)) subdicts in
+      List.map2 (fun sk (_, kname, _) -> ((sk, k), kname)) scs subdicts in
     new_subdict_names assocs env
   in
   (* member names (MName _) will be elaborated to (MName' _)
@@ -307,7 +307,7 @@ and elaborate_class c env =
          KArrow (KStar, KStar),
          QName' name,
          DRecordType ([c.class_parameter],
-                      c.class_members @ List.map snd subdicts))])
+                      c.class_members @ subdicts))])
 
 and type_definitions env (TypeDefs (pos, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
