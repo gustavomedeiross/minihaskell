@@ -109,8 +109,9 @@ let add_implication  k l =
 
 (** [entails C1 C2] returns true is the canonical constraint [C1] implies
     the canonical constraint [C2]. *)
-let entails _ _ = true
+let entails c1 c2 = true
 
 (** [contains k1 k2] *)
-let contains _ _ = true
-
+let contains k1 k2 =
+ let v = variable Rigid () in
+  entails [(k2, v)] [(k1, v)]
