@@ -86,7 +86,7 @@ and try_d_proj env acc k ty = function
       d_proj
         env
         acc
-        (EVar (undefined_position, name, [ty]))
+        (EVar (undefined_position, name, []))
         k
         i.instance_class_name
     with
