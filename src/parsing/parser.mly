@@ -10,6 +10,16 @@
     let r = ref 0 in
     fun () -> incr r; Name ("_record_" ^ string_of_int !r)
 
+  let method_of_lname = function
+    | LName l -> MName l
+    | _ -> assert false
+
+  let class_of_record =
+    List.map (fun (pos, l, ty) -> (pos, method_of_lname l, ty))
+
+  let instance_record_bindings =
+    List.map
+      (fun (RecordBinding (l, e)) -> RecordBinding (method_of_lname l, e))
 %}
 
 (** Punctuation. *)
@@ -89,6 +99,7 @@ class_members          = record_type
     Errors.fatal [$startpos; $endpos]
       "The same type parameter as in the class must be used by superclasses.";
   let superclasses = List.map (fun (ClassPredicate (k, _)) -> k) superclasses in
+  let class_members = class_of_record class_members in
   { class_position; superclasses; class_parameter; class_members; class_name }
 }
 
@@ -111,7 +122,7 @@ class_parameter        = tvname
 
 class_name: c=UID
 {
-  TName c
+  CName c
 }
 
 instance_definition:
@@ -122,7 +133,7 @@ instance_class_name     = class_name
 instance_index          = mldatatype2
 instance_members        = simple_record_expression
 {
-  let instance_members = instance_members in
+  let instance_members = instance_record_bindings instance_members in
   let instance_position = lex_join $startpos $endpos in
   let instance_index =
     match instance_index with
@@ -218,7 +229,7 @@ k=UID
 external_value_binding:
 LET EXTERNAL
 ts=type_parameters
-b=binding EQUAL s=STRING
+b=soft_binding EQUAL s=STRING
 {
   ExternalValue (lex_join $startpos $endpos, ts, b, s)
 }
@@ -226,7 +237,7 @@ b=binding EQUAL s=STRING
 value_definition:
 ts=type_parameters
 c=class_predicates
-b=binding EQUAL e=expression
+b=soft_binding EQUAL e=expression
 {
   ValueDef (lex_join $startpos $endpos, ts, c, b, e)
 }
@@ -532,6 +543,15 @@ binding: x=name
   binding $startpos x None
 }
 | LPAREN x=name COLON ty=mltype RPAREN
+{
+  binding $startpos x (Some ty)
+}
+
+soft_binding: b=binding
+{
+  b
+}
+| x=name COLON ty=mltype
 {
   binding $startpos x (Some ty)
 }

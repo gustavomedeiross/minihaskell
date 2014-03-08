@@ -1,0 +1,7 @@
+class H 'a { f : 'a -> 'a }
+
+let ['a] (g : 'a -> 'a) = ['a]
+  fun (x : 'a) ->
+    let ['b] [H 'a] (h : 'a -> 'a) = ['b]
+      fun (x : 'a) -> x[]
+    in x[]

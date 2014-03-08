@@ -13,6 +13,7 @@ val empty : t
 (** [initial] contains the builtin type constructors of {!XAST}. *)
 val initial : t
 
+
 (** [values env] projects [env] as an environment of bindings
     that associate type scheme to value identifiers. *)
 val values : t -> (tnames * Types.class_predicates * binding) list
@@ -44,16 +45,6 @@ val bind_type : tname -> Types.kind -> type_definition -> t -> t
 (** [bind_type_variable x e] introduces the type variable [x] in [e]. *)
 val bind_type_variable : tname -> t -> t
 
-(** [lookup_class pos c e] returns the class_definition of [c] in [e]. *)
-val lookup_class : position -> tname -> t -> class_definition
-
-(** [is_superclass pos k1 k2 e] returns [true] if [k2] is a superclass of
-    [k1] in [e]. *)
-val is_superclass : position -> tname -> tname -> t -> bool
-
-(** [bind_class c cdef e] associates a class_definition [cdef] to [c] in [e]. *)
-val bind_class : tname -> class_definition -> t -> t
-
 (** [bind_label pos l ts lty rtycon e] associates the type parameters [ts],
     the type [lty] and the record type constructor [rtycon] to the label [l]
     in [e]. *)
@@ -63,28 +54,59 @@ val bind_label : position -> lname -> tnames -> Types.t -> tname -> t -> t
     the record type constructor of the label [l] in [e]. *)
 val lookup_label : position -> lname -> t -> tnames * Types.t * tname
 
-(*val lookup_method : position -> class_definition -> lname -> Types.t*)
+(** [add_name env (pos, name)] registers [name] as a variable name,
+ * this is to distinguish methods from let-bound variables *)
+val add_name : position * name -> t -> t
 
-val add_name : t -> position * name -> t
+(** Type classes *)
 
+(** [lookup_class pos c e] returns the class_definition of [c] in [e]. *)
+val lookup_class : position -> cname -> t -> class_definition
+
+(** [is_superclass pos k1 k2 e] returns [true] if [k2] is a superclass of
+    [k1] in [e]. *)
+val is_superclass : position -> cname -> cname -> t -> bool
+
+(** [bind_class c cdef e] associates a class_definition [cdef] to [c] in [e].
+ * Exceptions:
+   * [AlreadyDefinedClass]
+   * [TheseTwoClassesMustNotBeInTheSameContext] (independence constraint)
+   * [UnboundTypeVariable] (only the class parameter can be free in method types)
+   * [AmbiguousTypeclass] (it has to appear in every method)
+   * [MultipleMethods]
+   * [VariableIsAMethodName]
+*)
+val bind_class : cname -> class_definition -> t -> t
+
+(** [bind_instance env (i, name)] associates the instance definition
+ * [i] to a dictionary value bound to [name].
+ * Exception: [OverlappingInstance] *)
 val bind_instance : t -> instance_definition * name -> t
 
+(** [lookup_instances env ty] returns the list of all type classes 
+ * the type constructor [ty] belongs to (possibly empty) *)
 val lookup_instances : t -> tname -> (instance_definition * name) list
 
-val add_predicates : Types.class_predicates -> t -> position -> t
+(** [add_predicates ps env] adds class predicates to the environment.
+ * [ps] (association list) maps *type variables* to classes they are assumed
+ * to belong to *)
+val add_predicates : (tname * (instance_definition * name) list) list -> t -> t
 
-val add_predicates' : (tname * (instance_definition * name) list) list -> t -> t
+(** [as_method name env] checks whether [name] is a method name,
+ * in which case it returns it as an label (an elaborated one, i.e. MName' _ *)
+val as_method : name -> t -> lname option
 
-val add_unconstrained_tv : tnames -> t -> Types.class_predicates -> t 
-
-(** [is_instance_of pos t k e] raises an exception if t is not an
-    instance of k in e *)
-val is_instance_of : position -> Types.t -> tname -> t -> unit
-
-val lookup_dictionary : t -> tname -> Types.t 
-  -> name   
-
-val is_method : lname -> t -> bool 
-
-(** [labels_of rtcon e] returns all the labels of the record [rtcon]. *)
+(** [labels_of rtcon env] returns all the labels of the record [rtcon]. *)
 val labels_of : tname -> t -> lname list
+
+(** [new_subdict_name assocs env] adds association pairs to the environment
+ * that map pairs [superclass, class] to a subdictionary name.
+ * This is necessary to avoid name collisions which would arise if
+ * we simply concatenated [s] and [k].
+ * "Pi" + "KaChu" <-> "PiKa" + "Chu" *)
+val new_subdict_names : ((cname * cname) * lname) list -> t -> t
+
+(** [get_subdict_name env s k] recovers the subdictionary associated to the
+ * superclass-class pair [s, k] by [new_cubdict_name] *)
+val get_subdict_name : t -> cname -> cname -> lname
+

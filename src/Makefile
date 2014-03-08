@@ -1,5 +1,6 @@
 GENERATED = parsing/parser.ml parsing/lexer.ml
 
+INTERFACE =
 MODULES =					\
   common/positions				\
   common/errors					\
@@ -64,7 +65,7 @@ all: pprint $(EXECUTABLE)
 pprint:
 	$(MAKE) -C $(PPRINT)
 
-$(EXECUTABLE): $(MODULES:%=%.cmo)
+$(EXECUTABLE): $(INTERFACE:%=%.cmi) $(MODULES:%=%.cmo)
 	$(OCAMLC) $(BFLAGS) -o $(EXECUTABLE) $(BLIBS) $(MODULES:%=%.cmo)
 
 $(EXECUTABLE).opt: $(MODULES:%=%.cmx)
@@ -89,11 +90,12 @@ test: $(EXECUTABLE)
 	cd ../test && ./test
 
 clean:
-	rm -f $(EXECUTABLE) $(EXECUTABLE).opt parsing/parser.ml parsing/lexer.ml *.cm[iox] **/*.cm[iox] **/*.o *.annot **/*.annot
+	rm -f $(EXECUTABLE) $(EXECUTABLE).opt parsing/parser.ml parsing/lexer.ml \
+		*.cm[iox] **/*.cm[iox] **/*.o *.annot **/*.annot
 
 .depend: $(GENERATED) Makefile
 	$(OCAMLDEP) $(SRC_INCLUDES) $(patsubst %, %.ml, $(MODULES)) \
-		$(patsubst %, %.mli, $(MODULES)) $(GENERATED) > .depend
+		$(patsubst %, %.mli, $(MODULES) $(INTERFACES)) $(GENERATED) > .depend
 
 depend:
 	rm -f .depend

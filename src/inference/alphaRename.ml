@@ -51,7 +51,7 @@ let program p =
       (BDefinition d, s)
 
   and class_definition s ct =
-    List.fold_left (fun ms (pos, LName x, _) ->
+    List.fold_left (fun ms (pos, MName x, _) ->
         ignore (fresh_name pos ~exclusive:true (Name x));
         (Name x, Name x) :: ms
       ) s ct.class_members

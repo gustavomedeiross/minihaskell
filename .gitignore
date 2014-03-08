@@ -10,6 +10,7 @@
 *.mls
 *.mlr
 *.mlse
+*.ko
 
 *.swp
 *\~

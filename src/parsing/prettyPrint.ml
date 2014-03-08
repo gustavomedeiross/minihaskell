@@ -33,28 +33,17 @@ module Make (GAST : AST.GenericS) = struct
     | AssocLeft, `L -> false
     | _, _ -> true
 
-  let name = function 
-    | Name s        -> !^ ("v_" ^ s)
-    | IName (k, id) -> !^ ("i_" ^ string_of_int id ^ "_" ^ k)
+  let name n = !^ (of_name n)
 
-  let tname = function
-    | TName s -> if s.[0] ='\'' 
-      then !^ s 
-      else 
-      if List.mem_assoc (TName s) PreludeTypes.types 
-      then !^ s 
-      else !^("t_"^s) (* <- Don't look at that *)
+  let tname n = !^ (of_tname n)
 
-    | CName s -> !^ ("c_"^s)
+  let cname n = !^ (of_cname n)
 
   let rname = function
-    | (CName s) -> assert false
-    | (TName s) ->
-      !^ (if s.[0] = '\'' then String.sub s 1 (String.length s - 1) else s)
+    | TName s when s.[0] = '\'' -> !^ (String.sub s 1 (String.length s - 1))
+    | t -> tname t
 
-  let lname = function
-    | LName l       -> ("l_" ^ l)
-    | KName (k, k') -> ("k_" ^ k ^ k')
+  let lname = of_lname
 
   let rec ml_type ?generics = function
     | TyVar (_, s) ->
@@ -309,7 +298,7 @@ module Make (GAST : AST.GenericS) = struct
           )
 
     and class_predicate (ClassPredicate (k, t)) =
-      group (tname k ^/^ tname t)
+      group (cname k ^/^ tname t)
 
     and type_parameters = function
       | [] -> empty
@@ -439,7 +428,7 @@ module Make (GAST : AST.GenericS) = struct
                 !^ "instance"
                 ^/^ type_parameters id.instance_parameters
                 ^^ superclasses id.instance_typing_context
-                ^^ group (tname id.instance_class_name ^/^ ml_type instance_index)
+                ^^ group (cname id.instance_class_name ^/^ ml_type instance_index)
               ) ^/^ nest 2 (
                 !^ "{"
                 ^/^ group (record_bindings id.instance_members)

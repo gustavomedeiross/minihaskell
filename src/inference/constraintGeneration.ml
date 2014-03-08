@@ -572,7 +572,7 @@ let infer_class tenv c =
     (tenv, ctx0)
     (TypeDef (c.class_position,
               KArrow (KStar, KStar),
-              c.class_name,
+              mk_cname c.class_name,
               DRecordType ([c.class_parameter], c.class_members)))
 
 let infer_instance tenv ({ instance_position = pos } as ti) =

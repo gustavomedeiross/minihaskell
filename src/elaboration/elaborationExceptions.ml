@@ -3,10 +3,10 @@ open Name
 
 exception UnboundIdentifier of position * name
 exception UnboundTypeVariable of position * tname
-exception UnboundClass of position * tname
+exception UnboundClass of position * cname
 exception UnboundLabel of position * lname
 exception MultipleLabels of position * lname
-exception AlreadyDefinedClass of position * tname
+exception AlreadyDefinedClass of position * cname
 exception InvalidTypeApplication of position
 exception InvalidDataConstructorApplication of position
 exception PatternsMustBindSameVariables of position
@@ -22,8 +22,8 @@ exception ValueRestriction of position
 exception InvalidOverloading of position
 exception OverloadingOfNonValueFormForbidden of position
 exception InvalidNumberOfTypeAbstraction of position
-exception TheseTwoClassesMustNotBeInTheSameContext of position * tname * tname
-exception OverlappingInstances of position * tname
+exception TheseTwoClassesMustNotBeInTheSameContext of position * cname * cname
+exception OverlappingInstances of position * cname
 exception OnlyLetsCanIntroduceTypeAbstraction of position
 exception SameNameInTypeAbstractionAndScheme of position
 exception LabelAlreadyTaken of position * lname
@@ -34,13 +34,12 @@ exception OverloadedSymbolCannotBeBound of Positions.position * name
 exception InvalidRecordConstruction of position
 
 exception VariableIsAMethodName of position * name
-exception AmbiguousTypeclass of position * tname
-exception TooFreeTypeVariableTypeclass of position * tname
-exception NotAMethodOf of position * lname * tname
+exception AmbiguousTypeclass of position * cname
+exception NotAMethodOf of position * lname * cname
 exception MultipleMethods of position * lname
-exception LackingMethod of position * tname * lname
-exception TooManyMethods of position * tname
-exception NotAnInstance of position * tname * Types.t
+exception LackingMethod of position * cname * lname
+exception TooManyMethods of position * cname
+exception NotAnInstance of position * cname * Types.t
 exception NotCanonicalConstraint of position
 
 exception NotImplemented of position * string

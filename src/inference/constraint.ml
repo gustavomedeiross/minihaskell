@@ -36,7 +36,7 @@ type sname = SName of string
 type ('crterm, 'variable) type_constraint =
   | CTrue of position
   | CDump of position
-  | CPredicate of position * tname * 'crterm
+  | CPredicate of position * cname * 'crterm
   | CEquation of position * 'crterm * 'crterm
   | CConjunction of ('crterm, 'variable) type_constraint list
   | CLet of
@@ -62,7 +62,7 @@ and ('crterm, 'variable) scheme =
               * ('crterm * position) StringMap.t
 
 and ('crterm, 'variable) canonical_constraint =
-  (tname * 'variable) list
+  (cname * 'variable) list
 
 type variable = MultiEquation.variable
 

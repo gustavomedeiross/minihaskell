@@ -1,4 +1,5 @@
 open String
+open Misc
 open Name
 open XAST
 open Types
@@ -9,26 +10,17 @@ open ElaborationEnvironment
 
 let string_of_type ty      = ASTio.(XAST.(to_string pprint_ml_type ty))
 
-let fresh =
-  let a = ref 0 in
-  (fun () -> incr a;
-    !a)
-
-let fresh_iname = function
-  | TName s -> IName (s, fresh ())
-  | CName _ -> assert false
-
 let rec program p = handle_error List.(fun () ->
     flatten (fst (Misc.list_foldmap block ElaborationEnvironment.initial p)))
 
 and block env = function
   | BTypeDefinitions ts ->
-    let env = type_definitions env ts in
+    let ts, env = type_definitions env ts in
     ([BTypeDefinitions ts], env)
 
   | BDefinition d ->
     let names = names_vb [] d in
-    let env = List.fold_left add_name env names in
+    let env = List.fold_right add_name names env in
     let d, env = value_binding env d in
     ([BDefinition d], env)
 
@@ -37,28 +29,20 @@ and block env = function
 
   | BClassDefinition c ->
     let env    = bind_class c.class_name c env in
-    let single_record = elaborate_class c env in
+    let env, single_record = elaborate_class c env in
     block env (BTypeDefinitions single_record)
 
+  (* Instance elaboration cannot be simply reduced to elaboration of terms,
+   * as opposed to class definitions. The reason is that contrary to a
+   * regular record, methods may be elaborated in different contexts
+   * depending on whether they are lambda abstractions or not. *)
   | BInstanceDefinitions is ->
+    let env = List.fold_right add_name (names_is is) env in
     let dict, env = elaborate_instances env is in
     ([BDefinition dict], env)
-    (*
-    let is' = List.map (function
-        | { instance_class_name = TName s } as i ->
-          (i, IName (s, fresh ()))
-        | _ -> assert false)
-        is in
-    let env = List.fold_left bind_instance env is' in
-    check_instance_definitions env is;
-    let dictionaries = elaborate_instance env is' in
-    block env (BDefinition dictionaries)
-    *)
 
-(* Return an expression whose value is the dictionary of type (K ty),
- * may raise NotAnInstance
- * - TODO: The current search has exponential complexity
- * Some memoization may alleviate this *)
+(* Return an expression whose value is the dictionary of type (K ty).
+ * Exception: NotAnInstance *)
 and elaborate_dictionary pos env k ty =
   try
     elaborate_dictionary' env k ty
@@ -67,7 +51,7 @@ and elaborate_dictionary pos env k ty =
 and elaborate_dictionary' env k = function
   | TyVar (pos, v) as ty ->
     let is = lookup_instances env v in
-    try_d_proj env k ty is
+    try_d_proj env StringSet.empty k ty is
   | TyApp (pos, c, ts) ->
     let is = lookup_instances env c in
     let i, name =
@@ -85,39 +69,53 @@ and d_ovar_inst env i name ts =
   let f_dict = EVar (undefined_position, name, ts) in
   List.fold_left (dict_application env) f_dict predicates
 
-(* Apply a dictionary abstraction f_dict to (k ty) dictionary
- * [dict_application env f_dict (k, ty)] = {f_dict (k ty)} *)
+(* Apply a dictionary abstraction (f_dict : k 'a -> (...)) to (k ty) dictionary
+ * [dict_application env f_dict (k, ty)] = 'f_dict (k ty)' *)
 and dict_application env f_dict (k, ty) =
   let dict = elaborate_dictionary' env k ty in
   EApp (undefined_position, f_dict, dict)
 
 (* Rule D-PROJ/D-VAR, seeking to obtain (k ty) by sub-dictionary projections
- * (when ty is a type variable) on some existing instance *)
-and try_d_proj env k ty = function
+ * (when ty is a type variable) starting from one of the instances in the
+ * list argument. The accumulator [acc] memorizes classes which have already
+ * been visited, ensuring every class is tried at most once *)
+and try_d_proj env acc k ty = function
   | [] -> raise Not_found
   | (i, name) :: is ->
-    try
+    match
       d_proj
         env
+        acc
         (EVar (undefined_position, name, [ty]))
         k
         i.instance_class_name
     with
-    | Not_found -> try_d_proj env k ty is
+    | _, Some q -> q
+    | acc, None -> try_d_proj env acc k ty is
 
-and d_proj env q k k' =
+(* Given a dictionary term q of type (_ k'), use projections to obtain
+ * a dictionary of type (_ k) *)
+and d_proj env acc q k (CName s as k') =
   if k = k'
-  then q
-  else let ks = (lookup_class undefined_position k' env).superclasses in
-    try_proj_superclass env q k k' ks
+  then acc, Some q
+  else if StringSet.mem s acc (* This class has already been visited before *)
+  then acc, None
+  else
+    let acc = StringSet.add s acc in
+    let ks = (lookup_class undefined_position k' env).superclasses in
+    try_proj_superclass env acc q k k' ks
 
-and try_proj_superclass env q k k' = function
-  | [] -> raise Not_found
+(* Try projecting successively on every superclass of k' *)
+and try_proj_superclass env acc q k k' = function
+  | [] -> acc, None
   | k'' :: ks ->
-    try
-      let q = ERecordAccess (undefined_position, q, mk_kname (k'', k')) in
-      d_proj env q k k''
-    with Not_found -> try_proj_superclass env q k k' ks
+    match
+      let kname = get_subdict_name env k'' k' in
+      let q = ERecordAccess (undefined_position, q, kname) in
+      d_proj env acc q k k''
+    with
+    | acc, None -> try_proj_superclass env acc q k k' ks
+    | found -> found
 
 (* Instance elaboration
  *
@@ -129,8 +127,6 @@ and try_proj_superclass env q k k' = function
  *     fun (fresh_name_L : 'b _l) -> { ... }
  * *)
 
-(* TODO: Collect variable names from member definitions *)
-(* TODO: Conflict between record fields and method names ? *)
 and elaborate_instances env is =
   let is = (* Associate a fresh name to every instance *)
     List.map
@@ -150,9 +146,9 @@ and elaborate_instances env is =
  *    (h in [1])
  * *)
 and instance_definition env' (defs, env) (i, name) =
-  let { instance_position       = pos;
-        instance_parameters     = ts;
-        instance_typing_context = ps; } = i in
+  let { instance_position       = pos ;
+        instance_parameters     = ts  ;
+        instance_typing_context = ps  } = i in
 
   (* The constraints are elaborated into a lambda abstraction,
    * this creates one dictionary variable per constraint *)
@@ -161,11 +157,12 @@ and instance_definition env' (defs, env) (i, name) =
   let c = lookup_class pos i.instance_class_name env in
   let cname = mk_cname i.instance_class_name in
   let itype = cons_type i.instance_index ts in
+  let itype' = cons_type (elab_tname i.instance_index) ts in
 
   (* Add the local context *)
   let add_local_context env =
-    let env = introduce_type_parameters env ts [] pos in
-    add_predicates' ps' env in
+    let env = introduce_type_parameters env ts in
+    add_predicates ps' env in
   let env'_ = add_local_context env' in
   let env_ = add_local_context env in
 
@@ -176,12 +173,12 @@ and instance_definition env' (defs, env) (i, name) =
    * so a direct sub-dictionary should be available *)
   let sub_dict = sub_dictionaries pos env_ c itype in
   let methods = elaborate_methods env'_ env_ c i itype in
-  let record = ERecordCon (pos, name, [itype], sub_dict @ methods) in
+  let record = ERecordCon (pos, name, [itype'], sub_dict @ methods) in
 
   let env = bind_instance env (i, name) in
   let inst_body, inst_type =
     List.fold_right abstract local_dict_variables
-      (record, TyApp (undefined_position, cname, [itype])) in
+      (record, TyApp (undefined_position, cname, [itype'])) in
   let inst_body = EForall (pos, ts, inst_body) in
   let def =
     ValueDef (pos, ts, [], (name, inst_type), inst_body) in
@@ -219,12 +216,12 @@ and map_add key v = function
 
 and dict_variable (ClassPredicate (k, v)) =
   let i =
-    { instance_position = undefined_position;
-      instance_parameters     = [];
-      instance_typing_context = [];
-      instance_class_name     = k;
-      instance_index          = v; (* is a variable here *)
-      instance_members        = []; } in
+    { instance_position = undefined_position ;
+      instance_parameters     = []           ;
+      instance_typing_context = []           ;
+      instance_class_name     = k            ;
+      instance_index          = v            ; (* here a variable *)
+      instance_members        = []           } in
   let name = fresh_iname k in
   (i, name, cons_type (mk_cname k) [v])
 
@@ -235,113 +232,87 @@ and abstract (x, t) (e, ty) =
   TyApp (undefined_position, TName "->", [t; ty])
 
 and sub_dictionaries pos env c itype =
-  let record_binding k' =
+  let mk_record_binding k' =
     RecordBinding (
-      mk_kname (k', c.class_name),
+      get_subdict_name env k' c.class_name,
       elaborate_dictionary pos env k' itype) in
-  List.map record_binding c.superclasses
+  List.map mk_record_binding c.superclasses
 
 and elaborate_methods env' env c i ity =
-  let { instance_position   = pos;
-        instance_class_name = k;
-        instance_members    = ms; } = i in
+  let { instance_position   = pos ;
+        instance_class_name = k   ;
+        instance_members    = ms  } = i in
 
-  let elaborate_method (_, lname, ty) =
+  let elaborate_method (_, m, ty) =
     try
       let RecordBinding (_, e) =
-        List.find (fun (RecordBinding (lname', _)) -> lname' = lname) ms in
+        List.find (fun (RecordBinding (m', _)) -> m' = m) ms in
       let ty = substitute [c.class_parameter, ity] ty in
       let env = if is_abstraction e then env' else env in
       let e = eforall pos [] e in
       let e, ty' = expression env e in
       check_equal_types pos ty ty';
-      RecordBinding (lname, e)
-    with Not_found -> raise (LackingMethod (pos, k, lname)) in
+      let m' = elab_lname m in
+      RecordBinding (m', e)
+    with Not_found -> raise (LackingMethod (pos, k, m)) in
 
-  let members = List.map elaborate_method c.class_members in
   (* Make sure all methods are present once exactly
    * and no inexistent method has been introduced *)
-  if List.length members <> List.length ms then raise (TooManyMethods (pos, k));
+  if List.length c.class_members <> List.length ms
+  then raise (TooManyMethods (pos, k));
+  let members = List.map elaborate_method c.class_members in
   members
 
 and is_abstraction = function
   | ELambda _ -> true
   | _ -> false
 
-(*****)
-
-(* TODO: The following is to be used as a reference for elaborate_instance(s)
- * Code for type-checking, to be integrated with elaboration
- * *)
-
-(*
+(* TODO: extension ?
  * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
  * contexts and class declarations, and to types of the form K (G a) in
  * instances are for simplicity. Generalizations are possible and discussed
  * later (7.4)"
  * *)
 
-(*
-and check_method env pos ts ps s k (RecordBinding (l, e)) = match l with
-  | KName _ -> assert false
-  | LName l ->
-    let xty = lookup_method pos k (LName l) in
-    let xty = substitute [k.class_parameter, s] xty in
-    ignore (value_definition env (ValueDef (pos, [], [], (Name l, xty), e)))
-*)
-
-(*
-and check_instance_definitions env = function
-  | [] -> ()
-  | { instance_position       = pos;
-      instance_parameters     = ts;
-      instance_typing_context = ps; } as i :: t ->
-    let env = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-    List.iter
-      (check_method env pos ts ps
-         (cons_type i.instance_index ts)
-         (lookup_class pos i.instance_class_name env))
-      i.instance_members
-      *)
-(*****)
-
-(* TODO: Superclasses are not dealt with correctly *)
-and mk_kname = function
-  | (TName a, TName b) -> KName(a,b)
-  | _ -> assert(false)
-
-and mk_cname = function
-  | TName a -> CName a
-  | _ -> assert(false)
-
-(* TODO Check wf type of methods *)
+(* Type well-formedness is taken care of by type-checking the elaborated
+ * dictionary type declaration. In particular, it will catch unbound type
+ * variables (a type class definition only binds one variable) *)
 and elaborate_class c env =
-  let superclass =
+  let { class_name     = CName name as k ;
+        superclasses   = scs             ;
+        class_position = pos             } = c in
+  let subdicts =
     List.map
-      (fun sup ->
-         let s = lookup_class c.class_position sup env in
-         (s.class_position,
-          mk_kname (s.class_name,c.class_name),
-          TyApp(s.class_position,
-                mk_cname s.class_name,
-                [TyVar(c.class_position, c.class_parameter)])))
-      c.superclasses
+      (fun sk ->
+         let kname = fresh_kname sk k in
+         (pos,
+          kname,
+          TyApp (pos,
+                 mk_cname sk,
+                 [TyVar (pos, c.class_parameter)])))
+      scs
   in
-  match c.class_name with
-  | TName name ->
-    TypeDefs
-      (c.class_position,
-       [TypeDef
-          (c.class_position,
-           KArrow (KStar,KStar),
-           CName name,
-           DRecordType ([c.class_parameter],
-                        c.class_members@superclass))])
-  | CName name -> assert false (*By construction*)
+  let env =
+    let assocs =
+      List.map2 (fun sk (_, kname, _) -> ((sk, k), kname)) scs subdicts in
+    new_subdict_names assocs env
+  in
+  (* member names (MName _) will be elaborated to (MName' _)
+   * during elaboration of types *)
+  env,
+  TypeDefs
+    (pos,
+     [TypeDef
+        (pos,
+         KArrow (KStar, KStar),
+         QName' name,
+         DRecordType ([c.class_parameter],
+                      c.class_members @ subdicts))])
 
-and type_definitions env (TypeDefs (_, tdefs)) =
+and type_definitions env (TypeDefs (pos, tdefs)) =
   let env = List.fold_left env_of_type_definition env tdefs in
-  List.fold_left type_definition env tdefs
+  let tdefs, env = List.fold_left type_definition ([], env) tdefs in
+  TypeDefs (pos, tdefs), env
 
 and env_of_type_definition env = function
   | (TypeDef (pos, kind, t, _)) as tdef ->
@@ -350,71 +321,63 @@ and env_of_type_definition env = function
   | (ExternalType (p, ts, t, os)) as tdef ->
     bind_type t (kind_of_arity (List.length ts)) tdef env
 
-and type_definition env = function
-  | TypeDef (pos, _, t, dt) -> datatype_definition t env dt
-  | ExternalType (p, ts, t, os) -> env
+and type_definition (tdefs, env) = function
+  | TypeDef (pos, ts, t, dt) ->
+    let t' = elab_tname t in
+    let dt', env = datatype_definition t env dt in
+    TypeDef (pos, ts, t', dt') :: tdefs, env
+  | ExternalType (p, ts, t, os) ->
+    ExternalType (p, ts, elab_tname t, os) :: tdefs, env
 
 and datatype_definition t env = function
   | DAlgebraic ds ->
-    List.fold_left algebraic_dataconstructor env ds
+    let ds', env = List.fold_left algebraic_dataconstructor ([], env) ds in
+    DAlgebraic (List.rev ds'), env
 
   | DRecordType (ts, ltys) ->
-    List.fold_left (label_type ts t) env ltys
+    let env' = List.fold_left (fun env x -> bind_type_variable x env) env ts in
+    let ltys', env = List.fold_left (label_type ts env' t) ([], env) ltys in
+    DRecordType (ts, List.rev ltys'), env
 
-and label_type ts rtcon env (pos, l, ty) =
-  let env' = List.fold_left (fun env x -> bind_type_variable x env) env ts in
-  check_wf_type env' KStar ty;
-  bind_label pos l ts ty rtcon env
+and label_type ts env' rtcon (ltys, env) (pos, l, ty) =
+  let l' = elab_lname l in
+  let ty' = elab_wf_type env' KStar ty in
+  (pos, l', ty') :: ltys, bind_label pos l ts ty rtcon env
 
-and algebraic_dataconstructor env (pos, DName k, ts, kty) =
-  check_wf_scheme env ts kty pos;
-  bind_scheme pos (Name k) ts [] kty env
+and algebraic_dataconstructor (ds, env) (pos, (DName k as d), ts, kty) =
+  let kty' = elab_wf_scheme env ts kty pos in
+  let d' = elab_dname d in
+  (pos, d', ts, kty') :: ds, bind_scheme pos (Name k) ts [] kty env
 
-(* TODO 'introduce_type_parameters'
- *  revert back to the old version, commented out *)
-(* The reason is that a class predicate K 'a can be added to env as
- * an "instance of K at type 'a"
- * - 'add_predicates' and 'add_unconstrained_tv' (ElaborationEnvironment)
- *   are to be considered obsolete
- * - the relevant operations are not part of the role of this function anymore
-*)
-
-(*
 and introduce_type_parameters env ts =
   List.fold_left (fun env t -> bind_type_variable t env) env ts
-*)
 
-(* We currently keep this implementation,
- * which 'value_binding' relies on for type-checking *)
-and introduce_type_parameters env ts ps pos =
-  List.iter
-    (fun (ClassPredicate(a,b)) ->
-       if not (List.mem b ts) then raise (InvalidOverloading pos))
-    ps;
-  let env = List.fold_left (fun env t -> bind_type_variable t env) env ts in
-  let env = add_predicates ps env pos in
-  let env = add_unconstrained_tv ts env ps in
-  env
+and elab_wf_scheme env ts ty pos =
+  elab_wf_type (introduce_type_parameters env ts) KStar ty
 
-and check_wf_scheme env ts ty pos =
-  check_wf_type (introduce_type_parameters env ts [] pos) KStar ty
-
-and check_wf_type env xkind = function
-  | TyVar (pos, t) ->
+(** [elab_wf_type env xkind ty] checks that [ty] is well-formed (in [env]) with
+ * type [xkind], and converts all identifiers to their elaborated version *)
+and elab_wf_type env xkind = function
+  | TyVar (pos, t) as ty ->
     let tkind = lookup_type_kind pos t env in
-    check_equivalent_kind pos xkind tkind
+    check_equivalent_kind pos xkind tkind;
+    ty
 
   | TyApp (pos, t, tys) ->
     let kt = lookup_type_kind pos t env in
-    check_type_constructor_application pos env kt tys
+    let t' = elab_tname t in
+    let tys' = check_type_constructor_application pos env kt tys in
+    TyApp (pos, t', tys');
+
 
 and check_type_constructor_application pos env k tys =
   match tys, k with
-  | [], KStar -> ()
+  | [], KStar -> []
 
   | ty :: tys, KArrow (k, ks) ->
-    check_wf_type env k ty;
-    check_type_constructor_application pos env ks tys
+    let ty' = elab_wf_type env k ty in
+    let tys' = check_type_constructor_application pos env ks tys in
+    ty' :: tys'
 
   | _ -> raise (IllKindedType pos)
 
@@ -428,63 +391,28 @@ and check_equivalent_kind pos k1 k2 =
 
   | _ -> raise (IncompatibleKinds (pos, k1, k2))
 
-and env_of_bindings env = function
-  | BindValue (_, vs)
-  | BindRecValue (_, vs) ->
-    List.fold_left
-      (fun env (ValueDef (pos, ts, pred, (x, ty), _)) ->
-         bind_scheme pos x ts pred ty env)
-      env vs
-
-  | ExternalValue (pos, ts, (x, ty), _) ->
-    bind_scheme pos x ts [] ty env
-
 and check_equal_types pos ty1 ty2 =
   if not (equivalent ty1 ty2)
   then raise (IncompatibleTypes (pos, ty1, ty2))
 
 and type_application pos env x tys =
-  List.iter (check_wf_type env KStar) tys;
+  ignore (List.map (elab_wf_type env KStar) tys);
   let (ts, ps, (_, ty)) = lookup pos x env in
   try
     substitute (List.combine ts tys) ty
   with Invalid_argument _ -> raise (InvalidTypeApplication pos)
 
-(*If an identifier is a method or overloaded we elaborate *)
-and evar pos env x tys =
-  List.iter (check_wf_type env KStar) tys;
-  let (ts, ps, (_, ty)) = lookup pos x env in
-  let assoc, ty = try
-      let assoc = List.combine ts tys in
-      assoc, substitute assoc ty
-    with Invalid_argument _ -> raise (InvalidTypeApplication pos) in
-  let lx = match x with
-    | IName _ -> LName "" (* The next check would be false anyway *)
-    | Name s -> LName s in
-  (* Not 'assert false' so that typechecking can be done on an elaborated
-   * program again *)
-  let elab (ClassPredicate (k, var)) =
-    let t = List.assoc var assoc in
-    elaborate_dictionary pos env k t in
-  if is_method lx env
-  then
-    match ps with
-    | [p] ->
-      let dico = elab p in
-      ERecordAccess (pos, dico, lx), ty
-    | _ -> assert false (* Methods have exactly one constraint*)
-  else
-    let dict = List.map elab ps in
-    List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x, tys)) dict, ty
-
+(** [expression env e] returns a pair [e', ty] of the result of elaboration
+ * on [e] and the type of [e] (in [env]) *)
 and expression env = function
-  | EVar (pos, x, tys) -> evar pos env x tys
+  | EVar (pos, x, tys) -> eVar pos env x tys
 
-  | ELambda (pos, ((x, aty) as b), e') ->
-    check_wf_type env KStar aty;
+  | ELambda (pos, (x, aty), e') ->
+    let x' = elab_name x in
+    let aty' = elab_wf_type env KStar aty in
     let env = bind_simple pos x aty env in
     let (e, ty) = expression env e' in
-    (ELambda (pos, b, e), ntyarrow pos [aty] ty)
+    (ELambda (pos, (x', aty'), e), ntyarrow pos [aty] ty)
 
   | EApp (pos, a, b) ->
     let a, a_ty = expression env a in
@@ -497,16 +425,13 @@ and expression env = function
         (EApp (pos, a, b), oty)
     end
 
-
   (*If we have constraints, value_binding behaves differently*)
   | EBinding (pos, vb, e) ->
     let vb, env = value_binding env vb in
     let e, ty = expression env e in
     (EBinding (pos, vb, e), ty)
 
-
-
-  | EForall (pos, tvs, e) ->
+  | EForall (pos, _, _) ->
     (** Because type abstractions are removed by [value_binding]. *)
     raise (OnlyLetsCanIntroduceTypeAbstraction pos)
 
@@ -519,12 +444,14 @@ and expression env = function
     (** Because we are explicitly typed, flexible type variables are useless. *)
     expression env e
 
-  | EDCon (pos, DName x, tys, es) ->
+  | EDCon (pos, (DName x as d), tys, es) ->
+    let tys' = List.map (elab_wf_type env KStar) tys in
     let ty = type_application pos env (Name x) tys in
-    let (itys, oty) = destruct_ntyarrow ty in
+    let itys, oty = destruct_ntyarrow ty in
     if List.(length itys <> length es) then
       raise (InvalidDataConstructorApplication pos)
     else
+      let d' = elab_dname d in
       let es =
         List.map2 (fun e xty ->
             let (e, ty) = expression env e in
@@ -532,13 +459,12 @@ and expression env = function
             e
           ) es itys
       in
-      (EDCon (pos, DName x, tys, es), oty)
+      (EDCon (pos, d', tys', es), oty)
 
   | EMatch (pos, s, bs) ->
-    let (s, sty) = expression env s in
+    let s, sty = expression env s in
     let bstys = List.map (branch env sty) bs in
-    let bs = fst (List.split bstys) in
-    let tys = snd (List.split bstys) in
+    let bs, tys = List.split bstys in
     let ty = List.hd tys in
     List.iter (check_equal_types pos ty) (List.tl tys);
     (EMatch (pos, s, bs), ty)
@@ -563,55 +489,86 @@ and expression env = function
       | _ ->
         raise (RecordExpected (pos, ty))
     in
-    (ERecordAccess (pos, e, l), ty)
+    let l' = elab_lname l in
+    (ERecordAccess (pos, e, l'), ty)
 
-  | ERecordCon (pos, n, i, []) ->
-    (** We syntactically forbids empty records. *)
-    assert false
+  | ERecordCon (pos, n, i, rbs) -> eRecordCon env pos n i rbs
 
-  (* TODO: It seems incomplete record definitions are not detected (verify) *)
-  | ERecordCon (pos, n, i, rbs) ->
-    let rbstys = List.map (record_binding env) rbs in
-    let rec check others rty = function
-      | [] ->
-        begin match rty with
-          | Some (_, TyApp (_, rtcon, _)) ->
-            let labels = labels_of rtcon env in
-            if (List.length labels <> List.length others) then
-              raise (InvalidRecordConstruction pos)
-          | _ -> assert false (** Because we forbid empty record. *)
-        end;
-        List.rev others, rty
-      | (RecordBinding (l, e), ty) :: ls ->
-        if List.exists (fun (RecordBinding (l', _)) -> l = l') others then
-          raise (MultipleLabels (pos, l));
-
-        let (ts, lty, rtcon) = lookup_label pos l env in
-        let (s, rty) =
-          match rty with
-          | None ->
-            let rty = TyApp (pos, rtcon, i) in
-            let s =
-              try
-                List.combine ts i
-              with _ -> raise (InvalidRecordInstantiation pos)
-            in
-            (s, rty)
-          | Some (s, rty) ->
-            (s, rty)
-        in
-        check_equal_types pos ty (Types.substitute s lty);
-        check (RecordBinding (l, e) :: others) (Some (s, rty)) ls
-    in
-    let (ls, rty) = check [] None rbstys in
-    let rty = match rty with
-      | None -> assert false
-      | Some (_, rty) -> rty
-    in
-    (ERecordCon (pos, n, i, ls), rty)
-
-  | ((EPrimitive (pos, p)) as e) ->
+  | EPrimitive (pos, p) as e ->
     (e, primitive pos p)
+
+and eVar pos env x tys =
+  let tys' = List.map (elab_wf_type env KStar) tys in
+  let (ts, ps, (_, ty)) = lookup pos x env in
+  let assoc, ty = try
+      let assoc = List.combine ts tys in
+      assoc, substitute assoc ty
+    with Invalid_argument _ -> raise (InvalidTypeApplication pos) in
+  (* Not 'assert false' so that typechecking can be done on an elaborated
+   * program again *)
+  let elab (ClassPredicate (k, var)) =
+    let t = List.assoc var assoc in
+    elaborate_dictionary pos env k t in
+  (*If an identifier is a method or overloaded we elaborate *)
+  match as_method x env with
+  | None -> (* x is not a method *)
+    let dict = List.map elab ps in
+    let x' = elab_name x in
+    let e' =
+      List.fold_left (fun a b -> EApp (pos, a, b)) (EVar (pos, x', tys')) dict
+    in
+    (e', ty)
+  | Some m -> (* x is a method *)
+    (* its lname was already elaborated by as_method *)
+    match ps with
+    | [p] ->
+      let dico = elab p in
+      (ERecordAccess (pos, dico, m), ty)
+    | _ -> assert false (* Methods have exactly one constraint*)
+
+and eRecordCon env pos n i rbs =
+  (** We syntactically forbid empty records. *)
+  assert (rbs <> []);
+  let i' = List.map (elab_wf_type env KStar) i in
+  let rec check others rty = function
+    | [] ->
+      begin match rty with
+        | Some (_, TyApp (_, rtcon, _)) ->
+          let labels = labels_of rtcon env in
+          if List.(length labels <> length others) then
+            raise (InvalidRecordConstruction pos)
+        | _ -> assert false (** Because we forbid empty record. *)
+      end;
+      List.rev others, rty
+    | RecordBinding(l, _) as rb :: ls ->
+      let RecordBinding (l', _) as rb', ty = record_binding env rb in
+
+      if List.exists (fun (RecordBinding (l', _)) -> l = l') others then
+        raise (MultipleLabels (pos, l));
+
+      let ts, lty, rtcon = lookup_label pos l env in
+      let s, rty =
+        match rty with
+        | None ->
+          let rty = TyApp (pos, rtcon, i') in
+          let s =
+            try
+              List.combine ts i
+            with Invalid_argument _ -> raise (InvalidRecordInstantiation pos)
+          in
+          (s, rty)
+        | Some (s, rty) ->
+          (s, rty)
+      in
+      check_equal_types pos ty (Types.substitute s lty);
+      check (rb' :: others) (Some (s, rty)) ls
+  in
+  let ls, rty =
+    match check [] None rbs with
+    | _, None           -> assert false
+    | ls, Some (_, rty) -> ls, rty
+  in
+  (ERecordCon (pos, n, i, ls), rty)
 
 and primitive pos = function
   | PIntegerConstant _ -> TyApp (pos, TName "int",  [])
@@ -619,9 +576,9 @@ and primitive pos = function
   | PCharConstant _    -> TyApp (pos, TName "char", [])
 
 and branch env sty (Branch (pos, p, e)) =
-  let denv = pattern env sty p in
+  let p, denv = pattern env sty p in
   let env = concat pos env denv in
-  let (e, ty) = expression env e in
+  let e, ty = expression env e in
   (Branch (pos, p, e), ty)
 
 and concat pos env1 env2 =
@@ -629,8 +586,9 @@ and concat pos env1 env2 =
     (fun env (_, _, (x, ty)) -> bind_simple pos x ty env)
     env1 (values env2)
 
-and linear_bind pos env (ts, _, (x, ty)) =
-  assert (ts = []); (** Because patterns only bind monomorphic values. *)
+and linear_bind pos env (ts, ps, (x, ty)) =
+  (** Because patterns only bind monomorphic values. *)
+  assert (ts = [] && ps = []);
   try
     ignore (lookup pos x env);
     raise (NonLinearPattern pos)
@@ -652,62 +610,74 @@ and check_same_denv pos denv1 denv2 =
 
 and pattern env xty = function
   | PVar (pos, name) ->
-    bind_simple pos name xty ElaborationEnvironment.empty
+    let p = PVar (pos, elab_name name) in
+    let denv = bind_simple pos name xty ElaborationEnvironment.empty in
+    (p, denv)
 
-  | PWildcard _ ->
-    ElaborationEnvironment.empty
+  | PWildcard pos ->
+    (PWildcard pos, ElaborationEnvironment.empty)
 
   | PAlias (pos, name, p) ->
-    linear_bind pos (pattern env xty p) ([], [],  (name, xty))
+    let p, env = pattern env xty p in
+    (p, linear_bind pos env ([], [],  (name, xty)))
 
   | PTypeConstraint (pos, p, pty) ->
     check_equal_types pos pty xty;
     pattern env xty p
 
-  | PPrimitive (pos, p) ->
-    check_equal_types pos (primitive pos p) xty;
-    ElaborationEnvironment.empty
+  | PPrimitive (pos, prim) as p ->
+    check_equal_types pos (primitive pos prim) xty;
+    (p, ElaborationEnvironment.empty)
 
-  | PData (pos, (DName x), tys, ps) ->
+  | PData (pos, (DName x as d), tys, ps) ->
+    let tys' = List.map (elab_wf_type env KStar) tys in
     let kty = type_application pos env (Name x) tys in
     let itys, oty = destruct_ntyarrow kty in
     if List.(length itys <> length ps) then
-      raise (InvalidDataConstructorApplication pos)
-    else
-      let denvs = List.map2 (pattern env) itys ps in (
-        check_equal_types pos oty xty;
-        List.fold_left (join pos) ElaborationEnvironment.empty denvs
-      )
+      raise (InvalidDataConstructorApplication pos);
+    let psdenvs = List.map2 (pattern env) itys ps in
+    let ps, denvs = List.split psdenvs in
+    check_equal_types pos oty xty;
+    let d' = elab_dname d in
+    let p = PData (pos, d', tys', ps) in
+    let denv = List.fold_left (join pos) ElaborationEnvironment.empty denvs in
+    (p, denv)
 
   | PAnd (pos, ps) ->
-    List.fold_left
-      (join pos)
-      ElaborationEnvironment.empty
-      (List.map (pattern env xty) ps)
+    let psdenvs = List.map (pattern env xty) ps in
+    let ps, denvs = List.split psdenvs in
+    let denv = List.fold_left (join pos) ElaborationEnvironment.empty denvs in
+    (PAnd (pos, ps), denv)
 
   | POr (pos, ps) ->
-    let denvs = List.map (pattern env xty) ps in
+    let psdenvs = List.map (pattern env xty) ps in
+    let ps, denvs = List.split psdenvs in
     let denv = List.hd denvs in
     List.(iter (check_same_denv pos denv) (tl denvs));
-    denv
+    (POr (pos, ps), denv)
 
+(* [record_binding] elaborates the lname [l] and the expression [e],
+ * also returning the type [ty] of [e] *)
 and record_binding env (RecordBinding (l, e)) =
   let e, ty = expression env e in
-  (RecordBinding (l, e), ty)
+  let l' = elab_lname l in
+  (RecordBinding (l', e), ty)
 
 and value_binding env = function
   | BindValue (pos, vs) ->
-    let (vs, env) = Misc.list_foldmap value_definition env vs in
+    let vs, env = Misc.list_foldmap value_definition env vs in
     (BindValue (pos, vs), env)
 
   | BindRecValue (pos, vs) ->
     let env = List.fold_left value_declaration env vs in
-    let (vs, env) = Misc.list_foldmap value_definition env vs in
+    let vs, env = Misc.list_foldmap value_definition env vs in
     (BindRecValue (pos, vs), env)
 
-  | ExternalValue (pos, ts, ((x, ty) as b), os) ->
+  | ExternalValue (pos, ts, (x, ty), os) ->
+    let ty' = elab_wf_type env KStar ty in
     let env = bind_scheme pos x ts [] ty env in
-    (ExternalValue (pos, ts, b, os), env)
+    let x' = elab_name x in
+    (ExternalValue (pos, ts, (x', ty'), os), env)
 
 and eforall pos ts e =
   match ts, e with
@@ -731,52 +701,27 @@ and eforall pos ts e =
   | _, _ ->
     raise (InvalidNumberOfTypeAbstraction pos)
 
-(*TODO: elaborate ps into an abstraction*)
 and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
-  (*x name, xty binding*)
-
-  let env' = introduce_type_parameters env ts ps pos in  (*TODO : WHY ?*)
-
-  check_wf_type env' KStar xty;
   List.iter
-    (fun (ClassPredicate (c, v)) ->
-       if not (TS.mem v (free xty)) then
+    (fun (ClassPredicate (_, v)) ->
+       if not (TS.mem v (free xty) && (* Unreachable constraint *)
+               List.mem v ts) then (* Variable must have just been bound *)
          raise (InvalidOverloading pos))
     ps;
-  let env' = List.fold_left
-      (fun env x ->
-         match x with
-         | ClassPredicate(cl,ty)->
-           let name = fresh_iname cl in
-           let env = bind_instance env
-(*TODO cacher*)
-               ({
-                 instance_position       =pos;
-                 instance_parameters     = [];
-                 instance_typing_context = [];
-                 instance_class_name     = cl;
-                 instance_index          = ty;
-                 instance_members        = [];}
-               ,name)
-           in
-           env)
-      env'
-      (List.rev ps)
-  in
+
+  let ps', local_dict_variables = dict_variables pos env ps in
+  let env' = introduce_type_parameters env ts in
+  let env' = add_predicates ps' env' in
+
+  let x' = elab_name x in
+  let xty' = elab_wf_type env' KStar xty in
+
   if is_value_form e then begin
     let e = eforall pos ts e in
     let e, ty = expression env' e in
     check_equal_types pos xty ty;
-    let (e,ty') = List.fold_left
-        (fun (e,ty) x ->
-           match x with
-           | ClassPredicate(cl,t)->
-             let name = lookup_dictionary env' cl (TyVar(pos,t))  in
-             abstract (name,TyApp(pos,mk_cname cl ,[TyVar(pos,t)])) (e,ty)) (*Change ty with the name*)
-        (e,ty)
-        (List.rev ps)
-    in
-  let b = (x,ty') in
+    let e, ty' = List.fold_right abstract local_dict_variables (e, xty') in
+    let b = (x', ty') in
     (ValueDef (pos, ts, [], b, EForall (pos, ts, e)),
      bind_scheme pos x ts ps ty env)
 
@@ -787,13 +732,12 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
       let e = eforall pos [] e in
       let e, ty = expression env' e in
       check_equal_types pos xty ty;
-      let b = (x,ty) in
+      let b = (x', xty') in
       (ValueDef (pos, [], [], b, e), bind_simple pos x ty env)
   end
 
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
   bind_scheme pos x ts ps ty env
-
 
 and is_value_form = function
   | EVar _
@@ -820,6 +764,10 @@ and cons_type hd vars =
          hd,
          List.map (fun x -> TyVar (undefined_position, x)) vars)
 
+and names_is is = List.fold_left names_i [] is
+
+and names_i acc i = List.fold_left vn_recordbinding acc i.instance_members
+
 and names_vb acc = function
   | BindValue (_, vs)
   | BindRecValue (_, vs)              ->
@@ -830,6 +778,9 @@ and names_vb acc = function
 
 and names_vdef acc (ValueDef (pos, _, _, (x, _), e)) =
   names_e ((pos, x) :: acc) e
+
+and vn_recordbinding acc (RecordBinding (_, e)) =
+  names_e acc e
 
 and names_e acc = function
   | EVar _
@@ -864,7 +815,6 @@ and names_e acc = function
     in List.fold_left vn_branch acc bs
 
   | ERecordCon (_, _, _, rbs) ->
-    let vn_recordbinding acc (RecordBinding (_, e)) = names_e acc e in
     List.fold_left vn_recordbinding acc rbs
 
 and names_pattern acc = function

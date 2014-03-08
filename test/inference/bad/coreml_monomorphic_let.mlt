@@ -1,3 +1,0 @@
-let id = fun x -> x
-let id2 = id id
-let main = id2 0
