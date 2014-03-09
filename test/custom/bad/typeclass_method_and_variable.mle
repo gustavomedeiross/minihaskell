@@ -1,0 +1,2 @@
+let h : int = let ['a] w : 'a -> int = ['a] fun (x : 'a) -> 0 in 0
+class K 'a { x : 'a -> 'a }
