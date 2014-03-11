@@ -266,22 +266,6 @@ let infer_typedef tenv (TypeDefs (pos, tds)) =
 (** [infer_vdef pos tenv (pos, qs, p, e)] returns the constraint
     related to a value definition. *)
 let rec infer_vdef pos tenv (ValueDef (pos, qs, ps, b, e)) =
-  let rec is_value_form = function
-    | EVar _
-    | ELambda _
-    | EPrimitive _ ->
-      true
-    | EDCon (_, _, _, es) ->
-      List.for_all is_value_form es
-    | ERecordCon (_, _, _, rbs) ->
-      List.for_all (fun (RecordBinding (_, e)) -> is_value_form e) rbs
-    | EExists (_, _, t)
-    | ETypeConstraint (_, t, _)
-    | EForall (_, _, t) ->
-      is_value_form t
-    | _ ->
-      false
-  in
   let x = variable Flexible () in
   let tx = TVariable x in
   let rqs, rtenv = fresh_rigid_vars pos tenv qs in
