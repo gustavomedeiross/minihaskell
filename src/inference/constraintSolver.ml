@@ -284,15 +284,15 @@ let generic_variables pos vl =
 let solve env pool c =
   let answer = ref empty_answer in
 
-  (** [given_c] corresponds to the class predicates given
+  (** [given_p] corresponds to the class predicates given
       by the programmer as an annotation. *)
-  let rec solve env pool given_c c =
+  let rec solve env pool given_p c =
     let pos = cposition c in
     try
-      solve_constraint env pool given_c c
+      solve_constraint env pool given_p c
     with Inconsistency -> raise (TypingError pos)
 
-  and solve_constraint env pool given_c = function
+  and solve_constraint env pool given_p = function
 
     | CTrue p ->
       rtrue
@@ -310,23 +310,23 @@ let solve env pool c =
       rtrue
 
     | CConjunction cl ->
-      rconj (List.map (solve env pool given_c) cl)
+      rconj (List.map (solve env pool given_p) cl)
 
     | CLet ([ Scheme (_, [], fqs, [], c, _) ], CTrue _) ->
       (* This encodes an existential constraint. In this restricted
          case, there is no need to stop and generalize. The code
          below is only an optimization of the general case. *)
       List.iter (introduce pool) fqs;
-      solve env pool given_c c
+      solve env pool given_p c
 
     | CLet (schemes, c2) ->
       let rs, env' =
         List.fold_left (fun (rs, env') scheme ->
-            let (r, env'') = solve_scheme env pool given_c scheme in
+            let (r, env'') = solve_scheme env pool given_p scheme in
             (r :: rs, concat env' env'')
           ) ([], env) schemes
       in
-      rconj (solve env' pool given_c c2 :: rs)
+      rconj (solve env' pool given_p c2 :: rs)
 
     | CInstance (pos, SName name, term) ->
       let (c, t) = lookup pos name env in
@@ -343,7 +343,7 @@ let solve env pool c =
     | CDisjunction cs ->
       assert false
 
-  and solve_scheme env pool given_c = function
+  and solve_scheme env pool given_p = function
 
     | Scheme (_, [], [], [], c1, header) ->
 
@@ -351,11 +351,11 @@ let solve env pool c =
          there is no need to stop and generalize.
          This is only an optimization of the general case. *)
 
-      let solved_c = solve env pool given_c c1 in
+      let solved_c = solve env pool given_p c1 in
       let henv = StringMap.map (fun (t, _) -> chop pool t) header in
       (rtrue, ([], solved_c, henv))
 
-    | Scheme (pos, rqs, fqs, given_c1, c1, header) ->
+    | Scheme (pos, rqs, fqs, given_p1, c1, header) ->
 
       (* The general case. *)
 
@@ -363,7 +363,9 @@ let solve env pool c =
       List.iter (introduce pool') rqs;
       List.iter (introduce pool') fqs;
       let header = StringMap.map (fun (t, _) -> chop pool' t) header in
-      let solved_c1 = solve env pool' given_c c1 in
+      (* We add the new predicates *)
+      (* TODO: check correctness *)
+      let solved_c1 = solve env pool' (given_p1 @ given_p) c1 in
       distinct_variables pos rqs;
       generalize pool pool';
       generic_variables pos rqs;
