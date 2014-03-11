@@ -100,13 +100,13 @@ let arity t =
 let tycon tenv t =
   app (lookup_type_variable tenv t)
 
-let rec intern' pos tenv ty =
+let rec intern' tenv ty =
   match ty with
-  | TyVar (pos, name) ->
+  | TyVar (_, name) ->
     as_fun tenv name
 
-  | TyApp (pos, t, typs) ->
-    let iargs = List.map (intern' pos tenv) typs in
+  | TyApp (_, t, typs) ->
+    let iargs = List.map (intern' tenv) typs in
     app (as_fun tenv t) iargs
 
 (** [intern tenv typ] converts the type expression [typ] to a type.
@@ -114,7 +114,7 @@ let rec intern' pos tenv ty =
 let rec intern pos tenv ty =
   let kind_env = as_kind_env tenv in
   let _ = KindInferencer.check pos kind_env ty star in
-  intern' pos tenv ty
+  intern' tenv ty
 
 let intern_let_env pos tenv rs fs =
   let fqs, rtenv = fresh_flexible_vars pos tenv fs in
