@@ -282,28 +282,18 @@ let rec infer_vdef pos tenv (ValueDef (pos, qs, ps, b, e)) =
     | _ ->
       false
   in
-  if is_value_form e then
-    let x = variable Flexible () in
-    let tx = TVariable x in
-    let rqs, rtenv = fresh_rigid_vars pos tenv qs in
-    let tenv' = add_type_variables rtenv tenv in
-    let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' ps in
-    let c, h = header_of_binding pos tenv' b tx in
-    ([], Scheme (pos, rqs, x :: xs,
+  let x = variable Flexible () in
+  let tx = TVariable x in
+  let rqs, rtenv = fresh_rigid_vars pos tenv qs in
+  let tenv' = add_type_variables rtenv tenv in
+  let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' ps in
+  let c, h = header_of_binding pos tenv' b tx in
+  let flex, fqs = if is_value_form e
+    then [ ], x :: xs
+    else [x],      xs in
+  (flex, Scheme (pos, rqs, fqs,
                  gs, c ^ conj cs ^ infer_expr tenv' e tx,
                  h))
-  else
-    let x = variable Flexible () in
-    let tx = TVariable x in
-    let rqs, rtenv = fresh_rigid_vars pos tenv qs in
-    let tenv' = add_type_variables rtenv tenv in
-    let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' ps in
-    let c, h = header_of_binding pos tenv' b tx in
-    ([x],
-     Scheme (pos, rqs, xs,
-             gs, c ^ conj cs ^ infer_expr tenv' e tx,
-             h))
-
 
 (** [infer_binding tenv b] examines a binding [b], updates the
     typing environment if it binds new types or generates
