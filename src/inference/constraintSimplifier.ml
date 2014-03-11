@@ -95,8 +95,9 @@ let canonicalize pos pool k =
     | _,l -> expand_all (List.flatten l) in 
   let on_var = expand_all k in 
   let var = nup [] (List.flatten (List.map 
-                            (fun x-> fst(Globeq.find x (!environnement_equi)))
-                            on_var))
+                                    (fun x-> fst(Globeq.find x (!environnement_equi)))
+                                    (*todo corriger ligne précèdente*)
+                                    on_var))
   in 
   List.iter (fun x->register pool x) var; 
   refine_on_variables on_var
@@ -109,9 +110,13 @@ let add_implication  k l =
 
 (** [entails C1 C2] returns true is the canonical constraint [C1] implies
     the canonical constraint [C2]. *)
-let entails c1 c2 = true
+let entails c1 c2 = 
+  List.for_all (fun (name2,var2) -> let super = Glob.find name2 (!environnement)
+                in
+                List.exists (fun (nameincl1,var1) -> List.mem nameincl1 super) c1
+              ) c2
 
 (** [contains k1 k2] *)
 let contains k1 k2 =
- let v = variable Rigid () in
+  let v = variable Rigid () in
   entails [(k2, v)] [(k1, v)]
