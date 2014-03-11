@@ -265,7 +265,7 @@ let infer_typedef tenv (TypeDefs (pos, tds)) =
 
 (** [infer_vdef pos tenv (pos, qs, p, e)] returns the constraint
     related to a value definition. *)
-let rec infer_vdef pos tenv (ValueDef (pos, qs, cs, b, e)) =
+let rec infer_vdef pos tenv (ValueDef (pos, qs, ps, b, e)) =
   let rec is_value_form = function
     | EVar _
     | ELambda _
@@ -287,7 +287,7 @@ let rec infer_vdef pos tenv (ValueDef (pos, qs, cs, b, e)) =
     let tx = TVariable x in
     let rqs, rtenv = fresh_rigid_vars pos tenv qs in
     let tenv' = add_type_variables rtenv tenv in
-    let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' cs in
+    let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' ps in
     let c, h = header_of_binding pos tenv' b tx in
     ([], Scheme (pos, rqs, x :: xs,
                  gs, c ^ conj cs ^ infer_expr tenv' e tx,
@@ -297,7 +297,7 @@ let rec infer_vdef pos tenv (ValueDef (pos, qs, cs, b, e)) =
     let tx = TVariable x in
     let rqs, rtenv = fresh_rigid_vars pos tenv qs in
     let tenv' = add_type_variables rtenv tenv in
-    let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' cs in
+    let xs, gs, cs = InternalizeTypes.intern_class_predicates pos tenv' ps in
     let c, h = header_of_binding pos tenv' b tx in
     ([x],
      Scheme (pos, rqs, xs,
@@ -558,6 +558,7 @@ and infer_label pos tenv ltys (RecordBinding (l, exp), t) =
   with Not_found ->
     raise (IncompatibleLabel (pos, l))
 
+(* Bind methods as values *)
 let bind_method rq p tenv = function
   | pos, MName m, ty ->
     let x = variable Flexible () in
@@ -574,7 +575,6 @@ let infer_class tenv ({ class_name = k } as c) =
   (* Introduce type variable 'a (class parameter) *)
   let rq, rtenv = fresh_rigid_vars c.class_position tenv [c.class_parameter] in
   let tenv' = add_type_variables rtenv tenv in
-  (* Bind methods as values *)
   let s = match rq with
     | [q] -> List.map (bind_method rq (k, q) tenv') c.class_members
     | _ -> assert false in

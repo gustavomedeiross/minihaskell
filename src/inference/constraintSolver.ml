@@ -292,8 +292,7 @@ let solve env pool c =
       solve_constraint env pool given_c c
     with Inconsistency -> raise (TypingError pos)
 
-  and solve_constraint env pool given_c c =
-    match c with
+  and solve_constraint env pool given_c = function
 
     | CTrue p ->
       rtrue
