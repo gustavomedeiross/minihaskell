@@ -183,7 +183,7 @@ let header_of_binding pos tenv (Name x, ty) t =
   (match ty with
    | None -> CTrue pos
    | Some ty -> (intern pos tenv ty =?= t) pos),
-  StringMap.add x (t, pos) StringMap.empty
+  StringMap.singleton x (t, pos)
 
 let fresh_record_name =
   let r = ref 0 in
@@ -198,10 +198,8 @@ let intern_data_constructor (TName adt_name) env_info dcon_info =
   let rqs, rtenv = fresh_unnamed_rigid_vars pos tenv qs in
   let tenv' = add_type_variables rtenv tenv in
   let ityp = InternalizeTypes.intern pos tenv' typ in
-  let _ =
-    if not (is_regular_datacon_scheme tenv rqs ityp) then
-      raise (InvalidDataConstructorDefinition (pos, DName dname))
-  in
+  if not (is_regular_datacon_scheme tenv rqs ityp) then
+    raise (InvalidDataConstructorDefinition (pos, DName dname));
   let v = variable ~structure:ityp Flexible () in
   ((add_data_constructor tenv (DName dname)
       (InternalizeTypes.arity typ, rqs, ityp)),
@@ -319,11 +317,11 @@ and infer_binding tenv b =
     let tenv' = add_type_variables rtenv tenv in
     let c, h = header_of_binding pos tenv' b tx in
     let scheme = Scheme (pos, rqs, [x], [], c, h) in
-    tenv, (fun c -> CLet ([scheme], c))
+    fun c -> CLet ([scheme], c)
 
   | BindValue (pos, vdefs) ->
     let xs, schemes = List.(split (map (infer_vdef pos tenv) vdefs)) in
-    tenv, (fun c -> ex (List.flatten xs) (CLet (schemes, c)))
+    fun c -> ex (List.flatten xs) (CLet (schemes, c))
 
   | BindRecValue (pos, vdefs) ->
 
@@ -414,7 +412,6 @@ and infer_binding tenv b =
 
         ) ([], [], [], [], StringMap.empty, CTrue pos, CTrue pos) vdefs in
 
-    tenv,
     fun c -> CLet (schemes1,
                    CLet ([ Scheme (pos, rqs2, fqs2, cs2,
                                    CLet ([ monoscheme h2 ], c2), h2) ],
@@ -467,7 +464,7 @@ and infer_expr tenv e (t : crterm) =
   (** A binding [b] defines a constraint context into which the
       constraint of [e] must be injected. *)
   | EBinding (_, b, e) ->
-    snd (infer_binding tenv b) (infer_expr tenv e t)
+    infer_binding tenv b (infer_expr tenv e t)
 
   (** A type constraint inserts a type equality into the generated
       constraint. *)
@@ -561,21 +558,30 @@ and infer_label pos tenv ltys (RecordBinding (l, exp), t) =
   with Not_found ->
     raise (IncompatibleLabel (pos, l))
 
+let bind_method rq p tenv = function
+  | pos, MName m, ty ->
+    let x = variable Flexible () in
+    let tx = TVariable x in
+    let c = (intern pos tenv ty =?= tx) pos in
+    let h = StringMap.singleton m (tx, pos) in
+    Scheme (pos, rq, [x], [p], c, h)
+  | _ -> assert false
 
-let infer_class tenv c =
+let infer_class tenv ({ class_name = k } as c) =
   (* A class definition [class K_1 'a, ..., K_n 'a => K 'a { ... }]
    * introduces an implication K 'a => K_1 'a /\ ... /\ K_n 'a *)
-  ConstraintSimplifier.add_implication c.class_name c.superclasses;
-  (* We rely on the record type inference logic to complete the function
-    * TODO: Check correctness of this implementation *)
-  infer_typedef_single
-    (tenv, ctx0)
-    (TypeDef (c.class_position,
-              KArrow (KStar, KStar),
-              mk_cname c.class_name,
-              DRecordType ([c.class_parameter], c.class_members)))
+  ConstraintSimplifier.add_implication k c.superclasses;
+  (* Introduce type variable 'a (class parameter) *)
+  let rq, rtenv = fresh_rigid_vars c.class_position tenv [c.class_parameter] in
+  let tenv' = add_type_variables rtenv tenv in
+  (* Bind methods as values *)
+  let s = match rq with
+    | [q] -> List.map (bind_method rq (k, q) tenv') c.class_members
+    | _ -> assert false in
+  fun c -> CLet (s, c)
 
-let infer_instance tenv ({ instance_position = pos } as ti) =
+let infer_instance tenv ({ instance_position   = pos;
+                           instance_class_name = k } as ti) =
   (* An instance definition
    * [instance K_1 'a_1, ..., K_n 'a_n => K ('a_1, ..., 'a_n) cons { ... }]
    * introduces an equivalence
@@ -585,7 +591,6 @@ let infer_instance tenv ({ instance_position = pos } as ti) =
       tenv
       ti.instance_parameters
   in
-  let k = ti.instance_class_name in
   let t = match typcon_variable ?pos:(Some pos) tenv ti.instance_index with
     | TVariable v -> v
     | TTerm _ -> assert false in
@@ -603,18 +608,17 @@ let infer tenv e =
 
 (** [bind b] generates a constraint context that describes the
     top-level binding [b]. *)
-let bind env b =
-  infer_binding env b
+let bind = infer_binding
 
 let rec infer_program env p =
   let (env, ctx) = fold env block p in
   ctx (CDump undefined_position)
 
 and block env = function
-  | BClassDefinition c -> infer_class env c
+  | BClassDefinition c -> env, infer_class env c
   | BTypeDefinitions ts -> infer_typedef env ts
   | BInstanceDefinitions is -> fold env infer_instance is
-  | BDefinition d -> infer_binding env d
+  | BDefinition d -> env, bind env d
 
 let init_env () =
   let builtins =
