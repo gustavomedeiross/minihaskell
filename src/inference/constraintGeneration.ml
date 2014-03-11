@@ -352,11 +352,11 @@ and infer_binding tenv b =
 
     *)
 
-    let schemes1, rqs2, fqs2, cs2, h2, c2, c1 =
+    let schemes1, rqs2, fqs2, ps2, h2, c2, c1 =
       List.fold_left
         (fun
-          (schemes1, rqs2, fqs2, cs2, h2, c2, c1)
-          (ValueDef (pos, qs, cs, b, e)) ->
+          (schemes1, rqs2, fqs2, ps2, h2, c2, c1)
+          (ValueDef (pos, qs, ps, b, e)) ->
 
           (* Allocate variables for the quantifiers in the list
              [qs], augment the type environment accordingly. *)
@@ -364,7 +364,7 @@ and infer_binding tenv b =
           let rvs, rtenv = fresh_rigid_vars pos tenv qs in
           let tenv' = add_type_variables rtenv tenv in
 
-          let (xs, gs, xcs) = intern_class_predicates pos tenv' cs in
+          let xs, gs, xcs = intern_class_predicates pos tenv' ps in
 
           (* Check whether this is an explicitly or implicitly
              typed definition. *)
@@ -378,18 +378,18 @@ and infer_binding tenv b =
             schemes1,
             rvs @ rqs2,
             v :: fqs2 @ xs,
-            gs @ cs2,
+            gs @ ps2,
             StringMap.add name (t, pos) h2,
             conj xcs ^ infer_expr tenv' e t ^ c2,
             c1
 
           | InternalizeTypes.Explicit (Name name, typ, e) ->
 
-            InternalizeTypes.intern_scheme pos tenv name qs cs typ
+            InternalizeTypes.intern_scheme pos tenv name qs ps typ
             :: schemes1,
             rqs2,
             fqs2,
-            cs2,
+            ps2,
             h2,
             c2,
             fl rvs ~h:gs (ex xs (
@@ -403,7 +403,7 @@ and infer_binding tenv b =
         ) ([], [], [], [], StringMap.empty, CTrue pos, CTrue pos) vdefs in
 
     fun c -> CLet (schemes1,
-                   CLet ([ Scheme (pos, rqs2, fqs2, cs2,
+                   CLet ([ Scheme (pos, rqs2, fqs2, ps2,
                                    CLet ([ monoscheme h2 ], c2), h2) ],
                          c1 ^ c)
                   )
