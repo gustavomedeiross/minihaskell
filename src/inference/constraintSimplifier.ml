@@ -16,7 +16,7 @@ let environnement_equi = ref Globeq.empty
 
 (** [Unsat] is raised if a canonical constraint C ≡ false. *)
 exception Unsat
-
+exception Poney
 
 
 (** [OverlappingInstances] is raised if two rules of kind (E) overlap. *)
@@ -45,6 +45,12 @@ let equivalent l k t lc =
     [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
     is equivalent to [false]. *)
 (*TODO raise Unsat *)
+
+let unbuilt x = match x.structure with
+  | None            -> raise Poney  
+  | Some (App(a,b)) -> b  
+  | Some (Var(a))   -> raise Poney
+
 let canonicalize pos pool k =
   let rec nup final = function
     | [] -> final
@@ -57,9 +63,10 @@ let canonicalize pos pool k =
       let l = nup [] l in (*Eliminate duplicates*)
       let rec delete_superclasses final = function
         | [] -> final
-        | ((cl,var) :: q) as l -> if List.exists (fun (k,v)-> let super = Glob.find
-                                                     k
-                                                     (!environnement) in
+        | ((cl,var) :: q) as l -> if List.exists (fun (k,v)-> let super = try Glob.find
+                                                                                k
+                                                                                (!environnement) with
+                                                   _->raise Poney in
                                                    List.mem cl super
                                                  ) l 
           then 
@@ -80,27 +87,35 @@ let canonicalize pos pool k =
         @(refine_constraints list_recursivecall)
     in
     refine_constraints constr_on_var in
+
   let expand k =
     let nb_appli = ref 0 in
     let l =  List.map 
-        (fun x ->
-           try  let (v,a) = Globeq.find x (!environnement_equi) in
+        (fun (cn,x) ->
+           try 
+             let sometype = unbuilt (UnionFind.find x) in
              incr nb_appli;
+             let (v,a) = Globeq.find (cn,sometype) (!environnement_equi) 
+             in
              a
-           with Not_found -> [x]
+           with Poney -> [(cn,x)]
+             | Not_found -> raise(UnboundClass(TName("Pipo"))) (*Erreur pipo*) 
         )
         k in (!nb_appli,l) in
-  let rec expand_all k =match expand k with
+  let rec expand_all k = match expand k with
     | (0,l)->List.flatten l
     | _,l -> expand_all (List.flatten l) in 
   let on_var = expand_all k in 
   let var = nup [] (List.flatten (List.map 
-                                    (fun x-> fst(Globeq.find x (!environnement_equi)))
+                                    (fun x-> fst(Globeq.find x
+                                                       (!environnement_equi)))
                                     (*todo corriger ligne précèdente*)
                                     on_var))
   in 
   List.iter (fun x->register pool x) var; 
   refine_on_variables on_var
+
+
 
 
 (** [add_implication k [k_1;...;k_N]] registers a rule of the form
@@ -111,12 +126,14 @@ let add_implication  k l =
 (** [entails C1 C2] returns true is the canonical constraint [C1] implies
     the canonical constraint [C2]. *)
 let entails c1 c2 = 
-  List.for_all (fun (name2,var2) -> let super = Glob.find name2 (!environnement)
-                in
-                List.exists (fun (nameincl1,var1) -> List.mem nameincl1 super) c1
-              ) c2
+  List.for_all (fun (name2,var2) -> let super = try Glob.find name2 (!environnement)
+                 with _-> raise Poney               
+                 in
+                 List.exists (fun (nameincl1,var1) -> List.mem nameincl1 super) c1
+               ) c2
 
 (** [contains k1 k2] *)
 let contains k1 k2 =
   let v = variable Rigid () in
   entails [(k2, v)] [(k1, v)]
+
