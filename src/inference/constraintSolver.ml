@@ -45,6 +45,7 @@ let rtrue = []
 let rconj c = List.flatten c
 let rpredicate k c = [(k, c)]
 
+(* TODO: That's an association list... *)
 type environment =
   | EEmpty
   | EEnvFrame of environment * string * canonical_constraint * variable
