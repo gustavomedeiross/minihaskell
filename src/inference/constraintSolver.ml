@@ -39,7 +39,7 @@ exception Inconsistency
 
 type tconstraint = Constraint.tconstraint
 
-type canonical_constraint =  (cname * variable) list
+type typing_context =  (cname * variable) list
 
 let rtrue = []
 let rconj c = List.flatten c
@@ -48,7 +48,7 @@ let rpredicate k c = [(k, c)]
 (* TODO: That's an association list... *)
 type environment =
   | EEmpty
-  | EEnvFrame of environment * string * canonical_constraint * variable
+  | EEnvFrame of environment * string * typing_context * variable
 
 let environment_as_list e =
   let rec conv acu = function
@@ -75,7 +75,7 @@ let rec lookup pos name = function
 type occurrence = string * position
 
 type answer = {
-  bindings: (string * (variable list * canonical_constraint * variable)) list;
+  bindings: (string * (variable list * typing_context * variable)) list;
   instantiations: (occurrence * variable) list;
 }
 
@@ -330,15 +330,16 @@ let solve env pool c =
       rconj (solve env' pool given_p c2 :: rs)
 
     | CInstance (pos, SName name, term) ->
-      let (c, t) = lookup pos name env in
-      let ctys = List.map (fun (k, ty) -> ty) c in
+      let ps, t = lookup pos name env in
+      let ctys = List.map (fun (k, ty) -> ty) ps in
       begin match instance pool (t :: ctys) with
         | [] -> assert false
         | instance :: itys ->
           let t' = chop pool term in
           answer := new_instantiation !answer (name, pos) t';
           unify_terms pos pool instance t';
-          rtrue
+          let ps' = List.map2 (fun (k, _) ty -> (k, ty)) ps itys in
+          ConstraintSimplifier.canonicalize pos pool ps'
       end
 
     | CDisjunction cs ->
@@ -352,9 +353,9 @@ let solve env pool c =
          there is no need to stop and generalize.
          This is only an optimization of the general case. *)
 
-      let solved_c = solve env pool given_p c1 in
+      let solved_p = solve env pool given_p c1 in
       let henv = StringMap.map (fun (t, _) -> chop pool t) header in
-      (rtrue, ([], solved_c, henv))
+      (rtrue, ([], solved_p, henv))
 
     | Scheme (pos, rqs, fqs, given_p1, c1, header) ->
 
@@ -366,7 +367,7 @@ let solve env pool c =
       let header = StringMap.map (fun (t, _) -> chop pool' t) header in
       (* We add the new predicates *)
       (* TODO: check correctness *)
-      let solved_c1 = solve env pool' (given_p1 @ given_p) c1 in
+      let solved_p = solve env pool' (given_p1 @ given_p) c1 in
       distinct_variables pos rqs;
       generalize pool pool';
       generic_variables pos rqs;
@@ -376,12 +377,12 @@ let solve env pool c =
             IntRank.compare desc.rank IntRank.none = 0)
           (inhabitants pool')
       in
-      (rtrue, (generalized_variables, solved_c1, header))
+      (rtrue, (generalized_variables, solved_p, header))
 
-  and concat env (vs, c, header) =
+  and concat env (vs, p, header) =
     StringMap.fold (fun name v env ->
-        answer := new_binding !answer name (vs, c, v);
-        EEnvFrame (env, name, c, v)
+        answer := new_binding !answer name (vs, p, v);
+        EEnvFrame (env, name, p, v)
       ) header env
 
   and unify_terms pos pool t1 t2 =
