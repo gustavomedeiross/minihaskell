@@ -301,8 +301,8 @@ let solve env pool c =
       rtrue
 
     | CPredicate (pos, k, ty) ->
-      (* Student! This is your job! *)
-      rtrue
+      let v = chop pool ty in
+      ConstraintSimplifier.canonicalize pos pool [k, v]
 
     | CEquation (pos, term1, term2) ->
       let t1, t2 = twice (chop pool) term1 term2 in
@@ -388,7 +388,6 @@ let solve env pool c =
       unify pos (register pool) t1 t2
     with Unifier.CannotUnify (pos, v1, v2) ->
       raise (IncompatibleTypes (pos, v1, v2))
-
 
   in (
     ignore (solve env pool [] c);
