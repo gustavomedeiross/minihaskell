@@ -99,7 +99,8 @@ let canonicalize pos pool k =
              in
              a
            with Poney -> [(cn,x)]
-             | Not_found -> raise(UnboundClass(TName("Pipo"))) (*Erreur pipo*) 
+             | Not_found -> raise(UnboundClass(TName("Pipo"))) (*TODO : good
+error*) 
         )
         k in (!nb_appli,l) in
   let rec expand_all k = match expand k with
@@ -109,7 +110,6 @@ let canonicalize pos pool k =
   let var = nup [] (List.flatten (List.map 
                                     (fun x-> fst(Globeq.find x
                                                        (!environnement_equi)))
-                                    (*todo corriger ligne précèdente*)
                                     on_var))
   in 
   List.iter (fun x->register pool x) var; 
