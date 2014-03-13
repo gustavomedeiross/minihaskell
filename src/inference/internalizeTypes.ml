@@ -136,8 +136,8 @@ let intern_class_predicates pos tenv cs =
 (** [intern_scheme tenv name qs cs typ] produces a type scheme
     that binds [name] to [forall qs [cs]. typ]. *)
 let intern_scheme pos tenv name qs cs typ =
-  let fqs, rtenv = fresh_flexible_vars pos tenv qs in
+  let rqs, rtenv = fresh_rigid_vars pos tenv qs in
   let tenv' = add_type_variables rtenv tenv in
-  let (xs, gs, cs) = intern_class_predicates pos tenv' cs in
-  Scheme (pos, [], xs @ fqs, gs, conj cs,
+  let xs, gs, cs = intern_class_predicates pos tenv' cs in
+  Scheme (pos, rqs, xs, gs, conj cs,
           StringMap.singleton name (intern pos tenv' typ, pos))

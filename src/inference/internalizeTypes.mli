@@ -81,8 +81,8 @@ val intern_class_predicates :
    * (crterm, variable) canonical_constraint
    * (crterm, variable) type_constraint list)
 
-(** [intern_scheme env x fqs cs ty] returns the internal representation
-    of the type scheme [forall fqs [cs].ty] and the binding of [x] to it. *)
+(** [intern_scheme env x qs cs ty] returns the internal representation
+    of the type scheme [forall qs [cs].ty] and the binding of [x] to it. *)
 val intern_scheme :
   position -> environment -> string
   -> tname list -> Types.class_predicates -> Types.t
