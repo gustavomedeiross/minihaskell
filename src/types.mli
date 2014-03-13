@@ -89,3 +89,5 @@ val equivalent : t -> t -> bool
 val substitute : (tname * t) list -> t -> t
 
 val free : t -> TS.t
+
+val cons_type : tname -> tname list -> t

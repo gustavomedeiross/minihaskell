@@ -90,7 +90,7 @@ let handle_error print_variable p =
                  "  `%s' is unbound."
                  x)
 
-  | InferenceExceptions.UnboundClass (pos, TName x) ->
+  | InferenceExceptions.UnboundClass (pos, CName x) ->
     fatal pos (Printf.sprintf
                  "  Class `%s' is unbound."
                  x)
@@ -107,3 +107,6 @@ let handle_error print_variable p =
 
   | ExternalizeTypes.RecursiveType pos ->
     fatal pos (Printf.sprintf "  Type error.")
+
+  | InferenceExceptions.IrreduciblePredicate pos ->
+      fatal pos (Printf.sprintf "  Could not deduce from context.")

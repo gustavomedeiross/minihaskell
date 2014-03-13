@@ -2,7 +2,7 @@ open InferenceTypes
 open MultiEquation
 open Name
 
-
+(* TODO: Hashtbl? *)
 module Glob = Map.Make(struct type t = cname let compare = compare end )
 module Globeq = Map.Make(struct type t = cname*variable let compare = compare end)
 
@@ -18,7 +18,6 @@ let environnement_equi = ref Globeq.empty
 exception Unsat
 exception Poney
 
-
 (** [OverlappingInstances] is raised if two rules of kind (E) overlap. *)
 exception OverlappingInstances of tname * variable
 
@@ -28,9 +27,7 @@ exception MultipleClassDefinitions of tname
 
 (** [UnboundClass k] is raised if the type class [k] occurs in a
     constraint while it is undefined. *)
-exception UnboundClass of tname
-
-
+exception UnboundClass of cname
 
 (** Student! This is your job! You must implement the following functions: *)
 
@@ -109,8 +106,13 @@ let canonicalize pos pool k =
              in
              adapt_constraints a i_args
            with Poney -> [(cn,x)]
+<<<<<<< HEAD
               | Not_found -> raise(UnboundClass(TName("Pipo"))) (*TODO : good
                                                                   error*) 
+=======
+             | Not_found -> raise(UnboundClass(cn)) (*TODO : good
+error*) 
+>>>>>>> 6df10c0f70d503ef99b802ba59d4347289cc940c
         )
         k in (!nb_appli,l) in
   let rec expand_all k = match expand k with
@@ -131,16 +133,26 @@ let canonicalize pos pool k =
 (** [add_implication k [k_1;...;k_N]] registers a rule of the form
     (E'). *)
 let add_implication  k l = 
+  (* TODO: Check that classes in l have been bound already.
+   * Ensures that the superclass order is acyclic *)
   environnement := Glob.add k l (!environnement) 
 
-(** [entails C1 C2] returns true is the canonical constraint [C1] implies
+(** [entails C1 C2] returns true if the canonical constraint [C1] implies
     the canonical constraint [C2]. *)
-let entails c1 c2 = 
-  List.for_all (fun (name2,var2) -> let super = try Glob.find name2 (!environnement)
-                 with _-> raise Poney               
-                 in
-                 List.exists (fun (nameincl1,var1) -> List.mem nameincl1 super) c1
-               ) c2
+let entails c1 c2 =
+  (** [w_is_superclass k1 k2] returns true if k1 = k2 (weak order)
+   *  or if k1 is a superclass of k2. *)
+  let rec w_is_superclass k k' =
+    k = k' || List.exists (w_is_superclass k) (Glob.find k' !environnement)
+  in
+    List.for_all
+      (fun (k', v') -> List.exists
+          (fun (k, v) ->
+             try
+               UnionFind.equivalent v v' && w_is_superclass k' k
+             with Not_found -> raise (UnboundClass k))
+          c1)
+      c2
 
 (** [contains k1 k2] *)
 let contains k1 k2 =

@@ -284,6 +284,7 @@ and elaborate_class c env =
   let subdicts =
     List.map
       (fun sk ->
+        ignore (lookup_class pos sk env);
          let kname = fresh_kname sk k in
          (pos,
           kname,
@@ -732,11 +733,6 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
 
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
   bind_scheme pos x ts ps ty env
-
-and cons_type hd vars =
-  TyApp (undefined_position,
-         hd,
-         List.map (fun x -> TyVar (undefined_position, x)) vars)
 
 and names_is is = List.fold_left names_i [] is
 

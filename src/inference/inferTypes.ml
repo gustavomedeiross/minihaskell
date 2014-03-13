@@ -237,8 +237,8 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
       let b = lookup_binding e x in
       type_scheme_of_variable pos b
 
-    and value_definition (ValueDef (pos, _, c, b, t)) =
-      let (x, (TyScheme (ts, c, ty) as s)) =
+    and value_definition (ValueDef (pos, _, _, b, t)) =
+      let x, TyScheme (ts, c, ty) =
         match destruct_binding b with
         | ((Name x) as n, _) -> (n, type_scheme_of pos x)
       in

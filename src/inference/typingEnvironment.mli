@@ -65,6 +65,11 @@ val add_type_constructor: environment -> tname -> type_info -> environment
 val add_data_constructor:
   environment -> dname -> data_constructor -> environment
 
+val add_class : environment -> IAST.class_definition -> environment
+
+val lookup_class : Positions.position -> environment -> cname -> Types.t ->
+  (lname * Types.t) list
+
 (** [is_regular_datacon_scheme env vs ty] checks that forall vs.ty is
     a valid scheme for a data constructor that is to say following the
     shape:
