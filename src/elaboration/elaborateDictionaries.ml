@@ -284,6 +284,7 @@ and elaborate_class c env =
   let subdicts =
     List.map
       (fun sk ->
+        ignore (lookup_class pos sk env);
          let kname = fresh_kname sk k in
          (pos,
           kname,

@@ -2,7 +2,7 @@ open InferenceTypes
 open MultiEquation
 open Name
 
-
+(* TODO: Hashtbl? *)
 module Glob = Map.Make(struct type t = cname let compare = compare end )
 module Globeq = Map.Make(struct type t = cname*variable let compare = compare end)
 
@@ -118,6 +118,8 @@ error*)
 (** [add_implication k [k_1;...;k_N]] registers a rule of the form
     (E'). *)
 let add_implication  k l = 
+  (* TODO: Check that classes in l have been bound already.
+   * Ensures that the superclass order is acyclic *)
   environnement := Glob.add k l (!environnement) 
 
 (** [entails C1 C2] returns true if the canonical constraint [C1] implies

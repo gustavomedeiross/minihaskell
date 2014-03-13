@@ -1,0 +1,1 @@
+let ['a 'b] id : 'a -> 'a = ['a 'b] fun (x : 'a) -> x[]

@@ -15,8 +15,8 @@ fi
 GOODE=`find elaboration custom -path '*/good/*.mle' | sort`
 BADE=`find elaboration custom -path '*/bad/*.mle' | sort`
 
-GOODT=`find -path './inference/good/*.mlt' | sort`
-BADT=`find -path './inference/bad/*.mlt' | sort`
+GOODT=`find inference diy -path '*/good/*.mlt' | sort`
+BADT=`find inference diy -path '*/bad/*.mlt' | sort`
 
 echo "Typechecking, the fails with mle:"
 nbrexpli=0

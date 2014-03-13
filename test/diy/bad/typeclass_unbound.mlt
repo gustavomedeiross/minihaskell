@@ -1,0 +1,7 @@
+class K 'a => L 'a { x : 'a }
+class L 'a => K 'a { y : 'a }
+class H 'a { z : 'a }
+
+type 'a pair = Pair of 'a * 'a
+
+let f = Pair (x, z)
