@@ -78,12 +78,14 @@ type environment =
   {
     type_info        : (tname, type_info) Env.t;
     data_constructor : (dname, data_constructor) Env.t;
+    class_info       : (cname, tname * (lname * Types.t) list) Env.t
   }
 
 let empty_environment =
   {
     type_info        = Env.empty;
     data_constructor = Env.empty;
+    class_info       = Env.empty;
   }
 
 let union_type_variables env1 env2 =
@@ -103,6 +105,18 @@ let add_type_constructor env t x =
 
 let add_data_constructor env t x =
   { env with data_constructor = Env.add env.data_constructor t x }
+
+let add_class env c =
+  let i = c.IAST.class_parameter,
+          List.map (fun (_, m, ty) -> m, ty) c.IAST.class_members in
+  { env with class_info = Env.add env.class_info c.IAST.class_name i }
+
+let lookup_class pos env k t =
+  let a, ms = try
+      Env.lookup env.class_info k
+    with Not_found -> raise (UnboundClass (pos, k))
+  in
+  List.map (fun (m, ty) -> m, Types.substitute [a, t] ty) ms
 
 (** [lookup_typcon ?pos env t] retrieves typing information about
     the type constructor [t]. *)

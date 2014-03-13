@@ -537,9 +537,11 @@ let infer_class tenv ({ class_position = pos ;
   (* A class definition [class K_1 'a, ..., K_n 'a => K 'a { ... }]
    * introduces an implication K 'a => K_1 'a /\ ... /\ K_n 'a *)
   ConstraintSimplifier.add_implication k c.superclasses;
+
   (* Introduce type variable 'a (class parameter) *)
-  let rq, rtenv = fresh_rigid_vars c.class_position tenv [c.class_parameter] in
+  let rq, rtenv = fresh_rigid_vars pos tenv [c.class_parameter] in
   let tenv' = add_type_variables rtenv tenv in
+
   (* Bind methods as values *)
   let bind_method (xs, cs, h) = function
     | pos, MName m, ty ->
@@ -549,25 +551,26 @@ let infer_class tenv ({ class_position = pos ;
       (x :: xs, c ^ cs, StringMap.add m (tx, pos) h)
     | _ -> assert false
   in
+
   let scheme = match rq with
     | [q] ->
       let xs, cs, h = List.fold_left
           bind_method ([], CTrue pos, StringMap.empty) c.class_members in
       Scheme (pos, rq, xs, [k, q], cs, h)
     | _ -> assert false in
+  add_class tenv c,
   fun c -> CLet ([scheme], c)
 
-let infer_instance tenv ({ instance_position   = pos;
-                           instance_class_name = k } as ti) =
+let infer_instance tenv ({ instance_position   = pos ;
+                           instance_class_name = k   ;
+                           instance_parameters = ts  } as ti) =
   (* An instance definition
    * [instance K_1 'a_1, ..., K_n 'a_n => K ('a_1, ..., 'a_n) cons { ... }]
    * introduces an equivalence
    * K_1 'a_1, ..., K_n 'a_n <=> K ('a_1, ..., 'a_n) cons *)
-  let vs, rtenv =
-    fresh_rigid_vars pos
-      tenv
-      ti.instance_parameters
-  in
+  let rs, rtenv = fresh_rigid_vars pos tenv ts in
+  let tenv' = add_type_variables rtenv tenv in
+
   let t = match typcon_variable ?pos:(Some pos) tenv ti.instance_index with
     | TVariable v -> v
     | TTerm _ -> assert false in
@@ -575,8 +578,27 @@ let infer_instance tenv ({ instance_position   = pos;
     List.map
       (fun (ClassPredicate (k, v)) -> k, proj2_3 (List.assoc v rtenv))
       ti.instance_typing_context in
-  ConstraintSimplifier.equivalent vs k t ps;
-  (tenv, fun c -> c)
+  ConstraintSimplifier.equivalent rs k t ps;
+
+  let itype = Types.cons_type ti.instance_index ts in
+  let ms = lookup_class pos tenv k itype in
+
+  let infer_method acc (RecordBinding (m, e)) =
+    let ty =
+      try
+        List.assoc m ms
+      with Not_found -> raise (UnboundLabel (pos, m))
+    in
+    let ty' = intern pos tenv' ty in
+    acc ^ infer_expr tenv' e ty'
+  in
+
+  let scheme = Scheme (pos, rs, [], ps, CTrue pos, StringMap.empty) in
+
+  tenv,
+  fun c ->
+    let cs = List.fold_left infer_method c ti.instance_members in
+    CLet ([scheme], cs)
 
 (** [infer e] determines whether the expression [e] is well-typed
     in the empty environment. *)
@@ -592,7 +614,7 @@ let rec infer_program env p =
   ctx (CDump undefined_position)
 
 and block env = function
-  | BClassDefinition c -> env, infer_class env c
+  | BClassDefinition c -> infer_class env c
   | BTypeDefinitions ts -> infer_typedef env ts
   | BInstanceDefinitions is -> fold env infer_instance is
   | BDefinition d -> env, bind env d
