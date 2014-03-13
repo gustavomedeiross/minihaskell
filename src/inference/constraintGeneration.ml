@@ -532,27 +532,30 @@ and infer_label pos tenv ltys (RecordBinding (l, exp), t) =
   with Not_found ->
     raise (IncompatibleLabel (pos, l))
 
-(* Bind methods as values *)
-let bind_method rq p tenv = function
-  | pos, MName m, ty ->
-    let x = variable Flexible () in
-    let tx = TVariable x in
-    let c = (intern pos tenv ty =?= tx) pos in
-    let h = StringMap.singleton m (tx, pos) in
-    Scheme (pos, rq, [x], [p], c, h)
-  | _ -> assert false
-
-let infer_class tenv ({ class_name = k } as c) =
+let infer_class tenv ({ class_position = pos ;
+                        class_name     = k   } as c) =
   (* A class definition [class K_1 'a, ..., K_n 'a => K 'a { ... }]
    * introduces an implication K 'a => K_1 'a /\ ... /\ K_n 'a *)
   ConstraintSimplifier.add_implication k c.superclasses;
   (* Introduce type variable 'a (class parameter) *)
   let rq, rtenv = fresh_rigid_vars c.class_position tenv [c.class_parameter] in
   let tenv' = add_type_variables rtenv tenv in
-  let s = match rq with
-    | [q] -> List.map (bind_method rq (k, q) tenv') c.class_members
+  (* Bind methods as values *)
+  let bind_method (xs, cs, h) = function
+    | pos, MName m, ty ->
+      let x = variable Rigid () in
+      let tx = TVariable x in
+      let c = (intern pos tenv' ty =?= tx) pos in
+      (x :: xs, c ^ cs, StringMap.add m (tx, pos) h)
+    | _ -> assert false
+  in
+  let scheme = match rq with
+    | [q] ->
+      let xs, cs, h = List.fold_left
+          bind_method ([], CTrue pos, StringMap.empty) c.class_members in
+      Scheme (pos, rq, xs, [k, q], cs, h)
     | _ -> assert false in
-  fun c -> CLet (s, c)
+  fun c -> CLet ([scheme], c)
 
 let infer_instance tenv ({ instance_position   = pos;
                            instance_class_name = k } as ti) =
