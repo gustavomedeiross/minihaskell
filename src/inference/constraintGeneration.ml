@@ -543,7 +543,7 @@ let infer_class tenv ({ class_position = pos ;
   (* Bind methods as values *)
   let bind_method (xs, cs, h) = function
     | pos, MName m, ty ->
-      let x = variable Rigid () in
+      let x = variable Flexible () in
       let tx = TVariable x in
       let c = (intern pos tenv' ty =?= tx) pos in
       (x :: xs, c ^ cs, StringMap.add m (tx, pos) h)
