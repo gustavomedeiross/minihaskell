@@ -24,7 +24,7 @@ exception MultipleClassDefinitions of tname
 
 (** [UnboundClass k] is raised if the type class [k] occurs in a
     constraint while it is undefined. *)
-exception UnboundClass of tname
+exception UnboundClass of cname
 
 (** [equivalent [b1;..;bN] k t [(k_1,t_1);...;(k_N,t_N)]] registers
     a rule of the form (E). *)
