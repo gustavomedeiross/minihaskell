@@ -48,7 +48,7 @@ let equivalent l k t lc =
 
 let unbuilt x = match x.structure with
   | None            -> raise Poney  
-  | Some (App(a,b)) -> b  
+  | Some (App(a,b)) -> (a,b)  
   | Some (Var(a))   -> raise Poney
 
 let canonicalize pos pool k =
@@ -88,19 +88,29 @@ let canonicalize pos pool k =
     in
     refine_constraints constr_on_var in
 
+  let rec adapt_constraints l1 l2 = match l1,l2 with 
+    | [],[] -> []
+    | ((cn,types) :: q), t::r  -> (cn, t) :: (adapt_constraints q r)  
+    | _,_ -> assert(false)
+  in
+
   let expand k =
     let nb_appli = ref 0 in
     let l =  List.map 
         (fun (cn,x) ->
            try 
-             let sometype = unbuilt (UnionFind.find x) in
+             let (cstruc,sometype) = unbuilt (UnionFind.find x) in
+             (*TODO : Need to replace variable by sometype in a*)
+             (*With sometype and UnionFind.fresh *) 
+             let i_args =  assert(false) in
+             (*Extract i-th type in n-uplet of sometype*)
              incr nb_appli;
-             let (v,a) = Globeq.find (cn,sometype) (!environnement_equi) 
+             let (v,a) = Globeq.find (cn,cstruc) (!environnement_equi) 
              in
-             a
+             adapt_constraints a i_args
            with Poney -> [(cn,x)]
-             | Not_found -> raise(UnboundClass(TName("Pipo"))) (*TODO : good
-error*) 
+              | Not_found -> raise(UnboundClass(TName("Pipo"))) (*TODO : good
+                                                                  error*) 
         )
         k in (!nb_appli,l) in
   let rec expand_all k = match expand k with
@@ -109,7 +119,7 @@ error*)
   let on_var = expand_all k in 
   let var = nup [] (List.flatten (List.map 
                                     (fun x-> fst(Globeq.find x
-                                                       (!environnement_equi)))
+                                                   (!environnement_equi)))
                                     on_var))
   in 
   List.iter (fun x->register pool x) var; 
