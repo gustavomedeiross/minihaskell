@@ -116,3 +116,7 @@ exception InvalidClassPredicateInContext of position * tname
 (** [IncompatibleLabel] is raised when a label is used in a
     record expression whose type does not contain it. *)
 exception IncompatibleLabel of position * lname
+
+(** [IrreduciblePredicate] is raised when a user annotated class predicate
+    does not imply the inferred constraint *)
+exception IrreduciblePredicate of position

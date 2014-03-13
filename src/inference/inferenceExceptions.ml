@@ -73,3 +73,5 @@ exception OverlappingInstances of position * tname * variable
 exception InvalidClassPredicateInContext of position * tname
 
 exception IncompatibleLabel of position * lname
+
+exception IrreduciblePredicate of position

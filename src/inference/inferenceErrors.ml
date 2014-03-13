@@ -107,3 +107,6 @@ let handle_error print_variable p =
 
   | ExternalizeTypes.RecursiveType pos ->
     fatal pos (Printf.sprintf "  Type error.")
+
+  | InferenceExceptions.IrreduciblePredicate pos ->
+      fatal pos (Printf.sprintf "  Could not deduce from context.")
