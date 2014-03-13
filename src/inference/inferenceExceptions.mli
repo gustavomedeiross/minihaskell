@@ -99,7 +99,7 @@ exception PartialDataConstructorApplication of position * int * int
 
 (** [UnboundClass] is raised when a class identifeir is used even
     though it has not been defined. *)
-exception UnboundClass of position * tname
+exception UnboundClass of position * cname
 
 (** [MultipleClassDefinition] is raised when a class identifeir is
     defined several times. *)

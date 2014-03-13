@@ -734,11 +734,6 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
   bind_scheme pos x ts ps ty env
 
-and cons_type hd vars =
-  TyApp (undefined_position,
-         hd,
-         List.map (fun x -> TyVar (undefined_position, x)) vars)
-
 and names_is is = List.fold_left names_i [] is
 
 and names_i acc i = List.fold_left vn_recordbinding acc i.instance_members

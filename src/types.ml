@@ -21,6 +21,11 @@ and class_predicate = ClassPredicate of cname * tname
 
 and class_predicates = class_predicate list
 
+let cons_type hd vars =
+  TyApp (undefined_position,
+         hd,
+         List.map (fun x -> TyVar (undefined_position, x)) vars)
+
 let tyarrow pos ity oty =
   TyApp (pos, TName "->", [ity; oty])
 

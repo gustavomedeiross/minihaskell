@@ -60,7 +60,7 @@ exception PartialDataConstructorApplication of position * int * int
 
 exception MultipleClassDefinitions of position * tname
 
-exception UnboundClass of position * tname
+exception UnboundClass of position * cname
 
 exception IncompatibleTypes of Positions.position * variable * variable
 
