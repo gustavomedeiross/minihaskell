@@ -11,6 +11,7 @@ type t = {
   types         : (tname * (Types.kind * type_definition)) list;
   classes       : (cname * class_definition) list;
   labels        : (lname * (tnames * Types.t * tname)) list;
+  (*We store the instances by classes *)
   instances     : (tname * (instance_definition * name) list) list;
   subdicts      : ((cname * cname) * lname) list;
   method_names  : StringSet.t;

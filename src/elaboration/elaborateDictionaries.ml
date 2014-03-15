@@ -506,7 +506,10 @@ and expression env = function
     (e, primitive pos p)
 
 and eVar pos env x tys =
-  let tys', qs, ty = type_application pos env x tys in
+ (*Elaboration of identifiers, different cases depending on 
+  if the symbol is a method, or a name of function ...*)
+
+ let tys', qs, ty = type_application pos env x tys in
   (* If an identifier is a method or overloaded we elaborate *)
   match as_method x env with
   | None -> (* x is not a method *)

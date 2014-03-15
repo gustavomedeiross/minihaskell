@@ -56,6 +56,11 @@ let rec from_term_to_crterm x =
     [(k'_1,v_1);...;(k'_M,v_M)]], introducing the variables
     [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
     is equivalent to [false]. *)
+(*Canonicalize try to apply rules, to transform the constraint to a constraint
+on variables. To apply a (E) rule is equivalent to delete exactly one type constructor.
+i.e k_1 t_1 , ... k_n t_n => k (C t) give that for example
+k(C sometype) become k_1 sometype , .... k_n sometype. And we recursively try to
+destruct sometype, to expand k_i. *)
 let canonicalize pos pool k =
   let rec nup final = function
     | [] -> final
