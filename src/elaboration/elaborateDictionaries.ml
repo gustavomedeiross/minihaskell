@@ -44,78 +44,79 @@ and block env = function
 (* Return an expression whose value is the dictionary of type (K ty).
  * Exception: NotAnInstance *)
 and elaborate_dictionary pos env k ty =
-  try
-    elaborate_dictionary' env k ty
-  with Not_found -> raise (NotAnInstance (pos, k, ty))
 
-and elaborate_dictionary' env k = function
-  | TyVar (pos, v) as ty ->
-    let is = lookup_instances env v in
-    try_d_proj env StringSet.empty k ty is
-  | TyApp (pos, c, ts) ->
-    let is = lookup_instances env c in
-    let i, name =
-      List.find (fun (i, _) -> i.instance_class_name = k) is in
-    d_ovar_inst env i name ts
+  let rec elaborate_dictionary' env k' = function
+    | TyVar (pos, v) ->
+      let is = lookup_instances env v in
+      try_d_proj env StringSet.empty k' v is
+    | TyApp (pos, c, ts) ->
+      let is = lookup_instances env c in
+      let i, name =
+        try
+          List.find (fun (i, _) -> i.instance_class_name = k') is
+        with Not_found -> raise (NotAnInstance (pos, k, ty, k', Left c)) in
+      d_ovar_inst env i name ts
 
-(* Rule D-OVAR-INST *)
-and d_ovar_inst env i name ts =
-  let t_inst = List.combine i.instance_parameters ts in
-  (* Substitute predicates by instanciated types *)
-  let predicates =
-    List.map
-      (fun (ClassPredicate (k, ty)) -> k, List.assoc ty t_inst)
-      i.instance_typing_context in
-  let f_dict = EVar (undefined_position, name, ts) in
-  List.fold_left (dict_application env) f_dict predicates
+  (* Rule D-OVAR-INST *)
+  and d_ovar_inst env i name ts =
+    let t_inst = List.combine i.instance_parameters ts in
+    (* Substitute predicates by instanciated types *)
+    let predicates =
+      List.map
+        (fun (ClassPredicate (k, ty)) -> k, List.assoc ty t_inst)
+        i.instance_typing_context in
+    let f_dict = EVar (undefined_position, name, ts) in
+    List.fold_left (dict_application env) f_dict predicates
 
-(* Apply a dictionary abstraction (f_dict : k 'a -> (...)) to (k ty) dictionary
- * [dict_application env f_dict (k, ty)] = 'f_dict (k ty)' *)
-and dict_application env f_dict (k, ty) =
-  let dict = elaborate_dictionary' env k ty in
-  EApp (undefined_position, f_dict, dict)
+  (* Apply a dictionary abstraction (f_dict : k 'a -> (...)) to (k ty) dictionary
+   * [dict_application env f_dict (k, ty)] = 'f_dict (k ty)' *)
+  and dict_application env f_dict (k, ty) =
+    let dict = elaborate_dictionary' env k ty in
+    EApp (undefined_position, f_dict, dict)
 
-(* Rule D-PROJ/D-VAR, seeking to obtain (k ty) by sub-dictionary projections
- * (when ty is a type variable) starting from one of the instances in the
- * list argument. The accumulator [acc] memorizes classes which have already
- * been visited, ensuring every class is tried at most once *)
-and try_d_proj env acc k ty = function
-  | [] -> raise Not_found
-  | (i, name) :: is ->
-    match
-      d_proj
-        env
-        acc
-        (EVar (undefined_position, name, []))
-        k
-        i.instance_class_name
-    with
-    | _, Some q -> q
-    | acc, None -> try_d_proj env acc k ty is
+  (* Rule D-PROJ/D-VAR, seeking to obtain (k v) by sub-dictionary projections
+   * (when v is a type variable) starting from one of the instances in the
+   * list argument. The accumulator [visited] ensures every class is tried at
+   * most once *)
+  and try_d_proj env visited k' v = function
+    | [] -> raise (NotAnInstance (pos, k, ty, k', Right v))
+    | (i, name) :: is ->
+      match
+        d_proj
+          env
+          visited
+          (EVar (undefined_position, name, []))
+          k'
+          i.instance_class_name
+      with
+      | _, Some q -> q
+      | visited, None -> try_d_proj env visited k' v is
 
-(* Given a dictionary term q of type (_ k'), use projections to obtain
- * a dictionary of type (_ k) *)
-and d_proj env acc q k (CName s as k') =
-  if k = k'
-  then acc, Some q
-  else if StringSet.mem s acc (* This class has already been visited before *)
-  then acc, None
-  else
-    let acc = StringSet.add s acc in
-    let ks = (lookup_class undefined_position k' env).superclasses in
-    try_proj_superclass env acc q k k' ks
+  (* Given a dictionary term q of type (_ k'), use projections to obtain
+   * a dictionary of type (_ k) *)
+  and d_proj env visited q k (CName s as k') =
+    if k = k'
+    then visited, Some q
+    else if StringSet.mem s visited
+    then visited, None (* This class has already been visited before *)
+    else
+      let visited = StringSet.add s visited in
+      let ks = (lookup_class undefined_position k' env).superclasses in
+      try_proj_superclass env visited q k k' ks
 
-(* Try projecting successively on every superclass of k' *)
-and try_proj_superclass env acc q k k' = function
-  | [] -> acc, None
-  | k'' :: ks ->
-    match
-      let kname = get_subdict_name env k'' k' in
-      let q = ERecordAccess (undefined_position, q, kname) in
-      d_proj env acc q k k''
-    with
-    | acc, None -> try_proj_superclass env acc q k k' ks
-    | found -> found
+  (* Try projecting successively on every superclass of k' *)
+  and try_proj_superclass env visited q k k' = function
+    | [] -> visited, None
+    | k'' :: ks ->
+      match
+        let kname = get_subdict_name env k'' k' in
+        let q = ERecordAccess (undefined_position, q, kname) in
+        d_proj env visited q k k''
+      with
+      | visited, None -> try_proj_superclass env visited q k k' ks
+      | found -> found
+  in
+  elaborate_dictionary' env k ty
 
 (* Instance elaboration
  *
@@ -284,7 +285,7 @@ and elaborate_class c env =
   let subdicts =
     List.map
       (fun sk ->
-        ignore (lookup_class pos sk env);
+         ignore (lookup_class pos sk env);
          let kname = fresh_kname sk k in
          (pos,
           kname,

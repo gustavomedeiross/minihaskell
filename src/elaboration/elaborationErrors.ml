@@ -139,9 +139,19 @@ let handle_error f =
     fatal' pos (Printf.sprintf "  Instance of `%s' \
                                 contains too many methods." k)
 
-  | NotAnInstance (pos, CName k, ty) ->
-    fatal' pos (Printf.sprintf "  Type\n  %s\n  is not an instance of \
-                                class `%s'." (string_of_type ty) k)
+  | NotAnInstance (pos, CName k, ty, CName k', t) ->
+    let detail = match t with
+      | Misc.Left (TName s) ->
+        Printf.sprintf
+          "  No instance of class `%s' declared for constructor `%s'." k' s
+      | Misc.Right (TName s) ->
+        Printf.sprintf
+          "  Could not deduce `%s %s'." k' s
+      | _ -> assert false
+    in
+    fatal' pos (Printf.sprintf
+                  "  Type\n  %s\n  is not an instance of class `%s'.\n%s"
+                  (string_of_type ty) k detail)
 
   | NotCanonicalConstraint(pos)  ->
     fatal' pos (Printf.sprintf "  Not a canonical form.")
