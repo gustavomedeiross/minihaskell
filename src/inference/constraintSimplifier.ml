@@ -3,6 +3,7 @@ open MultiEquation
 open Name
 
 (* TODO: Hashtbl? *)
+(* TODO: "environnement"? *)
 module Glob = Map.Make(struct type t = cname let compare = compare end )
 module Globeq = Map.Make(struct type t = cname*variable let compare = compare end)
 
