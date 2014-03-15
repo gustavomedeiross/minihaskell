@@ -47,8 +47,8 @@ let rec from_term_to_crterm x =
   let stru = variable_structure x in 
   match stru with 
   | Some(Var a)-> from_term_to_crterm a 
-  | Some(App(a,b))->TTerm(App(from_term_to_crterm a,
-                              from_term_to_crterm b))
+  | Some(App(a,b))->TTerm(from_term_to_crterm a,
+                              from_term_to_crterm b)
   | None -> TVariable(x);;(*Check that*)
 
 (** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]

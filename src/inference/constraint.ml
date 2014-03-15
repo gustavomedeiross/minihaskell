@@ -82,7 +82,7 @@ type tclass_constraint =
 
 let rec expand_term = function
   | App (l, r) ->
-    TTerm (map (fun v -> TVariable v ) (App (l, r)))
+    TTerm (TVariable l, TVariable r)
 
   | _ -> assert false
 
@@ -93,7 +93,9 @@ let rec expand_term_in_depth t =
     | None -> TVariable v
     | Some t -> expand_term_in_depth t
   in
-  TTerm (map expand t)
+  match t with
+  | App (l, r) -> TTerm (expand l, expand r)
+  | _ -> assert false
 
 let rec cposition = function
   | CTrue pos

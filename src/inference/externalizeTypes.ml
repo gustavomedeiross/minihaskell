@@ -206,12 +206,6 @@ let export is_type_scheme =
 
       | Var v ->
         export_variable visited v
-(*
-      | RowCons _
-      | RowUniform _ ->
-        (** Because we do not make use of rows in the source language. *)
-        assert false
-*)
     in export t
   in
   let prefix visited tvs () =
