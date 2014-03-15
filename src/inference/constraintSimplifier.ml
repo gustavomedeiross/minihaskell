@@ -91,7 +91,6 @@ let canonicalize pos pool k =
         @(refine_constraints list_recursivecall)
     in
     refine_constraints constr_on_var in
-  let build v a = assert(false) in
   let expand k =
     let nb_appli = ref 0 in
     let l =  List.map 
@@ -112,19 +111,13 @@ let canonicalize pos pool k =
              fresh_expansion
            with | Poney -> [(cn,x)]
                 | Not_found -> raise(UnboundClass(cn)) (*TODO : good*)
-        )
+  )
         k in (!nb_appli,l) in
   let rec expand_all k = match expand k with
     | (0,l)->List.flatten l
     | _,l -> expand_all (List.flatten l) in 
   let on_var = expand_all k in
   (*Perhaps it's useless to add variable to pool*)
-  let var = nup [] (List.flatten (List.map 
-                                    (fun x-> fst(Globeq.find x
-                                                   (!environnement_equi)))
-                                    on_var))  
-  in 
-  List.iter (fun x->register pool x) var; 
   refine_on_variables on_var
 
 
