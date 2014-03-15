@@ -280,6 +280,9 @@ let explode t =
     None -> Var v
   | Some t -> t
 
+let variable_kind v =
+  (UnionFind.find v).kind
+
 let variable_name v =
   (UnionFind.find v).name
 
@@ -301,7 +304,7 @@ let inhabitants p =
 let number p =
   p.number
 
-(** [variable()] returns a new variable, whose rank is [none]. *)
+(** [variable ()] returns a new variable, whose rank is [none]. *)
 let variable kind ?name ?structure ?pos () =
   let structure =
     match structure with

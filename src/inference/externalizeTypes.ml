@@ -256,6 +256,7 @@ let export_class_predicate pos (k, ty) =
     | _ -> []
 
 let canonicalize_class_predicates ts cps =
+(* TODO: UGLY *)
   let cps =
     List.filter (fun (ClassPredicate (_, t)) ->
         List.mem t ts
@@ -279,7 +280,7 @@ let canonicalize_class_predicates ts cps =
   in
   let remove_redundancy cs =
     let subsum (ClassPredicate (k1, v1)) (ClassPredicate (k2, v2)) =
-      v1 = v2 && ConstraintSimplifier.contains k1 k2 && k1 <> k2
+      v1 = v2 && ConstraintSimplifier.contains k2 k1 && k1 <> k2
     in
     List.(filter (fun c -> not (exists (subsum c) cs)) cs)
   in

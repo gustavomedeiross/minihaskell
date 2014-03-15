@@ -1,6 +1,5 @@
 GENERATED = parsing/parser.ml parsing/lexer.ml
 
-INTERFACE =
 MODULES =					\
   common/positions				\
   common/errors					\
@@ -21,7 +20,7 @@ MODULES =					\
   parsing/lexer					\
   parsing/ASTio					\
   inference/env					\
-  inference/inferenceExceptions			\
+  inference/inferenceExceptions \
   inference/kindInferencer			\
   inference/constraint				\
   inference/typingEnvironment			\
