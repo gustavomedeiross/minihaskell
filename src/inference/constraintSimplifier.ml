@@ -43,12 +43,12 @@ let unbuilt x = match x.structure with
   | Some (App(a,b)) -> (a,b)  
   | Some (Var(a))   -> raise Poney
 let rec from_term_to_crterm x =
-               let stru = variable_structure x in 
-               match stru with 
-               | Some(Var a)-> TVariable(a) 
-               | Some(App(a,b))->TTerm(App(from_term_to_crterm a,
-                                           from_term_to_crterm b))
-               | None -> TVariable(x);;(*Check that*)
+  let stru = variable_structure x in 
+  match stru with 
+  | Some(Var a)-> TVariable(a) 
+  | Some(App(a,b))->TTerm(App(from_term_to_crterm a,
+                              from_term_to_crterm b))
+  | None -> TVariable(x);;(*Check that*)
 
 (** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
     decomposes [c] into an equivalent constraint [c' =
@@ -107,11 +107,11 @@ let canonicalize pos pool k =
                List.map (fun (k', a) -> (k', List.assq a fresh_assoc)) a in
              List.iter (introduce pool) fresh_vars;
              let t = chop pool fresh_term in
-             Unifier.unify pos (register pool) x t;
+             Unifier.unify pos (introduce pool) x t;
              fresh_expansion
            with | Poney -> [(cn,x)]
                 | Not_found -> raise(UnboundClass(cn)) (*TODO : good*)
-  )
+        )
         k in (!nb_appli,l) in
   let rec expand_all k = match expand k with
     | (0,l)->List.flatten l
