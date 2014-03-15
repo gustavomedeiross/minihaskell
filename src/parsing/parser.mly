@@ -306,7 +306,8 @@ expression:
 | LBRACKET ts=tvname+ RBRACKET e=expression
 {
   if GAST.implicit then
-    Errors.fatal [$startpos; $endpos] "Syntax error"
+    Errors.fatal [$startpos; $endpos] "Syntax error. \
+    Explicit universal type quantification is forbidden."
   else
     EForall (lex_join $startpos $endpos, ts, e)
 }

@@ -268,13 +268,6 @@ and is_abstraction = function
   | ELambda _ -> true
   | _ -> false
 
-(* TODO: extension ?
- * - "7.2.1 RESTRICTIONS The restriction to types of the form K a in typing
- * contexts and class declarations, and to types of the form K (G a) in
- * instances are for simplicity. Generalizations are possible and discussed
- * later (7.4)"
- * *)
-
 (* Type well-formedness is taken care of by type-checking the elaborated
  * dictionary type declaration. In particular, it will catch unbound type
  * variables (a type class definition only binds one variable) *)
@@ -370,7 +363,6 @@ and elab_wf_type env xkind = function
     let t' = elab_tname t in
     let tys' = check_type_constructor_application pos env kt tys in
     TyApp (pos, t', tys');
-
 
 and check_type_constructor_application pos env k tys =
   match tys, k with
@@ -506,7 +498,7 @@ and expression env = function
     (e, primitive pos p)
 
 and eVar pos env x tys =
- (*Elaboration of identifiers, different cases depending on 
+ (*Elaboration of identifiers, different cases depending on
   if the symbol is a method, or a name of function ...*)
 
  let tys', qs, ty = type_application pos env x tys in

@@ -39,7 +39,7 @@ exception Inconsistency
 
 type tconstraint = Constraint.tconstraint
 
-type typing_context =  (cname * variable) list
+type typing_context = (cname * variable) list
 
 let rtrue = []
 let rconj c = List.flatten c
@@ -277,7 +277,7 @@ let solve env pool c =
       where c_j's are to be found among b_i's.
       This annotation must *entail* what is inferred *)
   let simplify pos pool given_p p =
-    let p = ConstraintSimplifier.canonicalize pos pool p in
+    let p = ConstraintSimplifier.simplify pos p in
     let p1, p2 = List.partition (fun (_, v) -> is_rigid v) p in
     begin
       ConstraintSimplifier.entails pos given_p p1;

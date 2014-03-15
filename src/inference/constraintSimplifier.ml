@@ -3,21 +3,21 @@ open InferenceTypes
 open MultiEquation
 open Name
 
-type constr = (cname * variable) list
+type typing_context = (cname * variable) list
 
-(** [Unsat] is raised if a canonical constraint C ≡ false. *)
-exception Unsat
+(** [Unsat (k, t)] is raised if a canonical constraint C ≡ false. *)
+exception Unsat of cname * tname
 
 (** [OverlappingInstances] is raised if two rules of kind (E) overlap. *)
-exception OverlappingInstances
+exception SOverlappingInstances
 
-(** [MultipleClassDefinitions k] is raised if two rules of kind (I)
+(** [MultipleClassDefinitions] is raised if two rules of kind (I)
     share the same goal. *)
-exception MultipleClassDefinitions
+exception SMultipleClassDefinitions
 
 (** [UnboundClass k] is raised if the type class [k] occurs in a
     constraint while it is undefined. *)
-exception UnboundClass
+exception SUnboundClass of cname
 
 (** [equivalences] contains a map for the (E) rules.
     [(k, t), [l_1 ; ... ; l_n]] is a binding in [equivalences] iff
@@ -34,13 +34,13 @@ let implications : (cname, cname list) Hashtbl.t = Hashtbl.create 111
 
 let existing_class k =
   if not (Hashtbl.mem implications k)
-  then raise UnboundClass
+  then raise (SUnboundClass k)
 
 (** [equivalent [b1 ; ... ; bN] k tc [(k_1,t_1) ; ... ; (k_N,t_N)]] registers
     a rule of the form (E). Where [tc] is the type constructor in
     [t = (b1, ..., bN) tc] *)
 let equivalent ts k t ps =
-  if Hashtbl.mem equivalences (k, t) then raise OverlappingInstances;
+  if Hashtbl.mem equivalences (k, t) then raise SOverlappingInstances;
   let rec factor ps = function
     | [] -> assert (ps = []); []
     | b :: bs -> Types.(
@@ -53,7 +53,7 @@ let equivalent ts k t ps =
 (** [add_implication k [k_1;...;k_N]] registers a rule of the form (E'). *)
 let add_implication k l =
   (* Ensures that the superclass order is acyclic *)
-  if Hashtbl.mem implications k then raise MultipleClassDefinitions;
+  if Hashtbl.mem implications k then raise SMultipleClassDefinitions;
   List.iter existing_class l;
   Hashtbl.add implications k l
 
@@ -73,9 +73,11 @@ let rec contains =
       Hashtbl.add superclass (k, k') b;
       b
 
-(*TODO: Description*)
-(** [entails pos C1 C2] returns true if the canonical constraint [C1] implies
-    the canonical constraint [C2]. *)
+(** [entails pos C1 C2] checks that the canonical constraint [C1] implies
+    the canonical constraint [C2].
+    Exceptions:
+      - InferenceExceptions.IrreduciblePredicate if that's not the case
+      - SUnboundClass *)
 let entails pos c1 c2 =
   List.iter
     (fun (k', v') ->
@@ -83,24 +85,25 @@ let entails pos c1 c2 =
                  (fun (k, v) ->
                     try
                       UnionFind.equivalent v v' && (k = k' || contains k k')
-                    with Not_found -> raise UnboundClass)
+                    with Not_found -> raise (SUnboundClass k))
                  c1)
        then raise (IrreduciblePredicate (pos, c1, k', v')))
     c2
 
-(*Canonicalize try to apply rules, to transform the constraint on one type to a constraint
-on variables. To apply a (E) rule is equivalent to delete exactly one type constructor.
-i.e k_1 t_1 , ... k_n t_n => k (C t) give for example :e
-k(C sometype) become k_1 sometype , .... k_n sometype. And we recursively try to
-destruct sometype, to expand k_i. *)
+(* Canonicalize try to apply rules, to transform the constraint on one type to
+ * a constraint on variables. To apply a (E) rule is equivalent to delete
+ * exactly one type constructor i.e k_1 t_1 , ... k_n t_n => k (C t) give
+ * for example :e k(C sometype) become k_1 sometype , .... k_n sometype.
+ *  And we recursively try to destruct sometype, to expand k_i. *)
 
-(** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
-    decomposes [c] into an equivalent constraint [c' =
-    [(k'_1,v_1);...;(k'_M,v_M)]], introducing the variables
-    [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
-    is equivalent to [false]. *)
-let canonicalize pos pool k =
-  let rec canonicalize1 k x =
+(** [simplify pos c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
+    [c] into an equivalent constraint [c' = [(k'_1,v_1);...;(k'_M,v_M)]] made
+    only of variables.
+    It raises [Unsat] if the given constraint is equivalent to [false].
+    (i.e. when no instance of a class exists for some type constructor) *)
+(* We explicitly deconstruct types, hence we don't use a [pool] argument *)
+let simplify pos k =
+  let rec simplify' k x =
     let rec aux x acc =
       match variable_structure x with
       | Some (App (a, b)) -> aux a (b :: acc)
@@ -111,19 +114,21 @@ let canonicalize pos pool k =
           let tycon = match variable_name x with
             | Some n -> n
             | None -> assert false in
-          let equi = Hashtbl.find equivalences (k, tycon) in
-          let canon =
+          let equi =
+            try
+              Hashtbl.find equivalences (k, tycon)
+            with Not_found -> raise (Unsat (k, tycon)) in
+          let simple =
             List.map2
               (fun ks y ->
-                 List.(flatten (map (fun k -> canonicalize1 k y) ks)))
+                 List.(flatten (map (fun k -> simplify' k y) ks)))
               equi
               acc
           in
-          List.(flatten canon)
+          List.(flatten simple)
         | Flexible
         | Rigid -> assert (acc = []); [k, x]
     in aux x []
   in
-  try
-    List.(flatten (map (fun (k, x) -> canonicalize1 k x) k))
-  with Not_found -> raise Unsat
+  List.(flatten (map (fun (k, x) -> simplify' k x) k))
+

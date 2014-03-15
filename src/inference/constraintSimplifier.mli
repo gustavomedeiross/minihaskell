@@ -12,21 +12,21 @@ open Positions
 open Name
 open MultiEquation
 
-type constr = (cname * variable) list
+type typing_context = (cname * variable) list
 
-(** [Unsat] is raised if a canonical constraint C ≡ false. *)
-exception Unsat
+(** [Unsat (k, t)] is raised if a canonical constraint C ≡ false. *)
+exception Unsat of cname * tname
 
 (** [OverlappingInstances] is raised if two rules of kind (E) overlap. *)
-exception OverlappingInstances
+exception SOverlappingInstances
 
-(** [MultipleClassDefinitions k] is raised if two rules of kind (I)
+(** [MultipleClassDefinitions] is raised if two rules of kind (I)
     share the same goal. *)
-exception MultipleClassDefinitions
+exception SMultipleClassDefinitions
 
 (** [UnboundClass k] is raised if the type class [k] occurs in a
     constraint while it is undefined. *)
-exception UnboundClass
+exception SUnboundClass of cname
 
 (** [equivalent [b1 ; ... ; bN] k t [(k_1,t_1) ; ... ; (k_N,t_N)]] registers
     a rule of the form (E). *)
@@ -48,10 +48,11 @@ val entails
 val contains
   : cname -> cname -> bool
 
-(** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
-    [c] into an equivalent constraint [c' = [(k'_1,v_1);...;(k'_M,v_M)]],
-    introducing the variables [v_1;...;v_M] in [pool].
-    It raises [Unsat] if the given constraint is equivalent to [false]. *)
-val canonicalize
-  : position -> pool -> constr -> constr
+(** [simplify pos c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
+    [c] into an equivalent constraint [c' = [(k'_1,v_1);...;(k'_M,v_M)]] made
+    only of variables.
+    It raises [Unsat] if the given constraint is equivalent to [false].
+    (i.e. when no instance of a class exists for some type constructor) *)
+val simplify
+  : position -> typing_context -> typing_context
 

@@ -537,14 +537,13 @@ let infer_class tenv ({ class_position = pos ;
                         class_name     = k   } as c) =
   (* A class definition [class K_1 'a, ..., K_n 'a => K 'a { ... }]
    * introduces an implication K 'a => K_1 'a /\ ... /\ K_n 'a *)
-  begin
+  ConstraintSimplifier.(
     try
-      ConstraintSimplifier.add_implication k c.superclasses;
+      add_implication k c.superclasses;
     with
-    | ConstraintSimplifier.UnboundClass -> raise (UnboundClass (pos, k))
-    | ConstraintSimplifier.MultipleClassDefinitions ->
-        raise (MultipleClassDefinitions (pos, k))
-  end;
+    | SUnboundClass k -> raise (UnboundClass (pos, k))
+    | SMultipleClassDefinitions ->
+        raise (MultipleClassDefinitions (pos, k)));
 
   (* Introduce type variable 'a (class parameter) *)
   let rq, rtenv = fresh_rigid_vars pos tenv [c.class_parameter] in
@@ -578,12 +577,14 @@ let infer_instance tenv ({ instance_position       = pos ;
    * [instance K_1 'a_1, ..., K_n 'a_n => K ('a_1, ..., 'a_n) cons { ... }]
    * introduces an equivalence
    * K_1 'a_1, ..., K_n 'a_n <=> K ('a_1, ..., 'a_n) cons *)
-  begin
+  ConstraintSimplifier.(
     try
-      ConstraintSimplifier.equivalent ts k i ps;
-    with ConstraintSimplifier.OverlappingInstances ->
+      equivalent ts k i ps;
+    with
+    | SOverlappingInstances ->
       raise (OverlappingInstances (pos, k, i))
-  end;
+    | SUnboundClass k ->
+        raise (UnboundClass (pos, k)));
 
   let rs, rtenv = fresh_rigid_vars pos tenv ts in
   let tenv' = add_type_variables rtenv tenv in
