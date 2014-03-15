@@ -92,6 +92,7 @@ type 'a arterm =
   | TVariable of 'a
   | TTerm of ('a arterm) term
 
+
 let rec iter f = function
   (* | RowCons (_, hd, tl) ->
      f hd; f tl

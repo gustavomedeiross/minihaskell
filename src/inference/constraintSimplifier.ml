@@ -29,18 +29,12 @@ exception MultipleClassDefinitions of tname
     constraint while it is undefined. *)
 exception UnboundClass of cname
 
-(** Student! This is your job! You must implement the following functions: *)
 
 (** [equivalent [b1;..;bN] k t [(k_1,t_1);...;(k_N,t_N)]] registers
     a rule of the form (E). *)
 let equivalent l k t lc = 
   environnement_equi := Globeq.add (k,t) (l,lc) (!environnement_equi) 
 
-(** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
-    decomposes [c] into an equivalent constraint [c' =
-    [(k'_1,v_1);...;(k'_M,v_M)]], introducing the variables
-    [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
-    is equivalent to [false]. *)
 (*TODO raise Unsat *)
 
 let unbuilt x = match x.structure with
@@ -48,6 +42,11 @@ let unbuilt x = match x.structure with
   | Some (App(a,b)) -> (a,b)  
   | Some (Var(a))   -> raise Poney
 
+(** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
+    decomposes [c] into an equivalent constraint [c' =
+    [(k'_1,v_1);...;(k'_M,v_M)]], introducing the variables
+    [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
+    is equivalent to [false]. *)
 let canonicalize pos pool k =
   let rec nup final = function
     | [] -> final
@@ -84,45 +83,47 @@ let canonicalize pos pool k =
         @(refine_constraints list_recursivecall)
     in
     refine_constraints constr_on_var in
-
-  let rec adapt_constraints l1 l2 = match l1,l2 with 
-    | [],[] -> []
-    | ((cn,types) :: q), t::r  -> (cn, t) :: (adapt_constraints q r)  
-    | _,_ -> assert(false)
-  in
-
+  let build v a = assert(false) in
   let expand k =
     let nb_appli = ref 0 in
     let l =  List.map 
         (fun (cn,x) ->
            try 
              let (cstruc,sometype) = unbuilt (UnionFind.find x) in
-             (*TODO : Need to replace variable by sometype in a*)
-             (*With sometype and UnionFind.fresh *) 
-             let i_args =  assert(false) in
-             (*Extract i-th type in n-uplet of sometype*)
              incr nb_appli;
-             let (v,a) = Globeq.find (cn,cstruc) (!environnement_equi) 
-             in
-             adapt_constraints a i_args
-           with Poney -> [(cn,x)]
-<<<<<<< HEAD
-              | Not_found -> raise(UnboundClass(TName("Pipo"))) (*TODO : good
-                                                                  error*) 
-=======
-             | Not_found -> raise(UnboundClass(cn)) (*TODO : good
-error*) 
->>>>>>> 6df10c0f70d503ef99b802ba59d4347289cc940c
+             let (v,a) = Globeq.find (cn,cstruc) (!environnement_equi) in
+             let rec from_term_to_crterm x =
+               let stru = variable_structure x in 
+               match stru with 
+               | Some(Var a)-> TVariable(a) 
+               | Some(App(a,b))->TTerm(App(from_term_to_crterm a,
+                                           from_term_to_crterm b))
+               | None -> raise(Not_found) (*This error*)
+             in 
+
+             let term = from_term_to_crterm x in 
+             let fresh_vars = List.map (fun _ -> variable Flexible ()) v in
+             let fresh_assoc = List.combine v fresh_vars in
+             let fresh_term = change_arterm_vars fresh_assoc term
+             and fresh_expansion =
+               List.map (fun (k', a) -> (k', List.assq a fresh_assoc)) a in
+             List.iter (introduce pool) fresh_vars;
+             let t = chop pool fresh_term in
+             Unifier.unify pos (register pool) cstruc t;
+             fresh_expansion
+           with | Poney -> [(cn,x)]
+                | Not_found -> raise(UnboundClass(cn)) (*TODO : good*)
         )
         k in (!nb_appli,l) in
   let rec expand_all k = match expand k with
     | (0,l)->List.flatten l
     | _,l -> expand_all (List.flatten l) in 
-  let on_var = expand_all k in 
+  let on_var = expand_all k in
+  (*Perhaps it's useless to add variable to pool*)
   let var = nup [] (List.flatten (List.map 
                                     (fun x-> fst(Globeq.find x
                                                    (!environnement_equi)))
-                                    on_var))
+                                    on_var))  
   in 
   List.iter (fun x->register pool x) var; 
   refine_on_variables on_var
@@ -145,14 +146,14 @@ let entails c1 c2 =
   let rec w_is_superclass k k' =
     k = k' || List.exists (w_is_superclass k) (Glob.find k' !environnement)
   in
-    List.for_all
-      (fun (k', v') -> List.exists
-          (fun (k, v) ->
-             try
-               UnionFind.equivalent v v' && w_is_superclass k' k
-             with Not_found -> raise (UnboundClass k))
-          c1)
-      c2
+  List.for_all
+    (fun (k', v') -> List.exists
+        (fun (k, v) ->
+           try
+             UnionFind.equivalent v v' && w_is_superclass k' k
+           with Not_found -> raise (UnboundClass k))
+        c1)
+    c2
 
 (** [contains k1 k2] *)
 let contains k1 k2 =
