@@ -41,6 +41,13 @@ let unbuilt x = match x.structure with
   | None            -> raise Poney  
   | Some (App(a,b)) -> (a,b)  
   | Some (Var(a))   -> raise Poney
+let rec from_term_to_crterm x =
+               let stru = variable_structure x in 
+               match stru with 
+               | Some(Var a)-> TVariable(a) 
+               | Some(App(a,b))->TTerm(App(from_term_to_crterm a,
+                                           from_term_to_crterm b))
+               | None -> TVariable(x);;(*Check that*)
 
 (** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
     decomposes [c] into an equivalent constraint [c' =
@@ -92,15 +99,6 @@ let canonicalize pos pool k =
              let (cstruc,sometype) = unbuilt (UnionFind.find x) in
              incr nb_appli;
              let (v,a) = Globeq.find (cn,cstruc) (!environnement_equi) in
-             let rec from_term_to_crterm x =
-               let stru = variable_structure x in 
-               match stru with 
-               | Some(Var a)-> TVariable(a) 
-               | Some(App(a,b))->TTerm(App(from_term_to_crterm a,
-                                           from_term_to_crterm b))
-               | None -> raise(Not_found) (*This error*)
-             in 
-
              let term = from_term_to_crterm x in 
              let fresh_vars = List.map (fun _ -> variable Flexible ()) v in
              let fresh_assoc = List.combine v fresh_vars in
@@ -109,7 +107,7 @@ let canonicalize pos pool k =
                List.map (fun (k', a) -> (k', List.assq a fresh_assoc)) a in
              List.iter (introduce pool) fresh_vars;
              let t = chop pool fresh_term in
-             Unifier.unify pos (register pool) cstruc t;
+             Unifier.unify pos (register pool) x t;
              fresh_expansion
            with | Poney -> [(cn,x)]
                 | Not_found -> raise(UnboundClass(cn)) (*TODO : good*)

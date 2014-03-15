@@ -375,7 +375,7 @@ let solve env pool c =
             IntRank.compare desc.rank IntRank.none = 0)
           (inhabitants pool')
       in
-      let canonical = (*ConstraintSimplifier.canonicalize pos pool*) solved_p in
+      let canonical = ConstraintSimplifier.canonicalize pos pool solved_p in
       let p1, p2 =
         List.(partition
                 (fun (_, v) ->
