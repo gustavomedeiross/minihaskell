@@ -1,55 +1,92 @@
+open InferenceExceptions
 open InferenceTypes 
 open MultiEquation
 open Name
 
-(* TODO: Hashtbl? *)
-(* TODO: "environnement"? *)
-module Glob = Map.Make(struct type t = cname let compare = compare end )
-module Globeq = Map.Make(struct type t = cname*variable let compare = compare end)
-
-(** [environnement] contains a map from [tname] to [tname list]:
-    the (E') rules *)
-let environnement = ref Glob.empty
-
-(** [environnement_equi] contains a map for the (E) rules*)
-
-let environnement_equi = ref Globeq.empty
+type constr = (cname * variable) list
 
 (** [Unsat] is raised if a canonical constraint C ≡ false. *)
 exception Unsat
-exception Poney
 
 (** [OverlappingInstances] is raised if two rules of kind (E) overlap. *)
-exception OverlappingInstances of tname * variable
+exception OverlappingInstances
 
 (** [MultipleClassDefinitions k] is raised if two rules of kind (I)
     share the same goal. *)
-exception MultipleClassDefinitions of tname
+exception MultipleClassDefinitions
 
 (** [UnboundClass k] is raised if the type class [k] occurs in a
     constraint while it is undefined. *)
-exception UnboundClass of cname
+exception UnboundClass
 
+(** [equivalences] contains a map for the (E) rules.
+    [(k, t), [l_1 ; ... ; l_n]] is a binding in [equivalences] iff
+    there is an instance of class [k] for the type [(b_1, ..., b_n) t]
+    in the typing context which consists of [(k_i_j b_i)], for all [j] and [i],
+    where [[k_i_1 ; ... k_i_m] = l_i] *)
+let equivalences : (cname * tname, cname list list) Hashtbl.t =
+  Hashtbl.create 222
 
-(** [equivalent [b1;..;bN] k t [(k_1,t_1);...;(k_N,t_N)]] registers
-    a rule of the form (E). *)
-let equivalent l k t lc = 
-  environnement_equi := Globeq.add (k,t) (l,lc) (!environnement_equi) 
+(** [implications] contains the (E') rules.
+    [(k, [k_1 ; ... ; k_n])] is a binding in [implications] iff
+    [k_i] are superclasses of [k]. *)
+let implications : (cname, cname list) Hashtbl.t = Hashtbl.create 111
 
-(*TODO raise Unsat *)
+let existing_class k =
+  if not (Hashtbl.mem implications k)
+  then raise UnboundClass
 
-let unbuilt x = match x.structure with
-  | None            -> raise Poney  
-  | Some (App(a,b)) -> (a,b)  
-  | Some (Var(a))   -> (a,a) (*We can forgot the second*)
+(** [equivalent [b1 ; ... ; bN] k tc [(k_1,t_1) ; ... ; (k_N,t_N)]] registers
+    a rule of the form (E). Where [tc] is the type constructor in
+    [t = (b1, ..., bN) tc] *)
+let equivalent ts k t ps =
+  if Hashtbl.mem equivalences (k, t) then raise OverlappingInstances;
+  let rec factor ps = function
+    | [] -> assert (ps = []); []
+    | b :: bs -> Types.(
+        let p1, p2 = List.partition (fun (ClassPredicate (_, b')) -> b = b') ps
+        in
+        List.map (fun (ClassPredicate (k,_)) -> k) p1 :: factor p2 bs)
+  in
+  Hashtbl.add equivalences (k, t) (factor ps ts)
 
-let rec from_term_to_crterm x =
-  let stru = variable_structure x in 
-  match stru with 
-  | Some(Var a)-> from_term_to_crterm a 
-  | Some(App(a,b))->TTerm(App(from_term_to_crterm a,
-                              from_term_to_crterm b))
-  | None -> TVariable(x);;(*Check that*)
+(** [add_implication k [k_1;...;k_N]] registers a rule of the form (E'). *)
+let add_implication k l =
+  (* Ensures that the superclass order is acyclic *)
+  if Hashtbl.mem implications k then raise MultipleClassDefinitions;
+  List.iter existing_class l;
+  Hashtbl.add implications k l
+
+(** [contains k k'] iff k => k', in other words: k' is a superclass of k *)
+let rec contains =
+  (** If [((k, k'), b)] is a binding then [b] <=> [contains k k']
+   * (i.e. k' is a superclass of k) *)
+  let superclass : (cname * cname, bool) Hashtbl.t = Hashtbl.create 333 in
+  fun k k' ->
+    try
+      Hashtbl.find superclass (k, k')
+    with Not_found ->
+      let b =
+        List.exists
+          (fun k -> k = k' || contains k k')
+          (Hashtbl.find implications k) in
+      Hashtbl.add superclass (k, k') b;
+      b
+
+(*TODO: Description*)
+(** [entails pos C1 C2] returns true if the canonical constraint [C1] implies
+    the canonical constraint [C2]. *)
+let entails pos c1 c2 =
+  List.iter
+    (fun (k', v') ->
+       if not (List.exists
+                 (fun (k, v) ->
+                    try
+                      UnionFind.equivalent v v' && (k = k' || contains k k')
+                    with Not_found -> raise UnboundClass)
+                 c1)
+       then raise (IrreduciblePredicate (pos, c1, k', v')))
+    c2
 
 (** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
     decomposes [c] into an equivalent constraint [c' =
@@ -62,99 +99,30 @@ i.e k_1 t_1 , ... k_n t_n => k (C t) give that for example
 k(C sometype) become k_1 sometype , .... k_n sometype. And we recursively try to
 destruct sometype, to expand k_i. *)
 let canonicalize pos pool k =
-  let rec nup final = function
-    | [] -> final
-    | t::q -> if List.mem t final 
-      then nup final q 
-      else nup (t::final) q in
-
-  let refine_on_variables constr_on_var =   
-    let rec refine_on_one_variable l =
-      let l = nup [] l in (*Eliminate duplicates*)
-      let rec delete_superclasses final = function
-        | [] -> final
-        | ((cl,var) :: q) as l -> if List.exists (fun (k,v)-> let super = try Glob.find
-                                                                                k
-                                                                                (!environnement) with
-                                                   _->raise Poney in
-                                                   List.mem cl super
-                                                 ) l 
-          then 
-            delete_superclasses final q
-          else
-            delete_superclasses ((cl,var)::final) q
-      in
-      delete_superclasses [] l in 
-    let rec refine_constraints = function
-      | [] -> []   
-      | ((k_1,v_1) :: q ) as l-> 
-        let (class_on_this_variable,list_recursivecall) = 
-          List.partition 
-            (fun (k,v) -> v = v_1)  
-            l        
-        in  
-        (refine_on_one_variable class_on_this_variable)
-        @(refine_constraints list_recursivecall)
-    in
-    refine_constraints constr_on_var in
-  let expand k =
-    let nb_appli = ref 0 in
-    let l =  List.map 
-        (fun (cn,x) ->
-           try 
-             let (cstruc,sometype) = unbuilt (UnionFind.find x) in
-             incr nb_appli;
-             let (v,a) = Globeq.find (cn,cstruc) (!environnement_equi) in
-             let term = from_term_to_crterm x in 
-             let fresh_vars = List.map (fun _ -> variable Flexible ()) v in
-             let fresh_assoc = List.combine v fresh_vars in
-             let fresh_term = change_arterm_vars fresh_assoc term
-             and fresh_expansion =
-               List.map (fun (k', a) -> (k', List.assq a fresh_assoc)) a in
-             List.iter (introduce pool) fresh_vars;
-             let t = chop pool fresh_term in
-             Unifier.unify pos (introduce pool) x t;
-             fresh_expansion
-           with | Poney -> [(cn,x)]
-                | Not_found -> raise(UnboundClass(cn)) (*TODO : good*)
-        )
-        k in (!nb_appli,l) in
-  let rec expand_all k = match expand k with
-    | (0,l)->List.flatten l
-    | _,l -> expand_all (List.flatten l) in 
-  let on_var = expand_all k in
-  (*Perhaps it's useless to add variable to pool*)
-  refine_on_variables on_var
-
-
-
-
-(** [add_implication k [k_1;...;k_N]] registers a rule of the form
-    (E'). *)
-let add_implication  k l = 
-  (* TODO: Check that classes in l have been bound already.
-   * Ensures that the superclass order is acyclic *)
-  environnement := Glob.add k l (!environnement) 
-
-(** [entails C1 C2] returns true if the canonical constraint [C1] implies
-    the canonical constraint [C2]. *)
-let entails c1 c2 =
-  (** [w_is_superclass k1 k2] returns true if k1 = k2 (weak order)
-   *  or if k1 is a superclass of k2. *)
-  let rec w_is_superclass k k' =
-    k = k' || List.exists (w_is_superclass k) (Glob.find k' !environnement)
+  let rec canonicalize1 k x =
+    let rec aux x acc =
+      match variable_structure x with
+      | Some (App (a, b)) -> aux a (b :: acc)
+      | Some (Var a)      -> aux a acc
+      | None              ->
+        match variable_kind x with
+        | Constant ->
+          let tycon = match variable_name x with
+            | Some n -> n
+            | None -> assert false in
+          let equi = Hashtbl.find equivalences (k, tycon) in
+          let canon =
+            List.map2
+              (fun ks y ->
+                 List.(flatten (map (fun k -> canonicalize1 k y) ks)))
+              equi
+              acc
+          in
+          List.(flatten canon)
+        | Flexible
+        | Rigid -> assert (acc = []); [k, x]
+    in aux x []
   in
-  List.for_all
-    (fun (k', v') -> List.exists
-        (fun (k, v) ->
-           try
-             UnionFind.equivalent v v' && w_is_superclass k' k
-           with Not_found -> raise (UnboundClass k))
-        c1)
-    c2
-
-(** [contains k1 k2] *)
-let contains k1 k2 =
-  let v = variable Rigid () in
-  entails [(k2, v)] [(k1, v)]
-
+  try
+    List.(flatten (map (fun (k, x) -> canonicalize1 k x) k))
+  with Not_found -> raise Unsat

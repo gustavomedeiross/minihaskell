@@ -12,43 +12,46 @@ open Positions
 open Name
 open MultiEquation
 
+type constr = (cname * variable) list
+
 (** [Unsat] is raised if a canonical constraint C ≡ false. *)
 exception Unsat
 
 (** [OverlappingInstances] is raised if two rules of kind (E) overlap. *)
-exception OverlappingInstances of tname * variable
+exception OverlappingInstances
 
 (** [MultipleClassDefinitions k] is raised if two rules of kind (I)
     share the same goal. *)
-exception MultipleClassDefinitions of tname
+exception MultipleClassDefinitions
 
 (** [UnboundClass k] is raised if the type class [k] occurs in a
     constraint while it is undefined. *)
-exception UnboundClass of cname
+exception UnboundClass
 
-(** [equivalent [b1;..;bN] k t [(k_1,t_1);...;(k_N,t_N)]] registers
+(** [equivalent [b1 ; ... ; bN] k t [(k_1,t_1) ; ... ; (k_N,t_N)]] registers
     a rule of the form (E). *)
 val equivalent
-  : variable list -> cname -> variable -> (cname * variable) list -> unit
+  : tname list -> cname -> tname -> Types.class_predicate list -> unit
 
-(** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]]
-    decomposes [c] into an equivalent constraint [c' =
-    [(k'_1,v_1);...;(k'_M,v_M)]], introducing the variables
-    [v_1;...;v_M] in [pool]. It raises [Unsat] if the given constraint
-    is equivalent to [false]. *)
-val canonicalize
-  : position -> pool -> (cname * variable) list -> (cname * variable) list
-
-(** [add_implication k [k_1;...;k_N]] registers a rule of the form
-    (E'). *)
+(** [add_implication k [k_1;...;k_N]] registers a rule of the form (E'). *)
 val add_implication
   : cname -> cname list -> unit
 
+      (*TODO: Description*)
 (** [entails C1 C2] returns true is the canonical constraint [C1] implies
     the canonical constraint [C2]. *)
 val entails
-  : (cname * variable) list -> (cname * variable) list -> bool
+  : Positions.position -> (cname * variable) list -> (cname * variable) list
+  -> unit
 
-(** [contains k1 k2] *)
+(** [contains k k'] iff k' is a superclass of k *)
 val contains
   : cname -> cname -> bool
+
+(** [canonicalize pos pool c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
+    [c] into an equivalent constraint [c' = [(k'_1,v_1);...;(k'_M,v_M)]],
+    introducing the variables [v_1;...;v_M] in [pool].
+    It raises [Unsat] if the given constraint is equivalent to [false]. *)
+val canonicalize
+  : position -> pool -> constr -> constr
+

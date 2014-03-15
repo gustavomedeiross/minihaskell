@@ -200,6 +200,7 @@ let intern_data_constructor (TName adt_name) env_info dcon_info =
   let ityp = InternalizeTypes.intern pos tenv' typ in
   if not (is_regular_datacon_scheme tenv rqs ityp) then
     raise (InvalidDataConstructorDefinition (pos, DName dname));
+  (* Unused *)
   let v = variable ~structure:ityp Flexible () in
   ((add_data_constructor tenv (DName dname)
       (InternalizeTypes.arity typ, rqs, ityp)),
@@ -536,7 +537,14 @@ let infer_class tenv ({ class_position = pos ;
                         class_name     = k   } as c) =
   (* A class definition [class K_1 'a, ..., K_n 'a => K 'a { ... }]
    * introduces an implication K 'a => K_1 'a /\ ... /\ K_n 'a *)
-  ConstraintSimplifier.add_implication k c.superclasses;
+  begin
+    try
+      ConstraintSimplifier.add_implication k c.superclasses;
+    with
+    | ConstraintSimplifier.UnboundClass -> raise (UnboundClass (pos, k))
+    | ConstraintSimplifier.MultipleClassDefinitions ->
+        raise (MultipleClassDefinitions (pos, k))
+  end;
 
   (* Introduce type variable 'a (class parameter) *)
   let rq, rtenv = fresh_rigid_vars pos tenv [c.class_parameter] in
@@ -561,26 +569,31 @@ let infer_class tenv ({ class_position = pos ;
   add_class tenv c,
   fun c -> CLet ([scheme], c)
 
-let infer_instance tenv ({ instance_position   = pos ;
-                           instance_class_name = k   ;
-                           instance_parameters = ts  } as ti) =
+let infer_instance tenv ({ instance_position       = pos ;
+                           instance_parameters     = ts  ;
+                           instance_typing_context = ps  ;
+                           instance_class_name     = k   ;
+                           instance_index          = i   } as ti) =
   (* An instance definition
    * [instance K_1 'a_1, ..., K_n 'a_n => K ('a_1, ..., 'a_n) cons { ... }]
    * introduces an equivalence
    * K_1 'a_1, ..., K_n 'a_n <=> K ('a_1, ..., 'a_n) cons *)
+  begin
+    try
+      ConstraintSimplifier.equivalent ts k i ps;
+    with ConstraintSimplifier.OverlappingInstances ->
+      raise (OverlappingInstances (pos, k, i))
+  end;
+
   let rs, rtenv = fresh_rigid_vars pos tenv ts in
   let tenv' = add_type_variables rtenv tenv in
 
-  let t = match typcon_variable ?pos:(Some pos) tenv ti.instance_index with
-    | TVariable v -> v
-    | TTerm _ -> assert false in
-  let ps =
+  let ps' =
     List.map
       (fun (ClassPredicate (k, v)) -> k, proj2_3 (List.assoc v rtenv))
-      ti.instance_typing_context in
-  ConstraintSimplifier.equivalent rs k t ps;
+      ps in
 
-  let itype = Types.cons_type ti.instance_index ts in
+  let itype = Types.cons_type i ts in
   let ms = lookup_class pos tenv k itype in
 
   let infer_method acc (RecordBinding (m, e)) =
@@ -593,7 +606,7 @@ let infer_instance tenv ({ instance_position   = pos ;
     acc ^ infer_expr tenv' e ty'
   in
 
-  let scheme = Scheme (pos, rs, [], ps, CTrue pos, StringMap.empty) in
+  let scheme = Scheme (pos, rs, [], ps', CTrue pos, StringMap.empty) in
 
   tenv,
   fun c ->

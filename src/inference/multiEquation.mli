@@ -86,6 +86,8 @@ val is_structured : variable -> bool
     multi-equation. *)
 val are_equivalent : variable -> variable -> bool
 
+val variable_kind : variable -> variable_kind
+
 (** [variable_name v] returns the name of [v] if it exists. *)
 val variable_name : variable -> tname option
 

@@ -23,10 +23,8 @@
 (** This module implements a core algebra of first order terms.
 
     The type core algebra contains all the first order terms built using
-    the following four symbols:
+    the following two symbols:
 
-    [RowCons] is the row constructor which appends a label to a row.
-    [RowUniform] denotes the row which maps every label to a particular term.
     [App] is the application of a type to another type.
     [Var] is a type variable.
 
@@ -35,46 +33,11 @@
 
 open Name
 
-(*
-(** The universe of row labels. This is an ordered, printable
-    abstract type [t]. The ordering is used during unification, see
-    {!Unifier}. The ability to print row labels is used during
-    pretty printing. *)
-module RowLabel : sig
-  (** This module maintains a global mapping from identifiers to
-      abstract ``labels'', which are internally represented as
-      integers, and back. *)
-
-  type t
-
-  (** [compare x y] is a total ordering. It returns a negative integer
-      if [x] is less than [y], 0 if [x] and [y] are equal, and a
-      positive integer if [x] is greater than [y]. *)
-  val compare: t -> t -> int
-
-  (** [import s] associates a unique label with the identifier [s],
-      possibly extending the global mapping if [s] was never encountered
-      so far. Thus, if [s] and [t] are equal strings, possibly allocated
-      in different memory locations, [import s] and [import t] return
-      the same label. The identifier [s] is recorded and may be later
-      recovered via [export]. *)
-  val import: lname -> t
-
-  (** [export i] provides access to the inverse of the global mapping,
-      that is, associates a unique identifier with every label. The
-      identifier associated with a label is the one originally supplied
-      to [import]. *)
-  val export: t -> lname
-end
-*)
-
 (** {3 Type as tree} *)
 
 (** Terms whose parameters are of type ['a]. This data structure
     represents a tree whose depth is exactly equal to 1. *)
 type 'a term =
-  (*  | RowCons of RowLabel.t * 'a * 'a
-      | RowUniform of 'a*)
   | App of 'a * 'a
   | Var of 'a
 
@@ -82,7 +45,9 @@ type 'a term =
     [arterm] stands for ``abstract recursive term''. *)
 type 'a arterm =
   | TVariable of 'a
-  | TTerm of ('a arterm) term
+  | TTerm of 'a arterm * 'a arterm
+  (* previously ('a arterm term)... Doesn't make sense in the absence of
+   * record subtyping *)
 
 (** {3 Usual higher order functions} *)
 
@@ -112,15 +77,3 @@ val gen_change_arterm_vars : ('a * 'a arterm) list -> 'a arterm -> 'a arterm
 (** [app t ts] built the term corresponding to the [(...((t t0) t1)... tn)]. *)
 val app : 'a arterm -> 'a arterm list -> 'a arterm
 
-(** [uniform t] returns the row type that maps any label to [t]. *)
-(*
-USELESS FUNCTIONS
-
-val uniform : 'a arterm -> 'a arterm
-
-(** [rowcons l t r] returns the row type [(l: t; r)]. *)
-val rowcons : lname -> 'a arterm -> 'a arterm -> 'a arterm
-
-(** [n_rowcons l ts r] returns the row type [(l0: t0; ...; ln: tn; r)]. *)
-val n_rowcons : (lname * 'a arterm) list -> 'a arterm -> 'a arterm
-*)

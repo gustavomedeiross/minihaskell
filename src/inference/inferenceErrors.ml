@@ -95,18 +95,21 @@ let handle_error print_variable p =
                  "  Class `%s' is unbound."
                  x)
 
-  | InferenceExceptions.MultipleClassDefinitions (pos, TName x) ->
+  | InferenceExceptions.MultipleClassDefinitions (pos, CName x) ->
     fatal pos (Printf.sprintf
                  "  Class `%s' is defined several times."
                  x)
 
-  | InferenceExceptions.OverlappingInstances (pos, TName x, v) ->
+  | InferenceExceptions.OverlappingInstances (pos, CName k, TName t) ->
     fatal pos (Printf.sprintf
                  "  Class `%s' has two instances on head symbol `%s'."
-                 x (print_variable pos v))
+                 k t)
 
   | ExternalizeTypes.RecursiveType pos ->
     fatal pos (Printf.sprintf "  Type error.")
 
-  | InferenceExceptions.IrreduciblePredicate pos ->
-      fatal pos (Printf.sprintf "  Could not deduce from context.")
+  | InferenceExceptions.IrreduciblePredicate (pos, ps, CName k, v) ->
+    let typctx = String.concat ", "
+        (List.map (fun (CName k, v) -> k ^ (print_variable pos v)) ps) in
+    fatal pos (Printf.sprintf "  Could not deduce [%s %s] from context [%s]"
+                 k (print_variable pos v) typctx)

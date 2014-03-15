@@ -247,11 +247,12 @@ let rec chop pool = function
   | TVariable v ->
     v
 
-  | TTerm term ->
+  | TTerm (u, v) ->
+    let chop = chop pool in
     let v =
       UnionFind.fresh
         { (* TEMPORARY invoquer une fonction de c'reation dans Unifier? *)
-          structure = Some (map (chop pool) term);
+          structure = Some (App (chop u, chop v));
           rank = pool.number;
           mark = Mark.none;
           kind = Flexible;
@@ -279,6 +280,9 @@ let explode t =
     None -> Var v
   | Some t -> t
 
+let variable_kind v =
+  (UnionFind.find v).kind
+
 let variable_name v =
   (UnionFind.find v).name
 
@@ -300,7 +304,7 @@ let inhabitants p =
 let number p =
   p.number
 
-(** [variable()] returns a new variable, whose rank is [none]. *)
+(** [variable ()] returns a new variable, whose rank is [none]. *)
 let variable kind ?name ?structure ?pos () =
   let structure =
     match structure with

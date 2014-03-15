@@ -102,7 +102,7 @@ let mkunit tenv =
 
 let arrow tenv t u =
   let v = symbol tenv (TName "->") in
-  TTerm (App (TTerm (App (v, t)), u))
+  TTerm (TTerm (v, t), u)
 
 let n_arrows tenv =
   List.fold_left (fun acu x -> arrow tenv acu x)
@@ -110,7 +110,7 @@ let n_arrows tenv =
 let result_type tenv =
   let a = symbol tenv (TName "->") in
   let rec result_type = function
-    | TTerm (App (TTerm (App (v, t)), u)) when v = a -> result_type u
+    | TTerm (TTerm (v, t), u) when v = a -> result_type u
     | u -> u
   in
   result_type
@@ -118,19 +118,19 @@ let result_type tenv =
 let arg_types tenv =
   let a = symbol tenv (TName "->") in
   let rec arg_types = function
-    | TTerm (App (TTerm (App (v, t)), u)) when v = a -> t :: arg_types u
+    | TTerm (TTerm (v, t), u) when v = a -> t :: arg_types u
     | x -> []
   in
   arg_types
 
 let tycon_args t =
   let rec chop acu = function
-    | TTerm (App (t, u)) -> chop (u :: acu) t
+    | TTerm (t, u) -> chop (u :: acu) t
     | _ -> acu
   in
   chop [] t
 
 let rec tycon_name = function
-  | TTerm (App (u, _)) -> tycon_name u
+  | TTerm (u, _) -> tycon_name u
   | TVariable v as t -> t
   | _ -> assert false

@@ -30,28 +30,6 @@ open Types
 open InferenceExceptions
 open Misc
 
-(* Row algebra blablabla
-   module IdSet = Set.Make (struct
-    type t = string
-    let compare = compare
-   end)
-
-   module RowDomain = BasicSetEquations.Make (struct
-
-    include IdSet
-
-    let print s =
-      try
-        let label = choose s in
-        fold (fun label accu ->
-            label ^ "+" ^ accu
-          ) (remove label s) label
-      with Not_found ->
-        ""
-
-   end)
-*)
-
 type variable =
   descriptor UnionFind.point
 
@@ -62,11 +40,7 @@ and descriptor =
     mutable constant : bool;
   }
 
-and term =
-  | App of variable * variable
-  (* Row algebra blablabla
-     | Row of RowDomain.term
-  *)
+and term = App of variable * variable
 
 type t = variable
 
@@ -87,7 +61,7 @@ let structure v =
   (UnionFind.find v).structure
 
 let iter_term f = function
-    App (t1, t2) ->
+  | App (t1, t2) ->
     f t1;
     f t2
 
@@ -124,11 +98,6 @@ let rec mkconstructor tenv arity =
   if arity = 0 then star else
     mkarrow star (mkconstructor tenv (arity - 1))
 
-(* Row algebra blablabla
-   let row d =
-   term_handler (Row d)
-*)
-
 let is_star env k =
   UnionFind.equivalent k star
 
@@ -148,9 +117,6 @@ let rec kind_arity env v =
 
 let rec print_term = function
   | App (v1, v2) -> String.concat "" [ "(" ; print v1 ; "," ; print v2 ; ")" ]
-(* Row algebra blablabla
-   | Row v -> "Row("^ RowDomain.print v ^ ")"
-*)
 
 and print v =
   match (UnionFind.find v).structure with
@@ -216,13 +182,6 @@ let rec unify pos k1 k2 =
     | Some (App (t1, t2)), Some (App (t1', t2')) ->
       unify pos t1 t1';
       unify pos t2 t2'
-
-      (*
-    | Some (Row d1), Some (Row d2) ->
-      RowDomain.unify d1 d2
-
-    | _ -> assert false)
-      *)
   )
 
 let rec infer env = function

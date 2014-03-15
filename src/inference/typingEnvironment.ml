@@ -59,7 +59,7 @@ and datatype_info =
   | Product of variable list * crterm * (lname * crterm) list
 
 let as_type_constructor ((_, v, _) as x) =
-  if (UnionFind.find v).kind = Constant then
+  if variable_kind v = Constant then
     x
   else
     raise Not_found
@@ -188,11 +188,13 @@ let filter_tycon_name tenv =
         None -> false
       | Some name -> is_typcon tenv name))
 
+  (*
 let add_type_and_kind_variables denv tenv =
   add_type_variables
     (List.map (fun (n, v) -> (n, (fresh_kind (), v, ref Abstract))) denv)
     tenv
 
+    *)
 (** [tycon_name_conflict tyconv_env env] checks if a type constructor is not
     overwritten by a type variable. *)
 let tycon_name_conflict pos env (fqs, denv) =
@@ -219,7 +221,7 @@ let rigid_args rt =
   List.fold_left (fun acu ->
       function
         TVariable v ->
-        if (UnionFind.find v).kind = Rigid then v :: acu
+        if variable_kind v = Rigid then v :: acu
         else acu
       | _ -> acu) []
     (tycon_args rt)
@@ -243,6 +245,7 @@ let is_regular_datacon_scheme tenv kvars kt =
   List.for_all (fun v -> List.memq v kvars) rigid_args
   && List.length rigid_args == List.length kvars
 
+  (* TODO:DEAD
 (** [find_algebraic_datatypes env k] looks for all the data
     constructor that are related to the data constructor [k]. *)
 let rec find_algebraic_datatypes env k =
@@ -254,6 +257,7 @@ let rec find_algebraic_datatypes env k =
   match ts with
   | [ (_, _, r) ] -> !r
   | _ -> assert false
+  *)
 
 (** [fresh_vars kind pos env vars] allocates fresh variables from a
     list of names [vars], checking name clashes with type constructors. *)

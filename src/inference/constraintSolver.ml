@@ -45,31 +45,15 @@ let rtrue = []
 let rconj c = List.flatten c
 let rpredicate k c = [(k, c)]
 
-(* TODO: That's an association list... *)
-type environment =
-  | EEmpty
-  | EEnvFrame of environment * string * typing_context * variable
+type environment = (typing_context * variable) StringMap.t
 
-let environment_as_list e =
-  let rec conv acu = function
-    | EEmpty ->
-      acu
-
-    | EEnvFrame (env, name, c, v) ->
-      conv ((name, (c, v))::acu) env
-  in
-  conv [] e
+let environment_as_list = StringMap.bindings
 
 (** [lookup name env] looks for a definition of [name] within
     the environment [env]. *)
-let rec lookup pos name = function
-  | EEnvFrame (env, name', c, scheme) ->
-    if name = name' then
-      (c, scheme)
-    else
-      lookup pos name env
-
-  | EEmpty ->
+let rec lookup pos name e = try
+    StringMap.find name e
+  with Not_found ->
     raise (UnboundIdentifier (pos, Name name))
 
 type occurrence = string * position
@@ -286,18 +270,30 @@ let solve env pool c =
   let answer = ref empty_answer in
 
   (** [given_p] corresponds to the class predicates given
-      by the programmer as an annotation. *)
-  let rec solve env pool c =
+      by the programmer as an annotation:
+
+          let ['b_1 ... 'b_n] [K_1 'c_1, ..., K_m 'c_m] ... = ...
+
+      where c_j's are to be found among b_i's.
+      This annotation must *entail* what is inferred *)
+  let simplify pos pool given_p p =
+    let p = ConstraintSimplifier.canonicalize pos pool p in
+    let p1, p2 = List.partition (fun (_, v) -> is_rigid v) p in
+    begin
+      ConstraintSimplifier.entails pos given_p p1;
+      p2
+    end
+  in
+
+  let rec solve env pool given_p c =
     let pos = cposition c in
     try
-      solve_constraint env pool c
+      solve_constraint env pool given_p c
     with Inconsistency -> raise (TypingError pos)
 
-  and solve_constraint env pool = function
+  and solve_constraint env pool given_p = function
 
-    | CTrue p ->
-      rtrue
-
+    | CTrue p
     | CDump p ->
       rtrue
 
@@ -311,23 +307,23 @@ let solve env pool c =
       rtrue
 
     | CConjunction cl ->
-      rconj (List.map (solve env pool) cl)
+      rconj (List.map (solve env pool given_p) cl)
 
     | CLet ([ Scheme (_, [], fqs, [], c, _) ], CTrue _) ->
       (* This encodes an existential constraint. In this restricted
          case, there is no need to stop and generalize. The code
          below is only an optimization of the general case. *)
       List.iter (introduce pool) fqs;
-      solve env pool c
+      solve env pool given_p c
 
     | CLet (schemes, c2) ->
       let rs, env' =
         List.fold_left (fun (rs, env') scheme ->
-            let (r, env'') = solve_scheme env pool scheme in
+            let (r, env'') = solve_scheme env pool given_p scheme in
             (r :: rs, concat env' env'')
           ) ([], env) schemes
       in
-      rconj (solve env' pool c2 :: rs)
+      rconj (solve env' pool given_p c2 :: rs)
 
     | CInstance (pos, SName name, term) ->
       let ps, t = lookup pos name env in
@@ -338,13 +334,14 @@ let solve env pool c =
           let t' = chop pool term in
           answer := new_instantiation !answer (name, pos) t';
           unify_terms pos pool instance t';
-          List.map2 (fun (k, _) ty -> (k, ty)) ps itys
+          let p = List.map2 (fun (k, _) ty -> (k, ty)) ps itys in
+          p
       end
 
     | CDisjunction cs ->
       assert false
 
-  and solve_scheme env pool = function
+  and solve_scheme env pool given_p = function
 
     | Scheme (_, [], [], [], c1, header) ->
 
@@ -352,11 +349,11 @@ let solve env pool c =
          there is no need to stop and generalize.
          This is only an optimization of the general case. *)
 
-      let solved_p = solve env pool c1 in
+      let solved_p = solve env pool given_p c1 in
       let henv = StringMap.map (fun (t, _) -> chop pool t) header in
       (solved_p, ([], rtrue, henv))
 
-    | Scheme (pos, rqs, fqs, given_p, c1, header) ->
+    | Scheme (pos, rqs, fqs, given_p1, c1, header) ->
 
       (* The general case. *)
 
@@ -365,7 +362,8 @@ let solve env pool c =
       List.iter (introduce pool') fqs;
       let header = StringMap.map (fun (t, _) -> chop pool' t) header in
       (* We add the new predicates *)
-      let solved_p = solve env pool' c1 in
+      let solved_p = solve env pool' (given_p1 @ given_p) c1 in
+      let p = simplify pos pool (given_p1 @ given_p) solved_p in
       distinct_variables pos rqs;
       generalize pool pool';
       generic_variables pos rqs;
@@ -375,24 +373,17 @@ let solve env pool c =
             IntRank.compare desc.rank IntRank.none = 0)
           (inhabitants pool')
       in
-      let canonical = ConstraintSimplifier.canonicalize pos pool solved_p in
       let p1, p2 =
         List.(partition
                 (fun (_, v) ->
                    exists (UnionFind.equivalent v) generalized_variables)
-                canonical) in
-      let p1 =
-        if given_p = []
-        then p1
-        else if ConstraintSimplifier.entails given_p p1
-        then given_p
-        else raise (IrreduciblePredicate pos) in
-      (p2, (generalized_variables, p1, header))
+                p) in
+      (p2, (generalized_variables, given_p1 @ p1, header))
 
   and concat env (vs, p, header) =
     StringMap.fold (fun name v env ->
         answer := new_binding !answer name (vs, p, v);
-        EEnvFrame (env, name, p, v)
+        StringMap.add name (p, v) env
       ) header env
 
   and unify_terms pos pool t1 t2 =
@@ -402,14 +393,14 @@ let solve env pool c =
       raise (IncompatibleTypes (pos, v1, v2))
 
   in (
-    ignore (solve env pool c);
+    ignore (solve env pool [] c);
     !answer
   )
 
 (** [init] produces a fresh initial state. It consists of an empty
     environment and a fresh, empty pool. *)
 let init () =
-  EEmpty, MultiEquation.init ()
+  StringMap.empty, MultiEquation.init ()
 
 (** The public version of [solve] starts out with an initial state. *)
 let solve c =

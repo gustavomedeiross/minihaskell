@@ -126,12 +126,15 @@ val fresh_rigid_vars :
 val fresh_unnamed_rigid_vars :
   position -> environment -> 'a list -> variable list * ('a * type_info) list
 
-(** Merge a environment fragment with an environment. *)
-val add_type_and_kind_variables :
-  (tname * variable) list -> environment -> environment
-
 (** [fresh_product_of_label env l] returns the type of the record
     type containing [l] as well as the type of its labels. In addition,
     the type parameters of the record type are taken fresh. *)
 val fresh_product_of_label : position -> environment -> lname
   -> variable list * (crterm * (lname * crterm) list)
+
+(* TODO: DEAD
+
+(** Merge a environment fragment with an environment. *)
+val add_type_and_kind_variables :
+  (tname * variable) list -> environment -> environment
+*)
