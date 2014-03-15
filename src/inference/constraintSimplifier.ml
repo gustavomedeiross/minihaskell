@@ -41,11 +41,12 @@ let equivalent l k t lc =
 let unbuilt x = match x.structure with
   | None            -> raise Poney  
   | Some (App(a,b)) -> (a,b)  
-  | Some (Var(a))   -> raise Poney
+  | Some (Var(a))   -> (a,a) (*We can forgot the second*)
+
 let rec from_term_to_crterm x =
   let stru = variable_structure x in 
   match stru with 
-  | Some(Var a)-> TVariable(a) 
+  | Some(Var a)-> from_term_to_crterm a 
   | Some(App(a,b))->TTerm(App(from_term_to_crterm a,
                               from_term_to_crterm b))
   | None -> TVariable(x);;(*Check that*)
