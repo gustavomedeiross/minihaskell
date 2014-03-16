@@ -1,3 +1,4 @@
+type external boolean = "bool"
 type 'a list = Nil | Cons of 'a * 'a list
 
 type external bool = "bool"
@@ -8,7 +9,6 @@ let external plus : int -> int -> int = "fun x y -> x+y"
 let external moins : int -> int -> int = "fun x y -> x-y"
 let external andb : bool -> bool -> bool = "fun x y -> x&&y"
 let external [ 'a ] if : bool -> 'a -> 'a -> 'a = "fun x y z -> if x then y else z"
-
 
 class Eq 'a { equal : 'a -> 'a -> bool}
 
@@ -27,4 +27,4 @@ instance Peano int {zero = 0;
                     }
 
 let rec add = fun x -> fun y ->
- if (equal x zero) (y) (succ(add(pred x) y ))
+ if (equal x zero) (y) (succ(add(pred x) y )) *)
