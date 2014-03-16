@@ -83,8 +83,7 @@ val lookup_datacon
 
 (** Looks for a type constructor given its name. *)
 val lookup_type_variable :
-  ?pos:Positions.position -> environment -> tname
-  -> variable InferenceTypes.arterm
+  environment -> tname -> variable InferenceTypes.arterm
 
 (** Accessor to the arity of a type constructor. *)
 val typcon_kind : environment -> tname -> KindInferencer.t

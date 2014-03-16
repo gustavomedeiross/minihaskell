@@ -114,7 +114,9 @@ let rec intern' tenv ty =
 let rec intern pos tenv ty =
   let kind_env = as_kind_env tenv in
   let _ = KindInferencer.check pos kind_env ty star in
-  intern' tenv ty
+  try
+    intern' tenv ty
+  with UnboundTypeVariable (_, k) -> raise (UnboundTypeVariable (pos, k))
 
 let intern_let_env pos tenv rs fs =
   let fqs, rtenv = fresh_flexible_vars pos tenv fs in

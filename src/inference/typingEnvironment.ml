@@ -133,11 +133,11 @@ let find_typcon env t =
 
 (** [lookup_type_variable env v] looks for typing information related to
     the type variable [v] in [env]. *)
-let lookup_type_variable ?pos env k =
+let lookup_type_variable env k =
   try
     TVariable (as_type_variable (Env.lookup env.type_info k))
   with Not_found ->
-    raise (UnboundTypeVariable (pos_or_undef pos, k))
+    raise (UnboundTypeVariable (undefined_position, k))
 
 (* The kind inferencer wants a view on the environment that
    concerns only the kinds. *)
