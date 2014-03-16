@@ -98,16 +98,16 @@ let lookup_superclasses pos k env =
 let is_superclass =
   let scs : (cname * cname, bool) Hashtbl.t = Hashtbl.create 13 in
   fun pos k1 k2 env ->
-  let rec is_sc k =
-    try
-      Hashtbl.find scs (k, k2)
-    with Not_found ->
-      let scl = lookup_superclasses pos k env in
-      let b =
-        List.exists (fun k -> k = k2 || is_sc k) scl in
-      Hashtbl.add scs (k, k2) b;
-      b
-  in is_sc k1
+    let rec is_sc k =
+      try
+        Hashtbl.find scs (k, k2)
+      with Not_found ->
+        let scl = lookup_superclasses pos k env in
+        let b =
+          List.exists (fun k -> k = k2 || is_sc k) scl in
+        Hashtbl.add scs (k, k2) b;
+        b
+    in is_sc k1
 
 
 (* Independence constraint (for all i,j: not (Ki < Kj))
@@ -129,8 +129,9 @@ let rec check_free_variables name parameter (pos, _, t) =
     if not (TS.mem parameter freeT) then
       raise (AmbiguousTypeclass (pos, name));
   | _ -> assert false
- (* Unused constructors: Other constructors are used only in the output tree
-  * (so we never match against them) *)
+(* Unused name constructors:
+ * Other constructors are used only in the output tree
+ * (so we never match against them) *)
 
 (** [add_methods p env member] registers [member] as a method of the class
  *  of name [k], where [p = ClassPredicate (k, _)],
@@ -144,7 +145,7 @@ let add_methods (ClassPredicate (k, tv) as p) env (pos, m, ty) = match m with
     let m_binding = [tv], [p], (name, ty) in
     { env with method_names = StringSet.add s env.method_names;
                values       = m_binding :: env.values }
-  | _ -> assert false (* Unused constructors *)
+  | _ -> assert false (* Unused name constructors *)
 
 let bind_class k c env =
   let { class_position  = pos ;

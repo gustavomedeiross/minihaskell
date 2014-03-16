@@ -95,6 +95,7 @@ clean:
 		*.cm[iox] **/*.cm[iox] **/*.o *.annot **/*.annot
 
 cleanall: clean
+	rm -f $(EXECUTABLE)
 	make -C parsing/pprint-20130324/src clean
 
 .depend: $(GENERATED) Makefile
