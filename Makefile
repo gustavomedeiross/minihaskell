@@ -7,7 +7,7 @@ $(EXECUTABLE): ./$(SRC)$(EXECUTABLE)
 	cp src/joujou .
 
 ./$(SRC)$(EXECUTABLE):
-	make -j -C $(SRC)
+	make  -C $(SRC)
 
 test: ./$(SRC)$(EXECUTABLE) FORCE
 	make -C $(TEST) test
