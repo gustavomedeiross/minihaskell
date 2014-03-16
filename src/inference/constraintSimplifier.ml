@@ -95,6 +95,7 @@ let entails c1 c2 =
             c2)
   with Not_found -> None
 
+  (* TODO: This comment... *)
 (* Canonicalize try to apply rules, to transform the constraint on one type to
  * a constraint on variables. To apply a (E) rule is equivalent to delete
  * exactly one type constructor i.e k_1 t_1 , ... k_n t_n => k (C t) give
