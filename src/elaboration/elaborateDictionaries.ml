@@ -732,6 +732,9 @@ and value_definition env (ValueDef (pos, ts, ps, (x, xty), e)) =
 and value_declaration env (ValueDef (pos, ts, ps, (x, ty), e)) =
   bind_scheme pos x ts ps ty env
 
+(* All variable names are collected to check
+ * that they are not used as methods *)
+
 and names_is is = List.fold_left names_i [] is
 
 and names_i acc i = List.fold_left vn_recordbinding acc i.instance_members

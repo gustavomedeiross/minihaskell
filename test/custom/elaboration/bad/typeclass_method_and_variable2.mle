@@ -1,0 +1,3 @@
+class K 'a { k : 'a }
+instance K int { k = let x : int = 0 in x[] }
+class Y 'a { x : 'a }
