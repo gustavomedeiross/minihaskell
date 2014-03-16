@@ -1,16 +1,19 @@
 EXECUTABLE=joujou
 
 SRC=src/
+TEST=test/
 
 $(EXECUTABLE): ./$(SRC)$(EXECUTABLE)
 	cp src/joujou .
 
 ./$(SRC)$(EXECUTABLE):
-	make -C $(SRC) -j
+	make -j -C $(SRC)
 
-test: ./$(SRC)$(EXECUTABLE)
-	cd test/ && ./test
+test: ./$(SRC)$(EXECUTABLE) FORCE
+	make -C $(TEST) test
+
+FORCE:
 
 clean:
 	rm -f joujou
-	make -C $(SRC) clean
+	make -C $(SRC) cleanall

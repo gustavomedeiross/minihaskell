@@ -85,19 +85,24 @@ $(EXECUTABLE).opt: $(MODULES:%=%.cmx)
 %.ml: %.mll
 	$(OCAMLLEX) $*.mll
 
-test: $(EXECUTABLE)
-	cd ../test && ./test
+test: $(EXECUTABLE) FORCE
+	make -C ../test test
+
+FORCE:
 
 clean:
-	rm -f $(EXECUTABLE) $(EXECUTABLE).opt parsing/parser.ml parsing/lexer.ml \
+	@rm -f $(EXECUTABLE) $(EXECUTABLE).opt parsing/parser.ml parsing/lexer.ml \
 		*.cm[iox] **/*.cm[iox] **/*.o *.annot **/*.annot
 
+cleanall: clean
+	make -C parsing/pprint-20130324/src clean
+
 .depend: $(GENERATED) Makefile
-	$(OCAMLDEP) $(SRC_INCLUDES) $(patsubst %, %.ml, $(MODULES)) \
+	@$(OCAMLDEP) $(SRC_INCLUDES) $(patsubst %, %.ml, $(MODULES)) \
 		$(patsubst %, %.mli, $(MODULES) $(INTERFACES)) $(GENERATED) > .depend
 
 depend:
-	rm -f .depend
+	@rm -f .depend
 	$(MAKE) .depend
 
 include .depend

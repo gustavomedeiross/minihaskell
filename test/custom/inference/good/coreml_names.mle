@@ -1,0 +1,1 @@
+let ['a] (x : 'a -> int) = ['a] fun (x_1 : 'a) -> let (x_2 : int) = 0 in x_2[]

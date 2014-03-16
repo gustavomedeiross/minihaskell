@@ -12,13 +12,14 @@ if [ ! -x $JOUJOU  ]
     exit 1
 fi
 
-GOODE=`find elaboration custom -path '*/good/*.mle' | sort`
-BADE=`find elaboration custom -path '*/bad/*.mle' | sort`
 
-GOODT=`find inference diy -path '*/good/*.mlt' | sort`
-BADT=`find inference diy -path '*/bad/*.mlt' | sort`
+GOODE=`find . custom -path '*/elaboration/good/*.mle' | sort`
+BADE=`find . custom -path '*/elaboration/bad/*.mle' | sort`
 
-echo "Typechecking, the fails with mle:"
+GOODT=`find . custom -path '*/inference/good/*.mlt' | sort`
+BADT=`find . custom -path '*/inference/bad/*.mlt' | sort`
+
+echo ".mle fails:"
 nbrexpli=0
 for f in $GOODE
   do
@@ -46,7 +47,7 @@ for f in $BADE
   fi
 done
 
-echo "Typechecking, the fails with mlt:"
+echo ".mlt fails:"
 nbrimpli=0
 for f in $GOODT
   do
