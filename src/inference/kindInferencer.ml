@@ -124,8 +124,7 @@ and print v =
   | Some t -> print_term t
 
 and name v =
-  match (UnionFind.find v).name with
-  | TName name -> name
+  of_tname (UnionFind.find v).name
 
 let is_constant v = (UnionFind.find v).constant
 

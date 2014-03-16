@@ -70,7 +70,9 @@ let ty_app t1 t2 =
   | TyVar (pos, t) ->
     TyApp (pos, t, [t2])
 
-let string_of_label = function Name.LName s -> s
+let string_of_label = function
+  | LName l -> l
+  | _ -> assert false
 
 exception Cycle
 
@@ -160,24 +162,24 @@ let export is_type_scheme =
 
   let var_or_sym v =
     let v = UnionFind.repr v in
-    let (TName s) as name =
+    let s =
       match variable_name v with
       | Some (TName s) ->
         let desc = UnionFind.find v in
         assert (desc.structure = None);
         if is_type_scheme && IntRank.compare desc.rank IntRank.none = 0 then
           try
-            TName (Misc.assocp (UnionFind.equivalent v) !history)
-          with Not_found -> TName (assign_name v s history autoname)
+            Misc.assocp (UnionFind.equivalent v) !history
+          with Not_found -> assign_name v s history autoname
         else
-          TName s
-      | None ->
-        TName (var_name v)
+          s
+      | Some _ -> assert false
+      | None   -> var_name v
     in
     if s.[0] = '\'' then
-      TyVar (undefined_position, name)
+      TyVar (undefined_position, TName s)
     else
-      TyApp (undefined_position, name, [])
+      TyApp (undefined_position, TName s, [])
   in
 
   let rec export_variable visited v =
@@ -253,8 +255,8 @@ let type_of_variable pos v =
 
 let export_class_predicate pos (k, ty) =
   match snd (export false [] ty) with
-    | TyVar (_, v) -> ClassPredicate (k, v)
-    | _ -> assert false
+  | TyVar (_, v) -> ClassPredicate (k, v)
+  | _ -> assert false
 
 let type_scheme_of_variable =
   fun pos { universally_qs = vs  ;
@@ -265,6 +267,7 @@ let type_scheme_of_variable =
       let (ts, ty) = export vs v in
       let cps = List.map (export_class_predicate pos) cps in
       let fvs = InternalizeTypes.variables_of_typ ty in
-      let ts = List.filter (fun (TName x) -> StringSet.mem x fvs) ts in
+      let ts = List.filter
+          (function TName x -> StringSet.mem x fvs | _ -> assert false) ts in
       TyScheme (ts, cps, ty)
     with Cycle -> raise (RecursiveType pos)

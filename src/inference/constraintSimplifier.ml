@@ -155,6 +155,6 @@ let canonicalize pos k =
       aux v []
     end
   in
-  List.map (fun (k, v) -> canonicalize' k v) k;
+  List.iter (fun (k, v) -> canonicalize' k v) k;
   !ps
 

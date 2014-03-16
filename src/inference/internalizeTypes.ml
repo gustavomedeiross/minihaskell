@@ -74,8 +74,8 @@ let rec explicit_or_implicit pos b e =
 
 let variables_of_typ =
   let rec vtyp accu = function
-    | TyVar (_, TName x) ->
-      StringSet.add x accu
+    | TyVar (_, x) ->
+      StringSet.add (of_tname x) accu
 
     | TyApp (_, _, ts) ->
       List.fold_left vtyp accu ts

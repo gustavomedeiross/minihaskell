@@ -10,22 +10,24 @@ let program p =
   let exclusive_name = -1 in
   let fresh_name =
     let t = Hashtbl.create 13 in
-    fun pos ?(exclusive=false) ((Name n) as x) ->
-      let occ =
-        try
-          let occ = Hashtbl.find t n in
-          if exclusive || occ = exclusive_name then
-            raise (OverloadedSymbolCannotBeBound (pos, x))
-          else
-            succ occ
-        with Not_found ->
-          if exclusive then exclusive_name else 1
-      in
-      Hashtbl.replace t n occ;
-      if occ = 1 then
-        Name n
-      else
-        Name (n ^ "_" ^ string_of_int (pred occ))
+    fun pos ?(exclusive=false) -> function
+      | Name n as name ->
+        let occ =
+          try
+            let occ = Hashtbl.find t n in
+            if exclusive || occ = exclusive_name then
+              raise (OverloadedSymbolCannotBeBound (pos, name))
+            else
+              succ occ
+          with Not_found ->
+            if exclusive then exclusive_name else 1
+        in
+        Hashtbl.replace t n occ;
+        if occ = 1 then
+          Name n
+        else
+          Name (n ^ "_" ^ string_of_int (pred occ))
+      | _ -> assert false
   in
   let lookup pos n s =
     try
@@ -51,14 +53,18 @@ let program p =
       (BDefinition d, s)
 
   and class_definition s ct =
-    List.fold_left (fun ms (pos, MName x, _) ->
-        ignore (fresh_name pos ~exclusive:true (Name x));
-        (Name x, Name x) :: ms
+    List.fold_left (fun ms (pos, m, _) ->
+        match m with
+        | MName x ->
+          let name = Name x in
+          ignore (fresh_name pos ~exclusive:true name);
+          (name, name) :: ms
+        | _ -> assert false
       ) s ct.class_members
 
-  and instance_definition s ti = List.(
-      { ti with instance_members = map (record_binding s) ti.instance_members }
-    )
+  and instance_definition s ti =
+    { ti with instance_members =
+                List.map (record_binding s) ti.instance_members }
 
   and expression s = function
     | EVar (pos, n, i) ->

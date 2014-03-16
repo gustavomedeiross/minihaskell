@@ -133,4 +133,3 @@ let tycon_args t =
 let rec tycon_name = function
   | TTerm (u, _) -> tycon_name u
   | TVariable v as t -> t
-  | _ -> assert false

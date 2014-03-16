@@ -176,13 +176,20 @@ and infer_pat_fragment tenv p t =
           tconstraint = cinst ^ fragment.tconstraint ^ (t =?= rt) pos ;
           vars        = alphas @ fragment.vars;
         }
+
+    (* Other name constructors are not used in the input AST *)
+    | _ -> assert false
   in
   infpat t p
 
-let header_of_binding pos tenv (Name x, ty) t =
+let header_of_binding pos tenv (name, ty) t =
+  let x = match name with
+    | Name x -> x
+    | _ -> assert false in
   (match ty with
    | None -> CTrue pos
-   | Some ty -> (intern pos tenv ty =?= t) pos),
+   | Some ty ->
+     (intern pos tenv ty =?= t) pos),
   StringMap.singleton x (t, pos)
 
 let fresh_record_name =
@@ -192,7 +199,8 @@ let fresh_record_name =
 (** [intern_data_constructor adt_name env_info dcon_info] returns
     env_info augmented with the data constructor's typing information
     It also checks if its definition is legal. *)
-let intern_data_constructor (TName adt_name) env_info dcon_info =
+(* Unused [adt_name] *)
+let intern_data_constructor _ env_info dcon_info =
   let (tenv, acu, lrqs, let_env) = env_info
   and (pos, DName dname, qs, typ) = dcon_info in
   let rqs, rtenv = fresh_unnamed_rigid_vars pos tenv qs in
@@ -524,6 +532,9 @@ and infer_expr tenv e (t : crterm) =
           )
       )
 
+  (* Unused name constructors *)
+  | _ -> assert false
+
 and extract_label_from_binding (RecordBinding (name, _)) =
   name
 
@@ -543,7 +554,7 @@ let infer_class tenv ({ class_position = pos ;
     with
     | SUnboundClass k -> raise (UnboundClass (pos, k))
     | SMultipleClassDefinitions ->
-        raise (MultipleClassDefinitions (pos, k)));
+      raise (MultipleClassDefinitions (pos, k)));
 
   (* Introduce type variable 'a (class parameter) *)
   let rq, rtenv = fresh_rigid_vars pos tenv [c.class_parameter] in
@@ -584,7 +595,7 @@ let infer_instance tenv ({ instance_position       = pos ;
     | SOverlappingInstances ->
       raise (OverlappingInstances (pos, k, i))
     | SUnboundClass k ->
-        raise (UnboundClass (pos, k)));
+      raise (UnboundClass (pos, k)));
 
   let rs, rtenv = fresh_rigid_vars pos tenv ts in
   let tenv' = add_type_variables rtenv tenv in

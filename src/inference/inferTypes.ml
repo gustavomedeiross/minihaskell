@@ -14,7 +14,7 @@ let string_of_type ty =
   ASTio.(XAST.(to_string pprint_ml_type ty))
 
 let string_of_type_scheme (TyScheme (ts, _, ty)) =
-  String.concat " " (List.map (fun (TName x) -> x) ts)
+  String.concat " " (List.map of_tname ts)
   ^ "." ^ string_of_type ty
 
 let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
@@ -180,6 +180,9 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
             type inference took different names for type variables. *)
         expression e
 
+      (* Other name constructors are not used in the input AST *)
+      | _ -> assert false
+
     and branch (Branch (p, pat, e)) =
       XAST.Branch (p, pattern pat, expression e)
 
@@ -240,7 +243,8 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
     and value_definition (ValueDef (pos, _, _, b, t)) =
       let x, TyScheme (ts, c, ty) =
         match destruct_binding b with
-        | ((Name x) as n, _) -> (n, type_scheme_of pos x)
+        | Name x as n, _ -> (n, type_scheme_of pos x)
+        | _ -> assert false
       in
       let eforall = function
         | [] -> expression
@@ -253,9 +257,10 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
           because type inference took different names for
           rigid type variables. *)
       match destruct_binding b with
-      | ((Name x) as n, _) ->
+      | Name x as n, _ ->
         let v = (lookup_binding e x).inferred_type in
         (n, type_of_variable pos v)
+      | _ -> assert false
     in
     program p
 
