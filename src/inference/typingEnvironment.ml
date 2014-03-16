@@ -245,20 +245,6 @@ let is_regular_datacon_scheme tenv kvars kt =
   List.for_all (fun v -> List.memq v kvars) rigid_args
   && List.length rigid_args == List.length kvars
 
-  (* TODO:DEAD
-(** [find_algebraic_datatypes env k] looks for all the data
-    constructor that are related to the data constructor [k]. *)
-let rec find_algebraic_datatypes env k =
-  let ts = Env.filter env.type_info
-      (fun (_, _, r) -> match !r with
-         | Sum l -> List.mem k l
-         | _ -> false)
-  in
-  match ts with
-  | [ (_, _, r) ] -> !r
-  | _ -> assert false
-  *)
-
 (** [fresh_vars kind pos env vars] allocates fresh variables from a
     list of names [vars], checking name clashes with type constructors. *)
 let fresh_vars kind pos env vars =
