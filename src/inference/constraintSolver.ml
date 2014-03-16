@@ -290,11 +290,22 @@ let solve env pool c =
       where c_j's are to be found among b_i's.
       This annotation must *entail* what is inferred for explicitly bound
       type variables.
-      (c.f. test/diy/good/typeclass_annotated_predicate.mlt
-      and test/diy/bad/typeclass_weak_predicate.mlt) *)
+      (c.f. `test/custom/inference/good/typeclass_annotated_predicate.mlt`
+      and `test/custom/inference/bad/typeclass_weak_predicate.mlt`)
+      In other words, if the user explicitly binds *some* type variables,
+      they have to provide a "sufficiently strong" typing context on *these*
+      variables. Otherwise we consider the programmer overlooked something
+      and raise an error. No restriction applies to other implicitly added
+      variables.
+      These annotations overwrite the inferred ones. See in particular
+      `test/custom/inference/good/typeclass_annotated_strong_predicate.mlt`
+      and the inferred `.mle` *)
+
   (* There originally was a piece of code which 'canonicalized'
-   * class predicates in the output XAST (inference/externalizeTypes)
+   * class predicates in the output XAST (in inference/externalizeTypes)
    * but that was redundant with this, so we deleted it *)
+
+  (* Called in solve_scheme *)
   let canonicalize pos rqs given_p p =
     let p =
       try
@@ -322,6 +333,7 @@ let solve env pool c =
       rtrue
 
     | CPredicate (pos, k, ty) ->
+      (* Simply return the predicate *)
       let v = chop pool ty in
       [k, v]
 
@@ -358,8 +370,8 @@ let solve env pool c =
           let t' = chop pool term in
           answer := new_instantiation !answer (name, pos) t';
           unify_terms pos pool instance t';
-          let p = List.map2 (fun (k, _) ty -> (k, ty)) ps itys in
-          p
+          (* The typing context is simply obtained by substitution *)
+          List.map2 (fun (k, _) ty -> (k, ty)) ps itys
       end
 
     | CDisjunction cs ->
@@ -375,9 +387,6 @@ let solve env pool c =
 
       let solved_p = solve env pool given_p c1 in
       let henv = StringMap.map (fun (t, _) -> chop pool t) header in
-      (* In theory, we should pass it the user supplied typing context,
-       * [given_p]. But since we know the final typing context is empty,
-       * this remains correct. *)
       (solved_p, ([], rtrue, henv))
 
     | Scheme (pos, rqs, fqs, given_p1, c1, header) ->
@@ -398,9 +407,10 @@ let solve env pool c =
         List.filter (fun v ->
             let desc = UnionFind.find v in
             IntRank.compare desc.rank IntRank.none = 0)
-          (inhabitants pool')
-      in
+          (inhabitants pool') in
       let canon_p = canonicalize pos rqs given_ps solved_p in
+      (* Separate predicates depending on whether they have been bound here or
+       * higher in the term *)
       let local_p, extern_p =
         List.(partition
                 (fun (_, v) ->

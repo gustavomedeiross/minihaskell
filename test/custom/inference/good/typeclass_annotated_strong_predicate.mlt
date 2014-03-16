@@ -1,0 +1,6 @@
+class K 'a { k : 'a }
+class L 'a { l : 'a -> 'a -> 'a }
+class K 'a, L 'a => Y 'a { y : 'a }
+
+let ['a] [Y 'a] f : 'a -> 'a = fun x -> l x k
+(* At least one type annotation is necessary *)
