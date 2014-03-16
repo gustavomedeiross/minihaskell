@@ -11,11 +11,12 @@ type t = {
   types         : (tname * (Types.kind * type_definition)) list;
   classes       : (cname * class_definition) list;
   labels        : (lname * (tnames * Types.t * tname)) list;
-  (*We store the instances by classes *)
+  (* We store the instances indexed by "index" *)
   instances     : (tname * (instance_definition * name) list) list;
+  (* Names of subdictionaries *)
   subdicts      : ((cname * cname) * lname) list;
   method_names  : StringSet.t;
-  names         : StringSet.t;
+  names         : StringSet.t; (* of variables *)
 }
 
 let empty =

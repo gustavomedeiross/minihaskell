@@ -41,6 +41,8 @@ and block env = function
     let dict, env = elaborate_instances env is in
     ([BDefinition dict], env)
 
+(** Dictionary elaboration *)
+
 (* Return an expression whose value is the dictionary of type (K ty).
  * Exception: NotAnInstance *)
 and elaborate_dictionary pos env k ty =
@@ -118,7 +120,7 @@ and elaborate_dictionary pos env k ty =
   in
   elaborate_dictionary' env k ty
 
-(* Instance elaboration
+(** Instance elaboration
  *
  *   instance L 'a => K ('a cons) { ... }
  *
@@ -192,6 +194,8 @@ and dict_variables pos env ps =
   collect_by_variable pos env [] qs,
   List.map (fun (_, name, ty) -> (name, ty)) qs
 
+(* As indicated by the name, we index type predicates
+ * by the type variable they indicate *)
 and collect_by_variable pos env map = function
   | [] -> map
   | ({ instance_class_name = k;
@@ -215,6 +219,9 @@ and map_add key v = function
     then (key, v :: vs) :: map
     else (key', vs) :: map_add key v map
 
+(* Viewed from inside the definition,
+ * type predicates are similar to instance declarations,
+ * by interpreting the type variable as the "index" constructor. *)
 and dict_variable (ClassPredicate (k, v)) =
   let i =
     { instance_position = undefined_position ;
@@ -227,11 +234,12 @@ and dict_variable (ClassPredicate (k, v)) =
   (i, name, cons_type (mk_cname k) [v])
 
 (* Make a lambda abstraction
- * [abstract {x : t} {e : ty}] = (\(x : t) . e) : t -> ty *)
+ * [abstract (x, t) (e, ty)] === [(fun (x : t) -> e) : t -> ty] *)
 and abstract (x, t) (e, ty) =
   ELambda (undefined_position, (x, t), e),
   TyApp (undefined_position, TName "->", [t; ty])
 
+(* Find the subdictionary associated with class [c] for type [itype] *)
 and sub_dictionaries pos env c itype =
   let mk_record_binding k' =
     RecordBinding (
@@ -268,9 +276,9 @@ and is_abstraction = function
   | ELambda _ -> true
   | _ -> false
 
-(* Type well-formedness is taken care of by type-checking the elaborated
- * dictionary type declaration. In particular, it will catch unbound type
- * variables (a type class definition only binds one variable) *)
+(* Type well-formedness of records is taken care of by type-checking the
+ * elaborated dictionary type declaration. In particular, it will catch unbound
+ * type variables (a type class definition only binds one variable) *)
 and elaborate_class c env =
   let { class_name     = CName name as k ;
         superclasses   = scs             ;
@@ -292,7 +300,7 @@ and elaborate_class c env =
       List.map2 (fun sk (_, kname, _) -> ((sk, k), kname)) scs subdicts in
     new_subdict_names assocs env
   in
-  (* member names (MName _) will be elaborated to (MName' _)
+  (* Member names (MName _) will be elaborated to (MName' _)
    * during elaboration of types *)
   env,
   TypeDefs
@@ -351,7 +359,8 @@ and elab_wf_scheme env ts ty pos =
   elab_wf_type (introduce_type_parameters env ts) KStar ty
 
 (** [elab_wf_type env xkind ty] checks that [ty] is well-formed (in [env]) with
- * type [xkind], and converts all identifiers to their elaborated version *)
+ * type [xkind], and *converts* all identifiers to their elaborated version.
+ * The latter action describes the upgrade of the original [check_wf_type] *)
 and elab_wf_type env xkind = function
   | TyVar (pos, t) as ty ->
     let tkind = lookup_type_kind pos t env in
@@ -361,16 +370,16 @@ and elab_wf_type env xkind = function
   | TyApp (pos, t, tys) ->
     let kt = lookup_type_kind pos t env in
     let t' = elab_tname t in
-    let tys' = check_type_constructor_application pos env kt tys in
+    let tys' = elab_type_constructor_application pos env kt tys in
     TyApp (pos, t', tys');
 
-and check_type_constructor_application pos env k tys =
+and elab_type_constructor_application pos env k tys =
   match tys, k with
   | [], KStar -> []
 
   | ty :: tys, KArrow (k, ks) ->
     let ty' = elab_wf_type env k ty in
-    let tys' = check_type_constructor_application pos env ks tys in
+    let tys' = elab_type_constructor_application pos env ks tys in
     ty' :: tys'
 
   | _ -> raise (IllKindedType pos)
@@ -389,6 +398,9 @@ and check_equal_types pos ty1 ty2 =
   if not (equivalent ty1 ty2)
   then raise (IncompatibleTypes (pos, ty1, ty2))
 
+(** Upgraded with management of class predicates.
+ * [x : K 'a => T('a)] becomes a function [x : 'a k -> T('a)]
+ * and we elaborate the dictionaries expected as arguments *)
 and type_application pos env x tys =
   let tys' = List.map (elab_wf_type env KStar) tys in
   let ts, ps, (_, ty) = lookup pos x env in
@@ -406,6 +418,7 @@ and type_application pos env x tys =
  * on [e] and the type of [e] (in [env]) *)
 and expression env = function
   | EVar (pos, x, tys) -> eVar pos env x tys
+  (* Implementation has been factored out *)
 
   | ELambda (pos, (x, aty), e') ->
     let x' = elab_name x in
@@ -493,13 +506,15 @@ and expression env = function
     (ERecordAccess (pos, e, l'), ty)
 
   | ERecordCon (pos, n, i, rbs) -> eRecordCon env pos n i rbs
+  (* Implementation has been factored out.
+   * No changes here *)
 
   | EPrimitive (pos, p) as e ->
     (e, primitive pos p)
 
 and eVar pos env x tys =
   (*Elaboration of identifiers, different cases depending on
-    if the symbol is a method, or a name of function ...*)
+    if the symbol is a method, or a name of variable...*)
 
   let tys', qs, ty = type_application pos env x tys in
   (* If an identifier is a method or overloaded we elaborate *)
