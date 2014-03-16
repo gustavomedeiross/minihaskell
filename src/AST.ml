@@ -35,8 +35,9 @@ module Make (P : Types.TypingSyntax) = struct
     | BindValue of position * value_definition list
     | BindRecValue of position * value_definition list
     | ExternalValue of position * tnames * explicit_binding * string
-    (* It doesn't make much sense to have to infer the type of an external
-     * value from its usage in the code... *)
+    (* "let external" should always be explicitly annotated,
+       it is counter-productive in many respects to have to infer
+       the type of an external value from its usage in the code. *)
 
   and type_mutual_definitions =
     | TypeDefs of position * type_definition list
