@@ -99,7 +99,7 @@ let entails c1 c2 =
 (* Canonicalize try to apply rules, to transform the constraint on one type to
  * a constraint on variables. To apply a (E) rule is equivalent to delete
  * exactly one type constructor i.e k_1 t_1 , ... k_n t_n => k (C t) give
- * for example :e k(C sometype) become k_1 sometype , .... k_n sometype.
+ * for example :e k(C sometype) becomes k_1 sometype , .... k_n sometype.
  *  And we recursively try to destruct sometype, to expand k_i. *)
 
 (** [canonicalize pos c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
