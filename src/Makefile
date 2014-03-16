@@ -57,14 +57,11 @@ OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 MENHIR = menhir
 
-.PHONY: all clean depend
+.PHONY: all clean depend pprint
 
-all: $(EXECUTABLE)
+all: pprint $(EXECUTABLE)
 
-$(BLIBS):
-	$(MAKE) -C $(PPRINT)
-
-$(OLIBS):
+pprint:
 	$(MAKE) -C $(PPRINT)
 
 $(EXECUTABLE): $(INTERFACE:%=%.cmi) $(MODULES:%=%.cmo)
@@ -72,11 +69,6 @@ $(EXECUTABLE): $(INTERFACE:%=%.cmi) $(MODULES:%=%.cmo)
 
 $(EXECUTABLE).opt: $(MODULES:%=%.cmx)
 	$(OCAMLOPT) $(OFLAGS) -o $(EXECUTABLE) $(OLIBS) $(MODULES:%=%.cmx)
-
-# Ad hoc dependencies as target 'depend' does not look inside pprint
-parsing/prettyPrint.cmi: $(BLIBS) $(OLIBS)
-
-parsing/ASTio.cmi: $(BLIBS) $(OLIBS)
 
 %.cmo: %.ml
 	$(OCAMLC) $(BFLAGS) -c $*.ml
