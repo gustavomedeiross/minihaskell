@@ -30,6 +30,27 @@ Samples of *MH* can be found in `test/`.
 
 ---
 
+Organization of test files:
+
+- `test/elaboration/`, `test/inference/` contain tests provided with the base
+    version of the project (forked from http://github.com/yurug/mpri13)
+
+- `test/custom/` contain tests written by ourselves, some of them redundant
+    with the original test suit, but most cover previously untested features.
+
+---
+
+A not-too-verbose-when-it-works test script is available, call it with
+
+    make test
+
+to run `joujou` on all test files in `test/`.
+
+Makefiles with a more verbose behavior are available at the leaves of the
+`test/` directory. (based on those originally provided)
+
+---
+
 All tasks from the assignment have been carried out.
 
 There are bugs and lacking features, a certain number of which
