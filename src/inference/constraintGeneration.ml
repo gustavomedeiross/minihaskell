@@ -554,7 +554,7 @@ let infer_class tenv ({ class_position = pos ;
     | SMultipleClassDefinitions ->
       raise (MultipleClassDefinitions (pos, k)));
 
-  (* Introduce type variable 'a (class parameter) *)
+  (* Introduce type variable 'a (class parameter). [rq] is a singleton *)
   let rq, rtenv = fresh_rigid_vars pos tenv [c.class_parameter] in
   let tenv' = add_type_variables rtenv tenv in
 
@@ -573,7 +573,7 @@ let infer_class tenv ({ class_position = pos ;
       let xs, cs, h = List.fold_left
           bind_method ([], CTrue pos, StringMap.empty) c.class_members in
       Scheme (pos, rq, xs, [k, q], cs, h)
-    | _ -> assert false (* Only one parameter (line 558) *) in
+    | _ -> assert false (* Only one parameter (see def. of [rq] above) *) in
   add_class tenv c,
   fun c -> CLet ([scheme], c)
 
