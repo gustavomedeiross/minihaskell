@@ -148,12 +148,6 @@ let unify pos register =
           in
           fresh ?name:name kind rank2, merge2, merge1, merge2 in
 
-      (* Another auxiliary function, for syntactic convenience. *)
-
-      let filter v term =
-        unify pos v (fresh (Some term))
-      in
-
       (* Now, let us look at the structure of the two multi-equations. *)
 
       match desc1.structure, desc2.structure with
