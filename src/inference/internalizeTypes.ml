@@ -97,9 +97,6 @@ let rec type_of_args t =
 let arity t =
   List.length (type_of_args t)
 
-let tycon tenv t =
-  app (lookup_type_variable tenv t)
-
 let rec intern' tenv ty =
   match ty with
   | TyVar (_, name) ->

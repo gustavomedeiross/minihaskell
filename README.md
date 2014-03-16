@@ -27,3 +27,19 @@ type-checks and elaborates *MH* programs into *OCaml* programs,
 producing a file with the extension `.ml`.
 
 Samples of *MH* can be found in `test/`.
+
+---
+
+All tasks from the assignment have been carried out.
+
+There are bugs and lacking features, a certain number of which
+were already present (resp. absent) and are unrelated to the
+topic of type classes themselves.
+
+-   `test/inference/bad/coreml_intermediate_variable.mlt`,
+    `test/inference/bad/coreml_value_restriction.mlt`,
+    `test/inference/bad/typeclass_use_r.mlt`,
+    `test/inference/bad/typeclass_use_rw.mlt`:
+    Error during elaboration/type-checking, after type inference,
+    it would be desirable to catch it earlier. (The error message
+    has no position to report)

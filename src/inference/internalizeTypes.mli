@@ -62,9 +62,6 @@ val arrow : environment -> variable arterm -> variable arterm -> variable arterm
 (** [arity (t1 -> ... -> tn)] returns [n - 1]. *)
 val arity : Types.t -> int
 
-(** [tycon t xs] builds the internal representation of the type [t xs]. *)
-val tycon : environment -> tname -> variable arterm list -> variable arterm
-
 (** [intern env ty] converts [ty] into its internal representation. *)
 val intern : position -> environment -> Types.t -> crterm
 

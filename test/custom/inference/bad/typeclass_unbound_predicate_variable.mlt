@@ -1,0 +1,2 @@
+class H 'a { h : 'a }
+let ['a] [H 'b] f = fun (x : 'a) -> x
