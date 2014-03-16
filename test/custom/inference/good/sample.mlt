@@ -1,15 +1,14 @@
-type 'a list = Nil | Cons of 'a * 'a list
-
 type external boolean = "bool"
-let external btrue = "true"
-let external bfalse = "false"
-let external equal_int = "fun x y -> x=y"
-let external plus = "fun x y -> x+y"
-let external moins = "fun x y -> x-y"
-let external andb = "fun x y -> x&&y"
-let external if = "fun x y z -> if x then y else z"
 
+let external (btrue : boolean) = "true"
+let external (bfalse : boolean) = "false"
+let external (equal_int : int -> int -> boolean)= "fun x y -> x=y"
+let external (plus : int -> int -> int) = "fun x y -> x+y"
+let external (moins : int -> int -> int)= "fun x y -> x-y"
+let external (andb : boolean -> boolean -> boolean) = "fun x y -> x&&y"
+let external ['a] (if : boolean -> 'a -> 'a) = "fun x y z -> if x then y else z"
 
+(*
 class Eq 'a { equal : 'a -> 'a -> boolean}
 
 
@@ -27,4 +26,4 @@ instance Peano int {zero = 0;
                     }
 
 let rec add = fun x -> fun y ->
- if (equal x zero) (y) (succ(add(pred x) y ))
+ if (equal x zero) (y) (succ(add(pred x) y )) *)
