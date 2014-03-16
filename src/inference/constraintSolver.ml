@@ -292,6 +292,9 @@ let solve env pool c =
       type variables.
       (c.f. test/diy/good/typeclass_annotated_predicate.mlt
       and test/diy/bad/typeclass_weak_predicate.mlt) *)
+  (* There originally was a piece of code which 'canonicalized'
+   * class predicates in the output XAST (inference/externalizeTypes)
+   * but that was redundant with this, so we deleted it *)
   let canonicalize pos rqs given_p p =
     let p = ConstraintSimplifier.canonicalize pos p in
     let p1, p2 =
