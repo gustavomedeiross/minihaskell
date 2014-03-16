@@ -13,11 +13,11 @@ if [ ! -x $JOUJOU  ]
 fi
 
 
-GOODE=`find . custom -path '*/elaboration/good/*.mle' | sort`
-BADE=`find . custom -path '*/elaboration/bad/*.mle' | sort`
+GOODE=`find . -path '*/elaboration/good/*.mle' | sort`
+BADE=`find . -path '*/elaboration/bad/*.mle' | sort`
 
-GOODT=`find . custom -path '*/inference/good/*.mlt' | sort`
-BADT=`find . custom -path '*/inference/bad/*.mlt' | sort`
+GOODT=`find . -path '*/inference/good/*.mlt' | sort`
+BADT=`find . -path '*/inference/bad/*.mlt' | sort`
 
 echo ".mle fails:"
 nbrexpli=0
