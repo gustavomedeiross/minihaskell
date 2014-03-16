@@ -1,10 +1,10 @@
 (** Name scopes. *)
 
-(* We chose a different organization for names. Actually, in the elaboration, we
-create new identifiers and it is important to avoid conflicts with older
-identifiers. Essentially, to avoid conflicts, we tag differently different objects.
- This tag is used to prefix, during the printing, the names with some stuff.  
-*)
+(* We chose a different organization for names. In the elaboration,
+ * we create new identifiers and it is important to avoid conflicts with older
+ * identifiers. Essentially, to avoid conflicts, we tag differently different
+ * objects. This tag is used to prefix, during the printing, the names with
+ * some distinguishing stuff. *)
 
 (** Program identifiers. *)
 type name =
@@ -21,7 +21,7 @@ type lname =
   | MName of string (* Method name *)
   | LName' of string
   | MName' of string
-  | KName' of string * string * int (* Subdictionaries 
+  | KName' of string * string * int (* Subdictionaries
                                      * "s$ID_$SUPERCLASS_$CLASS" *)
 
 (** Type identifiers. *)

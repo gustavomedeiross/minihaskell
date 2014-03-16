@@ -51,6 +51,22 @@ Makefiles with a more verbose behavior are available at the leaves of the
 
 ---
 
+Note(s) about our work
+----------------------
+
+Important modifications have been made to the `Name` module,
+`name.mli` contains more explanations.
+
+For the remaining of the project, a `diff` with the original code base
+would show modifications *everywhere*, due to our using the tool `ocp-indent`
+on the entirety of the repository.
+
+However, relevant changes have remained mostly local to files indicated by the
+assignment, others consisting mostly in trimming code unnecessary to our
+application.
+
+---
+
 All tasks from the assignment have been carried out.
 
 There are bugs and lacking features, a certain number of which
