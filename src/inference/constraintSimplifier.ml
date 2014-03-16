@@ -49,7 +49,8 @@ let implication_of k = Hashtbl.find implications k
 let equivalent ts k t ps =
   if Hashtbl.mem equivalences (k, t) then raise SOverlappingInstances;
   let rec factor ps = function
-    | [] -> assert (ps = []); []
+    | [] -> assert (ps = []); (* There should be no predicate left at the end *)
+      []
     | b :: bs -> Types.(
         let p1, p2 = List.partition (fun (ClassPredicate (_, b')) -> b = b') ps
         in

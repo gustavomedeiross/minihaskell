@@ -498,10 +498,10 @@ and expression env = function
     (e, primitive pos p)
 
 and eVar pos env x tys =
- (*Elaboration of identifiers, different cases depending on
-  if the symbol is a method, or a name of function ...*)
+  (*Elaboration of identifiers, different cases depending on
+    if the symbol is a method, or a name of function ...*)
 
- let tys', qs, ty = type_application pos env x tys in
+  let tys', qs, ty = type_application pos env x tys in
   (* If an identifier is a method or overloaded we elaborate *)
   match as_method x env with
   | None -> (* x is not a method *)
@@ -556,8 +556,9 @@ and eRecordCon env pos n i rbs =
   in
   let ls, rty =
     match check [] None rbs with
-    | _, None           -> assert false
     | ls, Some (_, rty) -> ls, rty
+    | _, None -> assert false
+    (* Empty records are forbidden, so some type should have been found *)
   in
   (ERecordCon (pos, n, i, ls), rty)
 

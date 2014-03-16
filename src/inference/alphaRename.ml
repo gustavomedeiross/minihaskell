@@ -28,6 +28,9 @@ let program p =
         else
           Name (n ^ "_" ^ string_of_int (pred occ))
       | _ -> assert false
+      (* Unused constructors:
+       * Other constructors are only used in the output tree
+       * (so we don't match against them) *)
   in
   let lookup pos n s =
     try
@@ -59,7 +62,7 @@ let program p =
           let name = Name x in
           ignore (fresh_name pos ~exclusive:true name);
           (name, name) :: ms
-        | _ -> assert false
+        | _ -> assert false (* Unused constructors *)
       ) s ct.class_members
 
   and instance_definition s ti =

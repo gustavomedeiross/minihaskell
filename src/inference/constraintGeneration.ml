@@ -177,15 +177,14 @@ and infer_pat_fragment tenv p t =
           vars        = alphas @ fragment.vars;
         }
 
-    (* Other name constructors are not used in the input AST *)
-    | _ -> assert false
+    | _ -> assert false (* Unused name constructors *)
   in
   infpat t p
 
 let header_of_binding pos tenv (name, ty) t =
   let x = match name with
     | Name x -> x
-    | _ -> assert false in
+    | _ -> assert false (* Unused name constructors *) in
   (match ty with
    | None -> CTrue pos
    | Some ty ->
@@ -391,7 +390,7 @@ and infer_binding tenv b =
               ))
             ^ c1
 
-          | _ -> assert false
+          | _ -> assert false (* Unused name constructors *)
 
         ) ([], [], [], [], StringMap.empty, CTrue pos, CTrue pos) vdefs in
 
@@ -532,8 +531,7 @@ and infer_expr tenv e (t : crterm) =
           )
       )
 
-  (* Unused name constructors *)
-  | _ -> assert false
+  | _ -> assert false (* Unused name constructors *)
 
 and extract_label_from_binding (RecordBinding (name, _)) =
   name
@@ -567,7 +565,7 @@ let infer_class tenv ({ class_position = pos ;
       let tx = TVariable x in
       let c = (intern pos tenv' ty =?= tx) pos in
       (x :: xs, c ^ cs, StringMap.add m (tx, pos) h)
-    | _ -> assert false
+    | _ -> assert false (* Unused name constructors *)
   in
 
   let scheme = match rq with
@@ -575,7 +573,7 @@ let infer_class tenv ({ class_position = pos ;
       let xs, cs, h = List.fold_left
           bind_method ([], CTrue pos, StringMap.empty) c.class_members in
       Scheme (pos, rq, xs, [k, q], cs, h)
-    | _ -> assert false in
+    | _ -> assert false (* Only one parameter (line 558) *) in
   add_class tenv c,
   fun c -> CLet ([scheme], c)
 
