@@ -595,15 +595,21 @@ let infer_instance tenv ({ instance_position       = pos ;
     | SUnboundClass k ->
       raise (UnboundClass (pos, k)));
 
+  (* Introduce type variables *)
   let rs, rtenv = fresh_rigid_vars pos tenv ts in
   let tenv' = add_type_variables rtenv tenv in
 
+  (* Convert class predicates *)
   let ps' =
     List.map
       (fun (ClassPredicate (k, v)) -> k, proj2_3 (List.assoc v rtenv))
       ps in
 
+  (* The type for which an instance is being declared *)
   let itype = Types.cons_type i ts in
+
+  (* Recover methods and their types in which the type variable
+   * is substituted with [itype] *)
   let ms = lookup_class pos tenv k itype in
 
   let infer_method acc (RecordBinding (m, e)) =
