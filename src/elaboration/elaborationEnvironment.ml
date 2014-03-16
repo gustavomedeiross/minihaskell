@@ -97,6 +97,10 @@ let lookup_superclasses pos k env =
 
 (* Returns [true] if [k2] is a superclass of [k1] *)
 let is_superclass =
+  (* Memoization guarantees termination in polynomial time
+   * with respect to program size: the answer for every pair
+   * (k1, k2) is computed at most once and is accessed in constant
+   * time afterwards. *)
   let scs : (cname * cname, bool) Hashtbl.t = Hashtbl.create 13 in
   fun pos k1 k2 env ->
     let rec is_sc k =

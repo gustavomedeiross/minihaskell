@@ -23,7 +23,8 @@ exception SUnboundClass of cname
     [(k, t), [l_1 ; ... ; l_n]] is a binding in [equivalences] iff
     there is an instance of class [k] for the type [(b_1, ..., b_n) t]
     in the typing context which consists of [(k_i_j b_i)], for all [j] and [i],
-    where [[k_i_1 ; ... k_i_m] = l_i] *)
+    where [[k_i_1 ; ... k_i_m] = l_i].
+    In short, we gather predicates by type variable. *)
 let equivalences : (cname * tname, cname list list) Hashtbl.t =
   Hashtbl.create 222
 
@@ -48,6 +49,7 @@ let implication_of k = Hashtbl.find implications k
     [t = (b1, ..., bN) tc] *)
 let equivalent ts k t ps =
   if Hashtbl.mem equivalences (k, t) then raise SOverlappingInstances;
+  (* Index the predicates by type variable *)
   let rec factor ps = function
     | [] -> assert (ps = []); (* There should be no predicate left at the end *)
       []
@@ -68,7 +70,10 @@ let add_implication k l =
 (** [contains k k'] iff k => k', in other words: k' is a superclass of k *)
 let rec contains =
   (** If [((k, k'), b)] is a binding then [b] <=> [contains k k']
-   * (i.e. k' is a superclass of k) *)
+   * (i.e. k' is a superclass of k)
+   * This guarantees termination in polynomial time in the size of the program:
+   * the answer for every pair (k, k') is computed at most once and is
+   * accessed in constant time afterwards. *)
   let superclass : (cname * cname, bool) Hashtbl.t = Hashtbl.create 333 in
   fun k k' ->
     try
@@ -103,22 +108,27 @@ let entails c1 c2 =
     (i.e. when it requires an inexistent instance of a class
     for some type constructor) *)
 
-(* To apply a (E) rule is equivalent to deleting
+(* Applying a (E) rule is equivalent to deleting
  * exactly one type constructor i.e given for example
  *
  *     instance k_1 t_1 , ... k_n t_n => k (C t) ...
  *
- * k (C sometype) becomes k_1 sometype , .... k_n sometype.
+ * [k (C sometype)] becomes [k_1 sometype , .... k_n sometype].
  * And we recursively try to destruct sometype. *)
 
-(* We explicitly deconstruct types, hence we don't use a [pool] argument *)
+(* We explicitly deconstruct types, hence we don't use a [pool] argument. *)
 let canonicalize pos k =
+  (* We use memoization to guarantee termination in polynomial time
+   * in the size of the program.
+   * (every pair (class, subtype) is visited at most once) *)
   let memo : (cname * variable) list ref = ref [] in
   let visit k v =
     memo := (k, v) :: !memo in
   let visited k v =
     List.exists (fun (k', v') -> k = k' && are_equivalent v v') !memo in
 
+  (* We add new type predicates as we encounter them,
+   * while guaranteeing canonicity. *)
   let ps : typing_context ref = ref [] in
   let add k v =
     let filter =
@@ -132,13 +142,15 @@ let canonicalize pos k =
     then ps := (k, v) :: filter !ps in
 
   let rec canonicalize' k v =
+    (* Deconstruct [v] to find the head type constructor
+     * while accumulating its arguments in [acc]. *)
     let rec aux v acc =
       match variable_structure v with
       | Some (App (a, b)) -> aux a (b :: acc)
       | Some (Var a)      -> aux a acc
       | None              ->
         match variable_kind v with
-        | Constant ->
+        | Constant -> (* A type constructor *)
           let tycon = match variable_name v with
             | Some n -> n
             | None -> assert false in
@@ -149,7 +161,9 @@ let canonicalize pos k =
             equi
             acc
         | Flexible
-        | Rigid -> assert (acc = []); add k v
+        | Rigid ->
+          assert (acc = []); (* There are no higher kinded type variables *)
+          add k v
     in
     if not (visited k v)
     then begin
