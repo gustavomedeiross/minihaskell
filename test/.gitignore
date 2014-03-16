@@ -1,4 +1,4 @@
 *.ml
 
 inference/*/*.mle
-custom/inferemce/*/*.mle
+custom/inference/*/*.mle

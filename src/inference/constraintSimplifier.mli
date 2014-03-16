@@ -39,7 +39,7 @@ val add_implication
 
 (** [entails C1 C2] returns [None] if the canonical constraint [C1] implies
     the canonical constraint [C2], or a sub-constraint of [C2] which isn't
-    implied by [C1].
+    implied by [C1] (called "witness" in constraintSolver.ml)
     Exception: SUnboundClass *)
 val entails : (cname * variable) list -> (cname * variable) list
   -> (cname * variable) option

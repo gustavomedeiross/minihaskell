@@ -299,7 +299,19 @@ let solve env pool c =
       variables.
       These annotations overwrite the inferred ones. See in particular
       `test/custom/inference/good/typeclass_annotated_strong_predicate.mlt`
-      and the inferred `.mle` *)
+      and the inferred `.mle`. We reproduce it here:
+
+          class K 'a { k : 'a }
+          class L 'a { l : 'a -> 'a -> 'a }
+          class K 'a, L 'a => Y 'a { y : 'a }
+
+          let ['a] [Y 'a] f : 'a -> 'a = fun x -> l x k
+
+      [f] has type [Y 'a => 'a -> 'a] instead of the more general
+      [K 'a, L 'a => 'a -> 'a], which is somewhat different when viewed from
+      the point of view of elaboration: one version expects 1 argument,
+      the other 2 arguments. (although the first one actually hides the other
+      two behind one indirection) *)
 
   (* There originally was a piece of code which 'canonicalized'
    * class predicates in the output XAST (in inference/externalizeTypes)
