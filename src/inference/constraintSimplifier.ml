@@ -95,19 +95,20 @@ let entails c1 c2 =
             c2)
   with Not_found -> None
 
-  (* TODO: This comment... *)
-(* Canonicalize try to apply rules, to transform the constraint on one type to
- * a constraint on variables. To apply a (E) rule is equivalent to delete
- * exactly one type constructor i.e k_1 t_1 , ... k_n t_n => k (C t) give
- * for example :e k(C sometype) become k_1 sometype , .... k_n sometype.
- *  And we recursively try to destruct sometype, to expand k_i. *)
-
 (** [canonicalize pos c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
     [c] into an equivalent canonical constraint
     [c' = [(k'_1,v_1);...;(k'_M,v_M)]] made only of variables.
     It raises [Unsat] if the given constraint is equivalent to [false].
     (i.e. when it requires an inexistent instance of a class
     for some type constructor) *)
+
+(* To apply a (E) rule is equivalent to deleting
+ * exactly one type constructor i.e given for example
+ *
+ *     instance k_1 t_1 , ... k_n t_n => k (C t) ...
+ *
+ * k (C sometype) becomes k_1 sometype , .... k_n sometype.
+ * And we recursively try to destruct sometype. *)
 
 (* We explicitly deconstruct types, hence we don't use a [pool] argument *)
 let canonicalize pos k =
