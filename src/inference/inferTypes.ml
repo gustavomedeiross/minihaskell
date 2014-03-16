@@ -158,7 +158,7 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
         XAST.EPrimitive (p, primitive prim)
 
       | ERecordCon (p, ((Name x) as n), _, rbs) ->
-        let (_, _, v) = lookup_binding e x in
+        let v = (lookup_binding e x).inferred_type in
         let i =
           match type_of_variable p v with
           | TyApp (_, _, tys) ->
@@ -254,7 +254,7 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
           rigid type variables. *)
       match destruct_binding b with
       | ((Name x) as n, _) ->
-        let (_, _, v) = lookup_binding e x in
+        let v = (lookup_binding e x).inferred_type in
         (n, type_of_variable pos v)
     in
     program p

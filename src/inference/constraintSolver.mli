@@ -32,6 +32,13 @@ open Constraint
 (** The constraint to solve. *)
 type tconstraint = (crterm, variable) type_constraint
 
+type typing_context = (cname * variable) list
+
+type type_scheme =
+  { universally_qs : variable list  ;
+    typing_context : typing_context ;
+    inferred_type  : variable       }
+
 type answer
 
 (** [solve c] solves [c] and returns an answer describing the types
@@ -43,7 +50,7 @@ val solve: tconstraint -> answer
 (** [lookup_binding a b] returns an explicitly typed version of the
     binding [b] as described by the answer [a]. *)
 val lookup_binding
-  : answer -> string -> (variable list * (cname * variable) list * variable)
+  : answer -> string -> type_scheme
 
 (** An occurrence is an identifier and a position in the source. *)
 type occurrence = string * position

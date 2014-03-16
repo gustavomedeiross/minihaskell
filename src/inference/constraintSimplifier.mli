@@ -37,22 +37,21 @@ val equivalent
 val add_implication
   : cname -> cname list -> unit
 
-      (*TODO: Description*)
-(** [entails C1 C2] returns true is the canonical constraint [C1] implies
-    the canonical constraint [C2]. *)
-val entails
-  : Positions.position -> (cname * variable) list -> (cname * variable) list
-  -> unit
+(** [entails C1 C2] returns [None] if the canonical constraint [C1] implies
+    the canonical constraint [C2], or a sub-constraint of [C2] which isn't
+    implied by [C1].
+    Exception: SUnboundClass *)
+val entails : (cname * variable) list -> (cname * variable) list
+  -> (cname * variable) option
 
 (** [contains k k'] iff k' is a superclass of k *)
-val contains
-  : cname -> cname -> bool
+val contains : cname -> cname -> bool
 
-(** [simplify pos c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
-    [c] into an equivalent constraint [c' = [(k'_1,v_1);...;(k'_M,v_M)]] made
-    only of variables.
+(** [canonicalize pos c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
+    [c] into an equivalent canonical constraint
+    [c' = [(k'_1,v_1);...;(k'_M,v_M)]] made only of variables.
     It raises [Unsat] if the given constraint is equivalent to [false].
-    (i.e. when no instance of a class exists for some type constructor) *)
-val simplify
-  : position -> typing_context -> typing_context
+    (i.e. when it requires an inexistent instance of a class
+    for some type constructor) *)
+val canonicalize : position -> typing_context -> typing_context
 

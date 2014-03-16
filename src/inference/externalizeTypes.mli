@@ -26,6 +26,7 @@
 open Name
 open Positions
 open MultiEquation
+open ConstraintSolver
 
 exception RecursiveType of position
 
@@ -40,8 +41,7 @@ val type_of_variable: position -> variable -> Types.t
     the same variable naming conventions, unless [reset] is called in
     between. *)
 val type_scheme_of_variable
-  : position
-  -> (variable list * (cname * variable) list * variable) -> Types.scheme
+  : position -> type_scheme -> Types.scheme
 
 (** [reset ()] clears the memoization table to maintain naming conventions. *)
 val reset: unit -> unit

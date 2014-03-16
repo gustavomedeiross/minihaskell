@@ -36,6 +36,13 @@ let existing_class k =
   if not (Hashtbl.mem implications k)
   then raise (SUnboundClass k)
 
+let equivalent_to k t =
+  try
+    Hashtbl.find equivalences (k, t)
+  with Not_found -> raise (Unsat (k, t))
+
+let implication_of k = Hashtbl.find implications k
+
 (** [equivalent [b1 ; ... ; bN] k tc [(k_1,t_1) ; ... ; (k_N,t_N)]] registers
     a rule of the form (E). Where [tc] is the type constructor in
     [t = (b1, ..., bN) tc] *)
@@ -69,26 +76,24 @@ let rec contains =
       let b =
         List.exists
           (fun k -> k = k' || contains k k')
-          (Hashtbl.find implications k) in
+          (implication_of k) in
       Hashtbl.add superclass (k, k') b;
       b
 
-(** [entails pos C1 C2] checks that the canonical constraint [C1] implies
-    the canonical constraint [C2].
-    Exceptions:
-      - InferenceExceptions.IrreduciblePredicate if that's not the case
-      - SUnboundClass *)
-let entails pos c1 c2 =
-  List.iter
-    (fun (k', v') ->
-       if not (List.exists
-                 (fun (k, v) ->
-                    try
-                      UnionFind.equivalent v v' && (k = k' || contains k k')
-                    with Not_found -> raise (SUnboundClass k))
-                 c1)
-       then raise (IrreduciblePredicate (pos, c1, k', v')))
-    c2
+(** [entails pos C1 C2] returns [None] if the canonical constraint [C1] implies
+    the canonical constraint [C2], or a sub-constraint of [C2] which isn't
+    implied by [C1].
+    Exception: SUnboundClass *)
+let entails c1 c2 =
+  try
+    Some (List.find
+            (fun (k', v') ->
+               not (List.exists
+                      (fun (k, v) ->
+                         are_equivalent v v' && (k = k' || contains k k'))
+                      c1))
+            c2)
+  with Not_found -> None
 
 (* Canonicalize try to apply rules, to transform the constraint on one type to
  * a constraint on variables. To apply a (E) rule is equivalent to delete
@@ -96,39 +101,59 @@ let entails pos c1 c2 =
  * for example :e k(C sometype) become k_1 sometype , .... k_n sometype.
  *  And we recursively try to destruct sometype, to expand k_i. *)
 
-(** [simplify pos c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
-    [c] into an equivalent constraint [c' = [(k'_1,v_1);...;(k'_M,v_M)]] made
-    only of variables.
+(** [canonicalize pos c] where [c = [(k_1,t_1);...;(k_N,t_N)]] decomposes
+    [c] into an equivalent canonical constraint
+    [c' = [(k'_1,v_1);...;(k'_M,v_M)]] made only of variables.
     It raises [Unsat] if the given constraint is equivalent to [false].
-    (i.e. when no instance of a class exists for some type constructor) *)
+    (i.e. when it requires an inexistent instance of a class
+    for some type constructor) *)
+
 (* We explicitly deconstruct types, hence we don't use a [pool] argument *)
-let simplify pos k =
-  let rec simplify' k x =
-    let rec aux x acc =
-      match variable_structure x with
+let canonicalize pos k =
+  let memo : (cname * variable) list ref = ref [] in
+  let visit k v =
+    memo := (k, v) :: !memo in
+  let visited k v =
+    List.exists (fun (k', v') -> k = k' && are_equivalent v v') !memo in
+
+  let ps : typing_context ref = ref [] in
+  let add k v =
+    let filter =
+      List.filter
+        (fun (k', v') ->
+           not (contains k k' && are_equivalent v v')) in
+    if not (List.exists
+              (fun (k', v') ->
+                 (k = k' || contains k' k) && are_equivalent v v')
+              !ps)
+    then ps := (k, v) :: filter !ps in
+
+  let rec canonicalize' k v =
+    let rec aux v acc =
+      match variable_structure v with
       | Some (App (a, b)) -> aux a (b :: acc)
       | Some (Var a)      -> aux a acc
       | None              ->
-        match variable_kind x with
+        match variable_kind v with
         | Constant ->
-          let tycon = match variable_name x with
+          let tycon = match variable_name v with
             | Some n -> n
             | None -> assert false in
-          let equi =
-            try
-              Hashtbl.find equivalences (k, tycon)
-            with Not_found -> raise (Unsat (k, tycon)) in
-          let simple =
-            List.map2
-              (fun ks y ->
-                 List.(flatten (map (fun k -> simplify' k y) ks)))
-              equi
-              acc
-          in
-          List.(flatten simple)
+          let equi = equivalent_to k tycon in
+          List.iter2
+            (fun ks y ->
+               List.iter (fun k -> canonicalize' k y) ks)
+            equi
+            acc
         | Flexible
-        | Rigid -> assert (acc = []); [k, x]
-    in aux x []
+        | Rigid -> assert (acc = []); add k v
+    in
+    if not (visited k v)
+    then begin
+      visit k v;
+      aux v []
+    end
   in
-  List.(flatten (map (fun (k, x) -> simplify' k x) k))
+  List.map (fun (k, v) -> canonicalize' k v) k;
+  !ps
 

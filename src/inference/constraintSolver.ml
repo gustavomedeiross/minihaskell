@@ -58,10 +58,23 @@ let rec lookup pos name e = try
 
 type occurrence = string * position
 
+type type_scheme =
+  { universally_qs : variable list  ;
+    typing_context : typing_context ;
+    inferred_type  : variable       }
+
 type answer = {
-  bindings: (string * (variable list * typing_context * variable)) list;
+  (* Binds a name to:
+    * - The typing context supplied by the user
+    * - The inferred type *)
+  bindings: (string * type_scheme) list;
   instantiations: (occurrence * variable) list;
 }
+
+let type_scheme qs tc t =
+  { universally_qs = qs ;
+    typing_context = tc ;
+    inferred_type  = t  }
 
 let empty_answer = {
   bindings = [];
@@ -275,14 +288,17 @@ let solve env pool c =
           let ['b_1 ... 'b_n] [K_1 'c_1, ..., K_m 'c_m] ... = ...
 
       where c_j's are to be found among b_i's.
-      This annotation must *entail* what is inferred *)
-  let simplify pos pool given_p p =
-    let p = ConstraintSimplifier.simplify pos p in
-    let p1, p2 = List.partition (fun (_, v) -> is_rigid v) p in
-    begin
-      ConstraintSimplifier.entails pos given_p p1;
-      p2
-    end
+      This annotation must *entail* what is inferred for explicitly bound
+      type variables.
+      (c.f. test/diy/good/typeclass_annotated_predicate.mlt
+      and test/diy/bad/typeclass_weak_predicate.mlt) *)
+  let canonicalize pos rqs given_p p =
+    let p = ConstraintSimplifier.canonicalize pos p in
+    let p1, p2 =
+      List.partition (fun (_, v) -> List.exists (are_equivalent v) rqs) p in
+    match ConstraintSimplifier.entails given_p p1 with
+    | None -> p2
+    | Some (k, v) -> raise (IrreduciblePredicate (pos, given_p, k, v))
   in
 
   let rec solve env pool given_p c =
@@ -351,6 +367,9 @@ let solve env pool c =
 
       let solved_p = solve env pool given_p c1 in
       let henv = StringMap.map (fun (t, _) -> chop pool t) header in
+      (* In theory, we should pass it the user supplied typing context,
+       * [given_p]. But since we know the final typing context is empty,
+       * this remains correct. *)
       (solved_p, ([], rtrue, henv))
 
     | Scheme (pos, rqs, fqs, given_p1, c1, header) ->
@@ -362,8 +381,8 @@ let solve env pool c =
       List.iter (introduce pool') fqs;
       let header = StringMap.map (fun (t, _) -> chop pool' t) header in
       (* We add the new predicates *)
-      let solved_p = solve env pool' (given_p1 @ given_p) c1 in
-      let p = simplify pos pool (given_p1 @ given_p) solved_p in
+      let given_ps = given_p1 @ given_p in
+      let solved_p = solve env pool' given_ps c1 in
       distinct_variables pos rqs;
       generalize pool pool';
       generic_variables pos rqs;
@@ -373,16 +392,19 @@ let solve env pool c =
             IntRank.compare desc.rank IntRank.none = 0)
           (inhabitants pool')
       in
-      let p1, p2 =
+      let canon_p = canonicalize pos rqs given_ps solved_p in
+      let local_p, extern_p =
         List.(partition
                 (fun (_, v) ->
-                   exists (UnionFind.equivalent v) generalized_variables)
-                p) in
-      (p2, (generalized_variables, given_p1 @ p1, header))
+                   exists (are_equivalent v) generalized_variables)
+                canon_p) in
+      let ps = given_p1 @ local_p in
+      (extern_p, (generalized_variables, ps, header))
 
+  (* pvt: [partial_type_scheme] above. *)
   and concat env (vs, p, header) =
     StringMap.fold (fun name v env ->
-        answer := new_binding !answer name (vs, p, v);
+        answer := new_binding !answer name (type_scheme vs p v);
         StringMap.add name (p, v) env
       ) header env
 

@@ -33,6 +33,7 @@ open Name
 open Types
 open InferenceTypes
 open MultiEquation
+open ConstraintSolver
 
 (** The things that we export are [variable]s, that is, entry points
     for types or type schemes. *)
@@ -252,47 +253,17 @@ let type_of_variable pos v =
 
 let export_class_predicate pos (k, ty) =
   match snd (export false [] ty) with
-    | TyVar (_, v) -> [ClassPredicate (k, v)]
-    | _ -> []
-
-let canonicalize_class_predicates ts cps =
-(* TODO: UGLY *)
-  let cps =
-    List.filter (fun (ClassPredicate (_, t)) ->
-        List.mem t ts
-      ) cps
-  in
-  let cps = List.sort (fun (ClassPredicate (k1, _)) (ClassPredicate (k2, _)) ->
-      Pervasives.compare k1 k2
-    ) cps
-  in
-  let rec aux last = function
-    | [] -> []
-    | x :: xs ->
-      match last, x with
-      | Some (ClassPredicate (k, v1)), (ClassPredicate (k', v2)) ->
-        if k = k' && v1 = v2 then
-          aux last xs
-        else
-          (ClassPredicate (k', v2)) :: aux (Some x) xs
-      | None, x ->
-        x :: aux (Some x) xs
-  in
-  let remove_redundancy cs =
-    let subsum (ClassPredicate (k1, v1)) (ClassPredicate (k2, v2)) =
-      v1 = v2 && ConstraintSimplifier.contains k2 k1 && k1 <> k2
-    in
-    List.(filter (fun c -> not (exists (subsum c) cs)) cs)
-  in
-  remove_redundancy (aux None cps)
+    | TyVar (_, v) -> ClassPredicate (k, v)
+    | _ -> assert false
 
 let type_scheme_of_variable =
-  fun pos (vs, cps, v) ->
+  fun pos { universally_qs = vs  ;
+            typing_context = cps ;
+            inferred_type  = v   } ->
     try
       let export = export true in
       let (ts, ty) = export vs v in
-      let cps = List.(flatten (map (export_class_predicate pos) cps)) in
-      let cps = canonicalize_class_predicates ts cps in
+      let cps = List.map (export_class_predicate pos) cps in
       let fvs = InternalizeTypes.variables_of_typ ty in
       let ts = List.filter (fun (TName x) -> StringSet.mem x fvs) ts in
       TyScheme (ts, cps, ty)
