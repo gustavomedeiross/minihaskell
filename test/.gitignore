@@ -1,3 +1,4 @@
 *.ml
 
 inference/*/*.mle
+diy/*/*.mle

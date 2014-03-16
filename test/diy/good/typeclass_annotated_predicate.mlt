@@ -1,0 +1,4 @@
+class H 'a { h : 'a }
+class H 'a => I 'a { i : 'a }
+let [ 'a ] [ I 'a ] f = fun x -> (h : 'a)
+(* More general and explicit typing context : [ 'a 'b ] [ H 'a ] f : 'b -> 'a *)
