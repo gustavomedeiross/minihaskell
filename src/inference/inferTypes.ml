@@ -230,10 +230,6 @@ let elaborate : ConstraintSolver.answer -> IAST.program -> XAST.program =
         XAST.BindRecValue (p, List.map value_definition vs)
 
       | ExternalValue (p, ts, (x, ty), os) ->
-        let ty = match ty with
-          | None -> assert false (** By syntax. *)
-          | Some ty -> ty
-        in
         XAST.ExternalValue (p, ts, (x, ty), os)
 
     and type_scheme_of pos x =

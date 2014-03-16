@@ -293,12 +293,12 @@ let rec infer_vdef pos tenv (ValueDef (pos, qs, ps, b, e)) =
     constraints if it binds values. *)
 and infer_binding tenv b =
   match b with
-  | ExternalValue (pos, ts, b, _) ->
+  | ExternalValue (pos, ts, (n, ty), _) ->
     let x = variable Flexible () in
     let tx = TVariable x in
     let rqs, rtenv = fresh_rigid_vars pos tenv ts in
     let tenv' = add_type_variables rtenv tenv in
-    let c, h = header_of_binding pos tenv' b tx in
+    let c, h = header_of_binding pos tenv' (n, Some ty) tx in
     let scheme = Scheme (pos, rqs, [x], [], c, h) in
     fun c -> CLet ([scheme], c)
 

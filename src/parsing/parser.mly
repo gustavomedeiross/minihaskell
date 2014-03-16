@@ -229,7 +229,7 @@ k=UID
 external_value_binding:
 LET EXTERNAL
 ts=type_parameters
-b=soft_binding EQUAL s=STRING
+b=soft_explicit_binding EQUAL s=STRING
 {
   ExternalValue (lex_join $startpos $endpos, ts, b, s)
 }
@@ -548,6 +548,7 @@ binding: x=name
   binding $startpos x (Some ty)
 }
 
+(* Binding with optional parentheses *)
 soft_binding: b=binding
 {
   b
@@ -555,6 +556,19 @@ soft_binding: b=binding
 | x=name COLON ty=mltype
 {
   binding $startpos x (Some ty)
+}
+
+soft_explicit_binding:
+| LPAREN b=explicit_binding RPAREN
+| b=explicit_binding
+{
+  b
+}
+
+%inline explicit_binding:
+x=name COLON ty=mltype
+{
+  x, ty
 }
 
 mltype: x=tvname

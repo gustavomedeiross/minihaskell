@@ -132,9 +132,3 @@ val fresh_unnamed_rigid_vars :
 val fresh_product_of_label : position -> environment -> lname
   -> variable list * (crterm * (lname * crterm) list)
 
-(* TODO: DEAD
-
-(** Merge a environment fragment with an environment. *)
-val add_type_and_kind_variables :
-  (tname * variable) list -> environment -> environment
-*)

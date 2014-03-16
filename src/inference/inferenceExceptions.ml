@@ -121,3 +121,7 @@ exception IncompatibleLabel of position * lname
     does not imply the inferred constraint *)
 exception IrreduciblePredicate of position * (cname * variable) list
                                   * cname * variable
+
+(** [NoInstance] is raised when a non-existent
+ * instance is required *)
+exception NoInstance of position * cname * tname

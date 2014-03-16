@@ -296,11 +296,16 @@ let solve env pool c =
    * class predicates in the output XAST (inference/externalizeTypes)
    * but that was redundant with this, so we deleted it *)
   let canonicalize pos rqs given_p p =
-    let p = ConstraintSimplifier.canonicalize pos p in
+    let p =
+      try
+        ConstraintSimplifier.canonicalize pos p
+      with
+      | ConstraintSimplifier.Unsat (k, t) -> raise (NoInstance (pos, k, t)) in
     let p1, p2 =
       List.partition (fun (_, v) -> List.exists (are_equivalent v) rqs) p in
-    match ConstraintSimplifier.entails given_p p1 with
-    | None -> p2
+    let witness = ConstraintSimplifier.entails given_p p1 in
+    match witness with
+    | None        -> p2
     | Some (k, v) -> raise (IrreduciblePredicate (pos, given_p, k, v))
   in
 

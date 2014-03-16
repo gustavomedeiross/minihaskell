@@ -256,10 +256,10 @@ module Make (GAST : AST.GenericS) = struct
           ^/^ separate_map (break 1 ^^ !^ "and" ^^ break 1) value_definition vs
         )
 
-      | ExternalValue (_, ts, b, s) ->
+      | ExternalValue (_, ts, (x, ty), s) ->
         group (
           !^ (if produce_ocaml then "let" else "let external")
-          ^/^ type_parameters ts ^^ binding b
+          ^/^ type_parameters ts ^^ annotate (name x) (ml_type ty)
           ^/^ !^ "="
           ^/^ (if produce_ocaml then !^ s else string_literal s)
         )

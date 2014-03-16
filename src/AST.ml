@@ -34,7 +34,10 @@ module Make (P : Types.TypingSyntax) = struct
   and value_binding =
     | BindValue of position * value_definition list
     | BindRecValue of position * value_definition list
-    | ExternalValue of position * tnames * binding * string
+    | ExternalValue of position * tnames * explicit_binding * string
+    (* "let external" should always be explicitly annotated,
+       it is counter-productive in many respects to have to infer
+       the type of an external value from its usage in the code. *)
 
   and type_mutual_definitions =
     | TypeDefs of position * type_definition list
@@ -106,6 +109,8 @@ module Make (P : Types.TypingSyntax) = struct
   and mltypescheme = Types.scheme
 
   and mltypekind = Types.kind
+
+  and explicit_binding = name * mltype
 
   let rec is_value_form = function
     | EVar _

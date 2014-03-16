@@ -94,9 +94,21 @@ let lookup_class pos k env =
 let lookup_superclasses pos k env =
   (lookup_class pos k env).superclasses
 
-let rec is_superclass pos k1 k2 env =
-  let scl = lookup_superclasses pos k1 env in
-  List.exists (fun k -> k = k2 || is_superclass pos k k2 env) scl
+(* Returns [true] if [k2] is a superclass of [k1] *)
+let is_superclass =
+  let scs : (cname * cname, bool) Hashtbl.t = Hashtbl.create 13 in
+  fun pos k1 k2 env ->
+  let rec is_sc k =
+    try
+      Hashtbl.find scs (k, k2)
+    with Not_found ->
+      let scl = lookup_superclasses pos k env in
+      let b =
+        List.exists (fun k -> k = k2 || is_sc k) scl in
+      Hashtbl.add scs (k, k2) b;
+      b
+  in is_sc k1
+
 
 (* Independence constraint (for all i,j: not (Ki < Kj))
  * Also checks that the superclasses are already defined. *)

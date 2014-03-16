@@ -1,15 +1,16 @@
 type external boolean = "bool"
+type 'a list = Nil | Cons of 'a * 'a list
 
-let external (btrue : boolean) = "true"
-let external (bfalse : boolean) = "false"
-let external (equal_int : int -> int -> boolean)= "fun x y -> x=y"
-let external (plus : int -> int -> int) = "fun x y -> x+y"
-let external (moins : int -> int -> int)= "fun x y -> x-y"
-let external (andb : boolean -> boolean -> boolean) = "fun x y -> x&&y"
-let external ['a] (if : boolean -> 'a -> 'a) = "fun x y z -> if x then y else z"
+type external bool = "bool"
+let external btrue : bool = "true"
+let external bfalse : bool = "false"
+let external equal_int : int -> int -> bool = "fun x y -> x=y"
+let external plus : int -> int -> int = "fun x y -> x+y"
+let external moins : int -> int -> int = "fun x y -> x-y"
+let external andb : bool -> bool -> bool = "fun x y -> x&&y"
+let external [ 'a ] if : bool -> 'a -> 'a -> 'a = "fun x y z -> if x then y else z"
 
-(*
-class Eq 'a { equal : 'a -> 'a -> boolean}
+class Eq 'a { equal : 'a -> 'a -> bool}
 
 
 class Eq 'a => Peano 'a {zero : 'a;

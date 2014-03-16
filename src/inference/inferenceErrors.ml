@@ -113,3 +113,7 @@ let handle_error print_variable p =
         (List.map (fun (CName k, v) -> k ^ (print_variable pos v)) ps) in
     fatal pos (Printf.sprintf "  Could not deduce [%s %s] from context [%s]"
                  k (print_variable pos v) typctx)
+
+  | InferenceExceptions.NoInstance (pos, CName k, t) ->
+    fatal pos (Printf.sprintf "  An instance of class `%s' for `%s' is \
+                               required but undefined." k (of_tname t))

@@ -125,9 +125,9 @@ let program p =
         (BindRecValue (pos, vs), s)
       )
 
-    | ExternalValue (pos, ts, b, os) ->
-      let (b, s) = binding pos s b in
-      (ExternalValue (pos, ts, b, os), s)
+    | ExternalValue (pos, ts, (x, ty), os) ->
+      let y, s = fresh_binder pos x s in
+      (ExternalValue (pos, ts, (y, ty), os), s)
 
   (** Pattern matching clause. *)
   and branch s (Branch (pos, p, e)) =
