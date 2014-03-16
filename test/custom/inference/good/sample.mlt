@@ -27,4 +27,4 @@ instance Peano int {zero = 0;
                     }
 
 let rec add = fun x -> fun y ->
- if (equal x zero) (y) (succ(add(pred x) y )) *)
+ if (equal x zero) y (succ(add(pred x) y )) 
