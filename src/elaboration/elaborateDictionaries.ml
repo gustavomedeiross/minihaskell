@@ -665,7 +665,8 @@ and value_binding env = function
     (BindRecValue (pos, vs), env)
 
   | ExternalValue (pos, ts, (x, ty), os) ->
-    let ty' = elab_wf_type env KStar ty in
+    let env' = introduce_type_parameters env ts in
+    let ty' = elab_wf_type env' KStar ty in
     let env = bind_scheme pos x ts [] ty env in
     let x' = elab_name x in
     (ExternalValue (pos, ts, (x', ty'), os), env)
