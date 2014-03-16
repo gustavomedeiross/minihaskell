@@ -1,0 +1,3 @@
+class H 'a { h : 'a }
+type 'a thing = Thing of 'a
+let ['a] [H ('a thing)] f = fun (x : 'a) -> x

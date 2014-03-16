@@ -1,0 +1,3 @@
+class H 'a { h : 'a }
+
+let ['a] x = fun (f : 'a) -> let ['b] [H 'a] y = h in y
