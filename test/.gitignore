@@ -1,4 +1,4 @@
 *.ml
 
 inference/*/*.mle
-diy/*/*.mle
+custom/inferemce/*/*.mle

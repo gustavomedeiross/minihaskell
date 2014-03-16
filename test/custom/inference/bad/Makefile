@@ -1,4 +1,4 @@
-JOUJOU = ../../../src/joujou
+JOUJOU = ../../../../src/joujou
 OPTIONS =
 OCAMLC = ocamlc -w -P-Y-Z
 

@@ -168,8 +168,9 @@ and instance_definition env' (defs, env) (i, name) =
   let env_ = add_local_context env in
 
   (* Elaborate record definition *)
-  (* Sub-dictionaries are elaborated in the "full" context *)
-  (* An instance of the superclass should have been declared somewhere
+  (* Sub-dictionaries are elaborated in the "full" context,
+   * contrary to original requirements:
+   * an instance of the superclass should have been declared somewhere
    * so a direct sub-dictionary should be available *)
   let sub_dict = sub_dictionaries pos env'_ c itype in
   let methods = elaborate_methods env'_ env_ c i itype in

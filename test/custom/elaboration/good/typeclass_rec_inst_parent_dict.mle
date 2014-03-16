@@ -1,0 +1,5 @@
+class K 'a { k : 'a }
+class K 'a => L 'a { l : 'a }
+
+instance L int { l = 0 }
+instance K int { k = 0 }
