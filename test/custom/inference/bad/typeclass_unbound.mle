@@ -1,3 +1,0 @@
-class K 'a => L 'a { x : 'a }
-class L 'a => K 'a { y : 'a }
-let (f : int) = x[int]

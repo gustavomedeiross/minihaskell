@@ -1,3 +1,0 @@
-class H 'a { h : 'a }
-class H 'a => I 'a { i : 'a }
-let ['a 'b] [ I 'b ] (f : 'a -> 'b) = ['a 'b] fun (x : 'a) -> h['b]

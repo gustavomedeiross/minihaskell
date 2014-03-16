@@ -61,14 +61,23 @@ MENHIR = menhir
 
 all: pprint $(EXECUTABLE)
 
+$(BLIBS): pprint
+
+$(OLIBS): pprint
+
 pprint:
 	$(MAKE) -C $(PPRINT)
 
-$(EXECUTABLE): $(INTERFACE:%=%.cmi) $(MODULES:%=%.cmo)
+$(EXECUTABLE): $(BLIBS) $(INTERFACE:%=%.cmi) $(MODULES:%=%.cmo)
 	$(OCAMLC) $(BFLAGS) -o $(EXECUTABLE) $(BLIBS) $(MODULES:%=%.cmo)
 
-$(EXECUTABLE).opt: $(MODULES:%=%.cmx)
+$(EXECUTABLE).opt: $(OLIBS) $(MODULES:%=%.cmx)
 	$(OCAMLOPT) $(OFLAGS) -o $(EXECUTABLE) $(OLIBS) $(MODULES:%=%.cmx)
+
+# Ad hoc dependencies as target 'depend' does not look inside pprint
+parsing/prettyPrint.cmi: pprint
+
+parsing/ASTio.cmi: pprint
 
 %.cmo: %.ml
 	$(OCAMLC) $(BFLAGS) -c $*.ml
