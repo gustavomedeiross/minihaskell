@@ -1,5 +1,5 @@
 open InferenceExceptions
-open InferenceTypes 
+open InferenceTypes
 open MultiEquation
 open Name
 

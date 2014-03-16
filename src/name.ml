@@ -1,5 +1,11 @@
 (** Name scopes. *)
 
+(* We chose a different organization for names. Actually, in the elaboration, we
+create new identifiers and it is important to avoid conflicts with older
+identifiers. Essentially, to avoid conflicts, we tag differently different objects.
+ This tag is used to prefix, during the printing, the names with some stuff.  
+*)
+
 (** Program identifiers. *)
 type name =
   | Name of string (* Regular variable name *)
